@@ -1,0 +1,50 @@
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../lib/api';
+import { queryKeys } from '../lib/query-keys';
+
+export function useDashboardStats() {
+  return useQuery({
+    queryKey: queryKeys.dashboard.stats(),
+    queryFn: () => api.get<{
+      totalUsers: number;
+      activeUsers: number;
+      pendingKyc: number;
+      todayOrders: number;
+      todayVolume: string;
+      pendingPayments: number;
+      activeSessions: number;
+      totalWalletBalance: string;
+      todayNewUsers: number;
+    }>('/v1/admin/dashboard/stats'),
+    refetchInterval: 30_000, // Refresh every 30s
+  });
+}
+
+export function useDashboardCharts(days = 14) {
+  return useQuery({
+    queryKey: queryKeys.dashboard.charts(days),
+    queryFn: () => api.get<Array<{
+      date: string;
+      trades: number;
+      volume: string;
+      deposits: string;
+      withdrawals: string;
+      revenue: string;
+      newUsers: number;
+      activeUsers: number;
+    }>>(`/v1/admin/dashboard/charts?days=${days}`),
+    refetchInterval: 60_000,
+  });
+}
+
+export function useSystemHealth() {
+  return useQuery({
+    queryKey: queryKeys.dashboard.health(),
+    queryFn: () => api.get<{
+      status: string;
+      checks: Record<string, { status: string; latencyMs?: number }>;
+      timestamp: string;
+    }>('/v1/admin/dashboard/health'),
+    refetchInterval: 15_000, // Refresh every 15s
+  });
+}

@@ -1,0 +1,55 @@
+/**
+ * TanStack Query key factory for consistent cache management.
+ */
+export const queryKeys = {
+  // Dashboard
+  dashboard: {
+    all: ['dashboard'] as const,
+    stats: () => [...queryKeys.dashboard.all, 'stats'] as const,
+    charts: (days?: number) => [...queryKeys.dashboard.all, 'charts', days] as const,
+    health: () => [...queryKeys.dashboard.all, 'health'] as const,
+  },
+
+  // Users
+  users: {
+    all: ['users'] as const,
+    list: (filters?: Record<string, unknown>) => [...queryKeys.users.all, 'list', filters] as const,
+    workspace: (userId: string) => [...queryKeys.users.all, 'workspace', userId] as const,
+    devices: (userId: string) => [...queryKeys.users.all, 'devices', userId] as const,
+    sessions: (userId: string) => [...queryKeys.users.all, 'sessions', userId] as const,
+  },
+
+  // KYC
+  kyc: {
+    all: ['kyc'] as const,
+    queue: (filters?: Record<string, unknown>) => [...queryKeys.kyc.all, 'queue', filters] as const,
+    application: (id: string) => [...queryKeys.kyc.all, 'application', id] as const,
+  },
+
+  // Trading
+  trading: {
+    all: ['trading'] as const,
+    orders: (filters?: Record<string, unknown>) => [...queryKeys.trading.all, 'orders', filters] as const,
+    order: (id: string) => [...queryKeys.trading.all, 'order', id] as const,
+  },
+
+  // Wallets
+  wallets: {
+    all: ['wallets'] as const,
+    list: (filters?: Record<string, unknown>) => [...queryKeys.wallets.all, 'list', filters] as const,
+    detail: (userId: string) => [...queryKeys.wallets.all, 'detail', userId] as const,
+  },
+
+  // Notifications
+  notifications: {
+    all: ['notifications'] as const,
+    list: (filters?: Record<string, unknown>) => [...queryKeys.notifications.all, 'list', filters] as const,
+    stats: () => [...queryKeys.notifications.all, 'stats'] as const,
+  },
+
+  // Audit
+  audit: {
+    all: ['audit'] as const,
+    search: (filters?: Record<string, unknown>) => [...queryKeys.audit.all, 'search', filters] as const,
+  },
+};
