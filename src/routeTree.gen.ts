@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as BrokerRouteImport } from './routes/broker'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
@@ -16,6 +17,11 @@ import { Route as KycRouteImport } from './routes/kyc'
 import { Route as ComingSoonRouteImport } from './routes/coming-soon'
 import { Route as IndexRouteImport } from './routes/index'
 
+const BrokerRoute = BrokerRouteImport.update({
+  id: '/broker',
+  path: '/broker',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -49,6 +55,7 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/broker': typeof BrokerRoute
   '/coming-soon': typeof ComingSoonRoute
   '/kyc': typeof KycRoute
   '/login': typeof LoginRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/broker': typeof BrokerRoute
   '/coming-soon': typeof ComingSoonRoute
   '/kyc': typeof KycRoute
   '/login': typeof LoginRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/broker': typeof BrokerRoute
   '/coming-soon': typeof ComingSoonRoute
   '/kyc': typeof KycRoute
   '/login': typeof LoginRoute
@@ -75,12 +84,13 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/coming-soon' | '/kyc' | '/login' | '/notifications' | '/users'
+    '/' | '/broker' | '/coming-soon' | '/kyc' | '/login' | '/notifications' | '/users'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/coming-soon' | '/kyc' | '/login' | '/notifications' | '/users'
+  to: '/' | '/broker' | '/coming-soon' | '/kyc' | '/login' | '/notifications' | '/users'
   id:
     | '__root__'
     | '/'
+    | '/broker'
     | '/coming-soon'
     | '/kyc'
     | '/login'
@@ -90,6 +100,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BrokerRoute: typeof BrokerRoute
   ComingSoonRoute: typeof ComingSoonRoute
   KycRoute: typeof KycRoute
   LoginRoute: typeof LoginRoute
@@ -146,6 +157,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BrokerRoute: BrokerRoute,
   ComingSoonRoute: ComingSoonRoute,
   KycRoute: KycRoute,
   LoginRoute: LoginRoute,
