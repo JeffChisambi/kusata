@@ -3,8 +3,6 @@ import { createPortal } from "react-dom";
 import { Link } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, ShieldCheck, FileCheck2,
-  CandlestickChart, Briefcase, Wallet, CreditCard,
-  BarChart3, Headphones,
   ChevronDown, ChevronRight, ChevronLeft, Search,
   CircleUser, Clock, Sun, Moon, Bell, Check,
 } from "lucide-react";
@@ -29,10 +27,10 @@ export const brokerNav: NavGroup[] = [
   {
     section: "CLIENTS", icon: Users, label: "User Management", href: "/users", badge: 12,
     children: [
-      { label: "All Users",          href: "/users" },
-      { label: "Login History",      href: "/users?tab=logins" },
-      { label: "Linked Banks",       href: "/users?tab=banks" },
-      { label: "Activity Timeline",  href: "/users?tab=activity" },
+      { label: "All Users",         href: "/users" },
+      { label: "Login History",     href: "/users?tab=logins" },
+      { label: "Linked Banks",      href: "/users?tab=banks" },
+      { label: "Activity Timeline", href: "/users?tab=activity" },
       { label: "Export" },
     ],
   },
@@ -46,70 +44,10 @@ export const brokerNav: NavGroup[] = [
       { label: "IP Blacklist" }, { label: "Device Blacklist" },
     ],
   },
-  { section: "CLIENTS", icon: FileCheck2, label: "KYC Management", href: "/kyc", badge: 27 },
-
-  // ── MARKETS ──
-  {
-    section: "MARKETS", icon: CandlestickChart, label: "Trading Operations",
-    children: [
-      { label: "All Orders" }, { label: "Open" }, { label: "Completed" },
-      { label: "Cancelled" }, { label: "Rejected" },
-      { label: "Pending Settlements", badge: 14 },
-      { label: "Trade History" }, { label: "Execution Logs" },
-    ],
-  },
-  {
-    section: "MARKETS", icon: Briefcase, label: "Portfolio Management",
-    children: [
-      { label: "User Portfolios" }, { label: "Holdings" }, { label: "Allocation" },
-      { label: "Performance" }, { label: "Historical Snapshots" },
-      { label: "Unrealized Gains" }, { label: "Realized Gains" },
-      { label: "Dividends Received" }, { label: "Export" },
-    ],
-  },
-
-  // ── FINANCE ──
-  {
-    section: "FINANCE", icon: Wallet, label: "Wallet Management",
-    children: [
-      { label: "Balances" }, { label: "Available" }, { label: "Reserved" },
-      { label: "Pending" }, { label: "Wallet History" }, { label: "Deposits" },
-      { label: "Withdrawals" }, { label: "Manual Adjustments", badge: 3 },
-      { label: "Statements" },
-    ],
-  },
-  {
-    section: "FINANCE", icon: CreditCard, label: "Payments",
-    children: [
-      { label: "Deposits" }, { label: "Withdrawals" },
-      { label: "Failed", badge: 9 }, { label: "Retry Payments" },
-      { label: "Gateways" }, { label: "Bank Reconciliation" },
-      { label: "Disputes", badge: 2 }, { label: "Refunds" },
-    ],
-  },
-
-  // ── INSIGHTS ──
-  {
-    section: "INSIGHTS", icon: BarChart3, label: "Reports & Analytics",
-    children: [
-      { label: "User Growth" }, { label: "Revenue" }, { label: "Trading" },
-      { label: "Settlement" }, { label: "Dividend" }, { label: "Portfolio" },
-      { label: "Wallet" }, { label: "Compliance" },
-      { label: "Daily / Monthly / Annual" }, { label: "Export CSV / XLS / PDF" },
-    ],
-  },
-  {
-    section: "INSIGHTS", icon: Headphones, label: "Customer Support", badge: 18,
-    children: [
-      { label: "Search Customer" }, { label: "Timeline" }, { label: "Support History" },
-      { label: "Create Case" }, { label: "Assign Tickets" },
-      { label: "Escalate", badge: 3 }, { label: "Internal Notes" },
-      { label: "Resolve" }, { label: "Communications" },
-    ],
-  },
+  { section: "CLIENTS", icon: FileCheck2, label: "KYC Management", href: "/kyc", badge: 2 },
 ];
 
-export const brokerSectionOrder = ["OVERVIEW", "CLIENTS", "MARKETS", "FINANCE", "INSIGHTS"];
+export const brokerSectionOrder = ["OVERVIEW", "CLIENTS"];
 
 const BROKER_NOTIF_COUNT = 5;
 
