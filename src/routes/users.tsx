@@ -10,6 +10,7 @@ import {
   Eye, Copy, ExternalLink, TrendingUp, TrendingDown,
 } from "lucide-react";
 import { AdminShell, Card } from "@/components/admin-shell";
+import { RoleShell } from "@/components/role-shell";
 import { useUsersList } from "@/hooks/useUsers";
 
 const searchSchema = z.object({
@@ -136,7 +137,7 @@ function UsersPage() {
   };
 
   return (
-    <AdminShell activeLabel="User Management" eyebrow="Clients" title="User Management">
+    <RoleShell activeLabel="User Management" eyebrow="Clients" title="User Management">
       <UserStats users={users} />
 
       <Card>
@@ -160,7 +161,7 @@ function UsersPage() {
       </Card>
 
       {drawerUser && <UserModal user={drawerUser} onClose={() => setDrawerUser(null)} />}
-    </AdminShell>
+    </RoleShell>
   );
 }
 

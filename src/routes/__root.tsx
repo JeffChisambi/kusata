@@ -9,7 +9,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, getCurrentUser } from "@/lib/auth";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -105,9 +105,20 @@ function RootComponent() {
   const navigate = useNavigate();
 
   // Auth guard — redirect to login if not authenticated (except on /login)
+  // Role guard — redirect brokers to /broker if they land on admin-only routes
   useEffect(() => {
     if (!isAuthenticated() && location.pathname !== '/login') {
       navigate({ to: '/login' });
+      return;
+    }
+    if (isAuthenticated()) {
+      const user = getCurrentUser();
+      // Routes brokers are allowed to access (shared with admin)
+      const brokerAllowed = ['/broker', '/users', '/kyc', '/notifications', '/coming-soon', '/login'];
+      const isBrokerAllowed = brokerAllowed.some((p) => location.pathname.startsWith(p));
+      if (user?.role === 'BROKER' && !isBrokerAllowed) {
+        navigate({ to: '/broker' });
+      }
     }
   }, [location.pathname, navigate]);
 

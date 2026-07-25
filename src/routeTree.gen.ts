@@ -9,19 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as BrokerRouteImport } from './routes/broker'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as KycRouteImport } from './routes/kyc'
 import { Route as ComingSoonRouteImport } from './routes/coming-soon'
+import { Route as BrokerRouteImport } from './routes/broker'
 import { Route as IndexRouteImport } from './routes/index'
 
-const BrokerRoute = BrokerRouteImport.update({
-  id: '/broker',
-  path: '/broker',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -45,6 +40,11 @@ const KycRoute = KycRouteImport.update({
 const ComingSoonRoute = ComingSoonRouteImport.update({
   id: '/coming-soon',
   path: '/coming-soon',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrokerRoute = BrokerRouteImport.update({
+  id: '/broker',
+  path: '/broker',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -84,9 +84,22 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/broker' | '/coming-soon' | '/kyc' | '/login' | '/notifications' | '/users'
+    | '/'
+    | '/broker'
+    | '/coming-soon'
+    | '/kyc'
+    | '/login'
+    | '/notifications'
+    | '/users'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/broker' | '/coming-soon' | '/kyc' | '/login' | '/notifications' | '/users'
+  to:
+    | '/'
+    | '/broker'
+    | '/coming-soon'
+    | '/kyc'
+    | '/login'
+    | '/notifications'
+    | '/users'
   id:
     | '__root__'
     | '/'
@@ -143,6 +156,13 @@ declare module '@tanstack/react-router' {
       path: '/coming-soon'
       fullPath: '/coming-soon'
       preLoaderRoute: typeof ComingSoonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/broker': {
+      id: '/broker'
+      path: '/broker'
+      fullPath: '/broker'
+      preLoaderRoute: typeof BrokerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {

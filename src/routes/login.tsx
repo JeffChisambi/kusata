@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Eye, EyeOff, ShieldCheck, KeyRound, Smartphone, Copy, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { LoginResponse, MfaSetupResponse } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -76,7 +77,8 @@ function LoginPage() {
       } else {
         await verifyMfa(mfaToken, mfaCode);
       }
-      navigate({ to: "/" });
+      const user = getCurrentUser();
+      navigate({ to: user?.role === 'BROKER' ? '/broker' : '/' });
     } catch (err: any) {
       setError(err?.message || "Invalid code. Please try again.");
     } finally {
@@ -110,7 +112,8 @@ function LoginPage() {
   };
 
   const handleFinish = () => {
-    navigate({ to: "/" });
+    const user = getCurrentUser();
+    navigate({ to: user?.role === 'BROKER' ? '/broker' : '/' });
   };
 
   return (

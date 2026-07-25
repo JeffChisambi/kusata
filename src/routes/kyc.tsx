@@ -8,6 +8,7 @@ import {
   Download, Fingerprint, ZoomIn, RotateCw, ExternalLink,
 } from "lucide-react";
 import { AdminShell, Card } from "@/components/admin-shell";
+import { RoleShell } from "@/components/role-shell";
 import { useKycQueue, type KycApplicationRow } from "@/hooks/useKyc";
 
 export const Route = createFileRoute("/kyc")({
@@ -142,7 +143,7 @@ function KycPage() {
   }, [activeTab, sortBy, applications]);
 
   return (
-    <AdminShell activeLabel="KYC Management" eyebrow="Clients" title="KYC Management">
+    <RoleShell activeLabel="KYC Management" eyebrow="Clients" title="KYC Management">
       <KycStats applications={applications} />
 
       {/* Tab bar */}
@@ -193,7 +194,7 @@ function KycPage() {
         </Card>
 
       {selected && <ReviewModal app={selected} onClose={() => setSelected(null)} onApprove={() => setSelected(null)} onReject={() => setSelected(null)} />}
-    </AdminShell>
+    </RoleShell>
   );
 }
 

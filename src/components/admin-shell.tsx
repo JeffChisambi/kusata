@@ -8,6 +8,7 @@ import {
   Activity, ListChecks, History, Settings, Plug, DatabaseBackup,
   ChevronDown, ChevronRight, ChevronLeft, Search, CircleUser, Clock, Sun, Moon, Check,
 } from "lucide-react";
+import { getCurrentUser } from "@/lib/auth";
 
 const TIME_RANGES = [
   { label: "Last 1 hour",    value: "1h",  short: "Last 1h"  },
@@ -332,22 +333,33 @@ function Sidebar({
 
       {/* User footer */}
       <div className="shrink-0 border-t border-sidebar-border p-3">
-        <div className={`flex items-center rounded-xl px-2 py-2 hover:bg-muted cursor-pointer transition-colors ${collapsed ? "justify-center" : "gap-2.5"}`}>
-          <div className="w-8 h-8 shrink-0 rounded-full bg-muted flex items-center justify-center ring-1 ring-border">
-            <CircleUser className="w-4 h-4 text-muted-foreground" />
-          </div>
-          {!collapsed && (
-            <>
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium text-foreground leading-none truncate">Prince Chitseka</div>
-                <div className="text-[9px] tracking-[0.1em] text-muted-foreground mt-0.5 truncate">SUPER ADMIN</div>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            </>
-          )}
-        </div>
+        <AdminUserFooter collapsed={collapsed} />
       </div>
     </aside>
+  );
+}
+
+function AdminUserFooter({ collapsed }: { collapsed: boolean }) {
+  const user = getCurrentUser();
+  const displayName = user ? `${user.firstName} ${user.lastName}` : 'Admin';
+  const roleLabel = user?.role?.replace(/_/g, ' ') ?? 'SUPER ADMIN';
+  const initials = user ? `${user.firstName[0]}${user.lastName[0]}` : 'A';
+
+  return (
+    <div className={`flex items-center rounded-xl px-2 py-2 hover:bg-muted cursor-pointer transition-colors ${collapsed ? "justify-center" : "gap-2.5"}`}>
+      <div className="w-8 h-8 shrink-0 rounded-full bg-pine/10 flex items-center justify-center ring-1 ring-pine/20">
+        <span className="text-[11px] font-bold text-pine">{initials}</span>
+      </div>
+      {!collapsed && (
+        <>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-medium text-foreground leading-none truncate">{displayName}</div>
+            <div className="text-[9px] tracking-[0.1em] text-muted-foreground mt-0.5 truncate">{roleLabel}</div>
+          </div>
+          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+        </>
+      )}
+    </div>
   );
 }
 
