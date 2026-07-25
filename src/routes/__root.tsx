@@ -8,7 +8,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { isAuthenticated, getCurrentUser } from "@/lib/auth";
 
 import appCss from "../styles.css?url";
@@ -103,28 +103,55 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const location = useLocation();
   const navigate = useNavigate();
+  const [ready, setReady] = useState(false);
 
-  // Auth guard — redirect to login if not authenticated (except on /login)
-  // Role guard — redirect brokers to /broker if they land on admin-only routes
+  // Auth + role guard — runs before first paint
   useEffect(() => {
-    if (!isAuthenticated() && location.pathname !== '/login') {
+    const authed = isAuthenticated();
+    const onLogin = location.pathname === '/login';
+
+    if (!authed && !onLogin) {
       navigate({ to: '/login' });
       return;
     }
-    if (isAuthenticated()) {
+
+    if (authed && onLogin) {
+      // Already logged in, skip login page
       const user = getCurrentUser();
-      // Routes brokers are allowed to access (shared with admin)
-      const brokerAllowed = ['/broker', '/users', '/kyc', '/notifications', '/coming-soon', '/login'];
+      navigate({ to: user?.role === 'BROKER' ? '/broker' : '/' });
+      return;
+    }
+
+    if (authed && !onLogin) {
+      const user = getCurrentUser();
+      const brokerAllowed = ['/broker', '/users', '/kyc', '/notifications', '/coming-soon'];
       const isBrokerAllowed = brokerAllowed.some((p) => location.pathname.startsWith(p));
       if (user?.role === 'BROKER' && !isBrokerAllowed) {
         navigate({ to: '/broker' });
+        return;
       }
     }
+
+    setReady(true);
   }, [location.pathname, navigate]);
+
+  // Block rendering until auth check completes — prevents flash of protected content
+  if (!ready) {
+    return (
+      <html lang="en">
+        <head><HeadContent /></head>
+        <body>
+          <div className="flex h-screen items-center justify-center bg-background">
+            <div className="w-8 h-8 border-2 border-pine border-t-transparent rounded-full animate-spin" />
+          </div>
+          <Scripts />
+        </body>
+      </html>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>
   );

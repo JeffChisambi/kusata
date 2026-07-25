@@ -6,6 +6,7 @@ import {
   XCircle, Circle,
 } from "lucide-react";
 import { AdminShell, Card } from "@/components/admin-shell";
+import { RoleShell } from "@/components/role-shell";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
@@ -101,7 +102,7 @@ function NotificationsPage() {
   const markRead = (id: string) => setItems((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
 
   return (
-    <AdminShell activeLabel="Notifications" eyebrow="Engagement" title="Notifications">
+    <RoleShell activeLabel="Notifications" eyebrow="Engagement" title="Notifications">
       <div className="pt-6 space-y-5">
 
         {/* Summary strip */}
@@ -186,7 +187,7 @@ function NotificationsPage() {
       </div>
 
       {compose && <ComposeModal onClose={() => setCompose(false)} />}
-    </AdminShell>
+    </RoleShell>
   );
 }
 

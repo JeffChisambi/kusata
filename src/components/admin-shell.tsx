@@ -7,8 +7,9 @@ import {
   Bell, Star, BarChart3, Headphones, AlertTriangle, Scale, KeyRound, UserCog,
   Activity, ListChecks, History, Settings, Plug, DatabaseBackup,
   ChevronDown, ChevronRight, ChevronLeft, Search, CircleUser, Clock, Sun, Moon, Check,
+  LogOut,
 } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, logout } from "@/lib/auth";
 
 const TIME_RANGES = [
   { label: "Last 1 hour",    value: "1h",  short: "Last 1h"  },
@@ -344,20 +345,57 @@ function AdminUserFooter({ collapsed }: { collapsed: boolean }) {
   const displayName = user ? `${user.firstName} ${user.lastName}` : 'Admin';
   const roleLabel = user?.role?.replace(/_/g, ' ') ?? 'SUPER ADMIN';
   const initials = user ? `${user.firstName[0]}${user.lastName[0]}` : 'A';
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
+
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = '/login';
+  };
 
   return (
-    <div className={`flex items-center rounded-xl px-2 py-2 hover:bg-muted cursor-pointer transition-colors ${collapsed ? "justify-center" : "gap-2.5"}`}>
-      <div className="w-8 h-8 shrink-0 rounded-full bg-pine/10 flex items-center justify-center ring-1 ring-pine/20">
-        <span className="text-[11px] font-bold text-pine">{initials}</span>
-      </div>
-      {!collapsed && (
-        <>
-          <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-medium text-foreground leading-none truncate">{displayName}</div>
-            <div className="text-[9px] tracking-[0.1em] text-muted-foreground mt-0.5 truncate">{roleLabel}</div>
+    <div ref={menuRef} className="relative">
+      <button
+        onClick={() => setMenuOpen((o) => !o)}
+        className={`w-full flex items-center rounded-xl px-2 py-2 hover:bg-muted cursor-pointer transition-colors ${collapsed ? "justify-center" : "gap-2.5"}`}
+      >
+        <div className="w-8 h-8 shrink-0 rounded-full bg-pine/10 flex items-center justify-center ring-1 ring-pine/20">
+          <span className="text-[11px] font-bold text-pine">{initials}</span>
+        </div>
+        {!collapsed && (
+          <>
+            <div className="flex-1 min-w-0 text-left">
+              <div className="text-[13px] font-medium text-foreground leading-none truncate">{displayName}</div>
+              <div className="text-[9px] tracking-[0.1em] text-muted-foreground mt-0.5 truncate">{roleLabel}</div>
+            </div>
+            <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+          </>
+        )}
+      </button>
+
+      {menuOpen && (
+        <div className={`absolute ${collapsed ? 'left-full ml-2 bottom-0' : 'bottom-full mb-2 left-0 right-0'} z-50 bg-card border border-border rounded-xl shadow-xl overflow-hidden`}>
+          <div className="px-3.5 py-3 border-b border-border">
+            <div className="text-[13px] font-medium text-foreground">{displayName}</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">{user?.email ?? ''}</div>
           </div>
-          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-        </>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-rose-500 hover:bg-rose-500/5 transition-colors text-left"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
+        </div>
       )}
     </div>
   );
