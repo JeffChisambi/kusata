@@ -14,7 +14,7 @@ import { useKycQueue, type KycApplicationRow } from "@/hooks/useKyc";
 export const Route = createFileRoute("/kyc")({
   head: () => ({
     meta: [
-      { title: "KYC Management — Pine Broker Admin" },
+      { title: "KYC — Pine Broker Admin" },
       { name: "description", content: "Review, approve and manage KYC verification submissions." },
     ],
   }),
@@ -143,7 +143,7 @@ function KycPage() {
   }, [activeTab, sortBy, applications]);
 
   return (
-    <RoleShell activeLabel="KYC Management" eyebrow="Clients" title="KYC Management">
+    <RoleShell activeLabel="KYC" eyebrow="Clients" title="KYC">
       <KycStats applications={applications} />
 
       {/* Tab bar */}

@@ -43,7 +43,7 @@ export const brokerNav: NavGroup[] = [
 
   // ── CLIENTS ──
   { section: "CLIENTS", icon: Users, label: "Users", href: "/users", badge: 12 },
-  { section: "CLIENTS", icon: FileCheck2, label: "KYC Management", href: "/kyc", badge: 2 },
+  { section: "CLIENTS", icon: FileCheck2, label: "KYC", href: "/kyc", badge: 2 },
 
   // ── TRADING ──
   { section: "TRADING", icon: ClipboardList, label: "Orders", href: "/orders" },
