@@ -133,7 +133,7 @@ function PasswordSection() {
   })();
 
   const strengthLabel = ["", "Weak", "Fair", "Good", "Strong"][strength];
-  const strengthColor = ["", "bg-rose-500", "bg-amber-500", "bg-pine/60", "bg-pine"][strength];
+  const strengthColor = ["", "bg-rose", "bg-amber", "bg-pine/60", "bg-pine"][strength];
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,7 +205,7 @@ function PasswordSection() {
         </FieldRow>
 
         {error && (
-          <div className="flex items-center gap-2 text-[13px] text-rose-500 mt-3">
+          <div className="flex items-center gap-2 text-[13px] text-rose mt-3">
             <AlertTriangle className="w-4 h-4 shrink-0" /> {error}
           </div>
         )}
@@ -241,7 +241,7 @@ function MfaSection() {
               onClick={() => setMfaEnabled((v) => !v)}
               className={`h-8 px-3 rounded-[3px] text-sm border transition-colors ${
                 mfaEnabled
-                  ? "border-rose/30 text-rose-500 hover:bg-rose/5"
+                  ? "border-rose/30 text-rose hover:bg-rose/5"
                   : "border-pine/30 bg-pine text-primary-foreground hover:bg-pine/90"
               }`}
             >
@@ -346,7 +346,7 @@ function SessionsSection() {
               <div className="text-xs text-muted-foreground">{s.location} · {s.ip} · {s.last}</div>
             </div>
             {!s.current && (
-              <button className="flex items-center gap-1 text-xs text-rose-500 hover:text-rose-600 transition-colors">
+              <button className="flex items-center gap-1 text-xs text-rose hover:text-rose/80 transition-colors">
                 <LogOut className="w-3.5 h-3.5" /> Sign out
               </button>
             )}
@@ -354,7 +354,7 @@ function SessionsSection() {
         ))}
       </ul>
       <div className="pt-4">
-        <button className="flex items-center gap-1.5 text-sm text-rose-500 hover:text-rose-600 transition-colors">
+        <button className="flex items-center gap-1.5 text-sm text-rose hover:text-rose/80 transition-colors">
           <LogOut className="w-4 h-4" /> Sign out all other sessions
         </button>
       </div>

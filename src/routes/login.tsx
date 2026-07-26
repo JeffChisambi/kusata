@@ -261,7 +261,7 @@ function LoginPage() {
                         }));
                         navigate({ to: '/' });
                       }}
-                      className="flex-1 h-9 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-600 text-xs font-semibold hover:bg-amber-500/20 transition-colors"
+                      className="flex-1 h-9 rounded-lg border border-amber/30 bg-amber/10 text-amber text-xs font-semibold hover:bg-amber/20 transition-colors"
                     >
                       🔑 Admin
                     </button>
@@ -279,7 +279,7 @@ function LoginPage() {
                         }));
                         navigate({ to: '/broker' });
                       }}
-                      className="flex-1 h-9 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-600 text-xs font-semibold hover:bg-blue-500/20 transition-colors"
+                      className="flex-1 h-9 rounded-lg border border-sky/30 bg-sky/10 text-sky text-xs font-semibold hover:bg-sky/20 transition-colors"
                     >
                       🔑 Broker
                     </button>

@@ -263,7 +263,7 @@ function UserFooter({ collapsed }: { collapsed: boolean }) {
           </Link>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-rose-500 hover:bg-rose-500/5 transition-colors text-left"
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-rose hover:bg-rose/5 transition-colors text-left"
           >
             <LogOut className="w-4 h-4" />
             Sign out

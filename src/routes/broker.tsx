@@ -316,7 +316,7 @@ function KpiGrid() {
         const Icon = k.icon;
         const trendColor = "text-muted-foreground";
         const trendIconColor =
-          k.trend === "up" ? "text-pine" : k.trend === "down" ? "text-rose-500" : "text-amber-500";
+          k.trend === "up" ? "text-pine" : k.trend === "down" ? "text-rose" : "text-amber";
         const TrendIcon = k.trend === "up" ? TrendingUp : k.trend === "down" ? TrendingDown : Clock;
         return (
           <div
@@ -444,9 +444,9 @@ function TradeVolumeChart() {
 
 function KycQueue() {
   const iconColor = (status: string) => {
-    if (status === "PENDING") return "text-amber-500";
-    if (status === "APPROVED") return "text-green-500";
-    return "text-rose-500";
+    if (status === "PENDING") return "text-amber";
+    if (status === "APPROVED") return "text-pine";
+    return "text-rose";
   };
   const Icon = (status: string) => {
     if (status === "PENDING") return <Clock className={`w-3.5 h-3.5 ${iconColor(status)}`} />;
@@ -566,7 +566,7 @@ function RecentOrders() {
                         {o.type === "BUY" ? (
                           <ArrowUpRight className="w-3.5 h-3.5 text-pine" />
                         ) : (
-                          <ArrowDownRight className="w-3.5 h-3.5 text-rose-500" />
+                          <ArrowDownRight className="w-3.5 h-3.5 text-rose" />
                         )}
                         {o.type} {o.shares.toLocaleString()} {o.ticker}
                       </div>
@@ -584,7 +584,7 @@ function RecentOrders() {
                           o.status === "FILLED"
                             ? "bg-pine/10 text-pine"
                             : o.status === "PENDING"
-                              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                              ? "bg-amber/10 text-amber"
                               : "bg-muted text-muted-foreground"
                         }`}
                       >
@@ -638,7 +638,7 @@ function OrderReview({ order }: { order: (typeof recentOrders)[number] }) {
           </div>
         </div>
         <span
-          className={`text-[10px] font-semibold px-2 py-1 rounded-full ${order.status === "FILLED" ? "bg-pine/10 text-pine" : order.status === "PENDING" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" : "bg-muted text-muted-foreground"}`}
+          className={`text-[10px] font-semibold px-2 py-1 rounded-full ${order.status === "FILLED" ? "bg-pine/10 text-pine" : order.status === "PENDING" ? "bg-amber/10 text-amber" : "bg-muted text-muted-foreground"}`}
         >
           {order.status}
         </span>
@@ -647,7 +647,7 @@ function OrderReview({ order }: { order: (typeof recentOrders)[number] }) {
         <div className="rounded-[3px] bg-card border border-border p-3">
           <div className="flex items-center justify-between mb-2">
             <span
-              className={`text-[11px] font-bold tracking-[0.12em] ${order.type === "BUY" ? "text-pine" : "text-rose-500"}`}
+              className={`text-[11px] font-bold tracking-[0.12em] ${order.type === "BUY" ? "text-pine" : "text-rose"}`}
             >
               {order.type} ORDER
             </span>
@@ -718,15 +718,15 @@ function OrderReview({ order }: { order: (typeof recentOrders)[number] }) {
 function SupportTickets() {
   const priorityColor = (p: string) =>
     p === "HIGH"
-      ? "text-rose-700 dark:text-rose-400"
-      : "text-amber-700 dark:text-amber-400";
+      ? "text-rose"
+      : "text-amber";
 
   return (
     <BrokerCard
       title="Support Tickets"
       subtitle="Open & escalated cases"
       action={
-        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-500">
+        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-rose">
           <AlertTriangle className="w-3.5 h-3.5" /> 3 escalated
         </span>
       }

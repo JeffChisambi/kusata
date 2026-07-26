@@ -76,11 +76,11 @@ const typeConfig: Record<NotifType, { icon: React.ComponentType<{ className?: st
   alert:   { icon: AlertTriangle, iconCls: "text-muted-foreground", dotCls: "bg-rose" },
   warning: { icon: AlertTriangle, iconCls: "text-muted-foreground", dotCls: "bg-amber" },
   success: { icon: CheckCircle2,  iconCls: "text-muted-foreground", dotCls: "bg-pine" },
-  info:    { icon: Bell,          iconCls: "text-muted-foreground", dotCls: "bg-blue-500" },
+  info:    { icon: Bell,          iconCls: "text-muted-foreground", dotCls: "bg-sky" },
 };
 
 const channelConfig: Record<Channel, { icon: React.ComponentType<{ className?: string }>; label: string; cls: string }> = {
-  push:      { icon: Smartphone,    label: "Push",      cls: "bg-blue-500/10 text-blue-500" },
+  push:      { icon: Smartphone,    label: "Push",      cls: "bg-sky/10 text-sky" },
   email:     { icon: Mail,          label: "Email",     cls: "bg-violet-500/10 text-violet-500" },
   sms:       { icon: MessageSquare, label: "SMS",       cls: "bg-amber/10 text-amber" },
   broadcast: { icon: Megaphone,     label: "Broadcast", cls: "bg-pine/10 text-pine" },
