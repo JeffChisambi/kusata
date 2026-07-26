@@ -1,17 +1,24 @@
 # syntax=docker/dockerfile:1
-# Build the TanStack Start / Nitro server bundle with Bun, then run it on Node.
+# Build the TanStack Start / Nitro server bundle with Node, then run it on Node.
 # Requires vite.config.ts to set `nitro: { preset: "node-server" }` so that
-# `bun run build` emits `.output/server/index.mjs`.
+# `npm run build` emits `.output/server/index.mjs`.
 
-FROM oven/bun:1 AS build
+FROM node:22-alpine AS build
 WORKDIR /app
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+
+# Copy only package.json first to leverage Docker cache
+COPY package.json ./
+
+# Use npm install. npm is much more resilient to Docker network/DNS/IPv6 quirks than bun.
+RUN npm install
+
 COPY . .
+
 # VITE_API_URL is baked in at build time (client bundle inlines it).
 ARG VITE_API_URL=https://api.kapwanje.com
 ENV VITE_API_URL=$VITE_API_URL
-RUN bun run build
+
+RUN npm run build
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
