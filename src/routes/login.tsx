@@ -227,7 +227,7 @@ function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-10 rounded-lg bg-pine text-white text-sm font-semibold hover:bg-pine/90 active:bg-pine/80 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
+                  className="w-full h-10 rounded-[3px] bg-pine text-white text-sm font-semibold hover:bg-pine/90 active:bg-pine/80 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
                 >
                   {loading ? (
                     <>
@@ -261,7 +261,7 @@ function LoginPage() {
                         }));
                         navigate({ to: '/' });
                       }}
-                      className="flex-1 h-9 rounded-lg border border-amber/30 bg-amber/10 text-amber text-xs font-semibold hover:bg-amber/20 transition-colors"
+                      className="flex-1 h-9 rounded-[3px] border border-amber/30 bg-amber/10 text-amber text-xs font-semibold hover:bg-amber/20 transition-colors"
                     >
                       🔑 Admin
                     </button>
@@ -279,7 +279,7 @@ function LoginPage() {
                         }));
                         navigate({ to: '/broker' });
                       }}
-                      className="flex-1 h-9 rounded-lg border border-sky/30 bg-sky/10 text-sky text-xs font-semibold hover:bg-sky/20 transition-colors"
+                      className="flex-1 h-9 rounded-[3px] border border-sky/30 bg-sky/10 text-sky text-xs font-semibold hover:bg-sky/20 transition-colors"
                     >
                       🔑 Broker
                     </button>
@@ -348,7 +348,7 @@ function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading || mfaCode.length < 6}
-                  className="w-full h-10 rounded-lg bg-pine text-white text-sm font-semibold hover:bg-pine/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full h-10 rounded-[3px] bg-pine text-white text-sm font-semibold hover:bg-pine/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {loading ? (
                     <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying…</>
@@ -397,7 +397,7 @@ function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading || mfaCode.length < (useRecovery ? 9 : 6)}
-                  className="w-full h-10 rounded-lg bg-pine text-white text-sm font-semibold hover:bg-pine/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full h-10 rounded-[3px] bg-pine text-white text-sm font-semibold hover:bg-pine/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {loading ? (
                     <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying…</>
@@ -439,7 +439,7 @@ function LoginPage() {
 
                 <button
                   onClick={handleCopyRecoveryCodes}
-                  className="mt-4 w-full flex items-center justify-center gap-2 h-9 rounded-lg border border-border bg-background text-sm font-medium text-foreground hover:bg-accent transition-colors"
+                  className="mt-4 w-full flex items-center justify-center gap-2 h-9 rounded-[3px] border border-border bg-background text-sm font-medium text-foreground hover:bg-accent transition-colors"
                 >
                   {copiedCodes ? <><CheckCircle2 className="w-3.5 h-3.5 text-pine" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy all codes</>}
                 </button>
@@ -447,7 +447,7 @@ function LoginPage() {
 
               <button
                 onClick={handleFinish}
-                className="w-full h-10 rounded-lg bg-pine text-white text-sm font-semibold hover:bg-pine/90 transition-colors mt-6 flex items-center justify-center"
+                className="w-full h-10 rounded-[3px] bg-pine text-white text-sm font-semibold hover:bg-pine/90 transition-colors mt-6 flex items-center justify-center"
               >
                 Continue to Dashboard
               </button>

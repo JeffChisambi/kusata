@@ -390,7 +390,7 @@ function BulkBtn({
     : tone === "amber" ? "hover:bg-amber/10 hover:text-amber"
     : "hover:bg-muted/50";
   return (
-    <button className={`h-8 px-2 rounded-md text-xs flex items-center gap-1.5 text-muted-foreground ${cls}`}>
+    <button className={`h-8 px-2 rounded-[3px] text-xs flex items-center gap-1.5 text-muted-foreground ${cls}`}>
       <Icon className="w-3.5 h-3.5" /> {label}
     </button>
   );
@@ -526,12 +526,12 @@ function TableFooter({ total }: { total: number }) {
     <div className="flex items-center justify-between pt-4 text-xs text-muted-foreground">
       <div>Showing <span className="text-foreground font-medium">1–{Math.min(total, 25)}</span> of {total.toLocaleString()}</div>
       <div className="flex items-center gap-1">
-        <button className="h-8 px-3 rounded-md border border-border hover:bg-muted/40">Previous</button>
-        <button className="h-8 w-8 rounded-md bg-pine text-primary-foreground">1</button>
-        <button className="h-8 w-8 rounded-md hover:bg-muted/40">2</button>
-        <button className="h-8 w-8 rounded-md hover:bg-muted/40">3</button>
+        <button className="h-8 px-3 rounded-[3px] border border-border hover:bg-muted/40">Previous</button>
+        <button className="h-8 w-8 rounded-[3px] bg-pine text-primary-foreground">1</button>
+        <button className="h-8 w-8 rounded-[3px] hover:bg-muted/40">2</button>
+        <button className="h-8 w-8 rounded-[3px] hover:bg-muted/40">3</button>
         <span className="px-1">…</span>
-        <button className="h-8 px-3 rounded-md border border-border hover:bg-muted/40">Next</button>
+        <button className="h-8 px-3 rounded-[3px] border border-border hover:bg-muted/40">Next</button>
       </div>
     </div>
   );
@@ -805,8 +805,8 @@ function DevicesTab({ user }: { user: UserRow }) {
               : <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber/10 text-amber">Untrusted</span>}
           </div>
           <div className="mt-2 flex items-center gap-1">
-            <button className="text-xs h-7 px-2 rounded border border-border hover:bg-muted/40 flex items-center gap-1"><LogOut className="w-3 h-3" /> Sign out</button>
-            <button className="text-xs h-7 px-2 rounded border border-border hover:bg-muted/40">Remove trust</button>
+            <button className="text-xs h-7 px-2 rounded-[3px] border border-border hover:bg-muted/40 flex items-center gap-1"><LogOut className="w-3 h-3" /> Sign out</button>
+            <button className="text-xs h-7 px-2 rounded-[3px] border border-border hover:bg-muted/40">Remove trust</button>
           </div>
         </li>
       ))}
@@ -836,7 +836,7 @@ function BanksTab({ user }: { user: UserRow }) {
             </div>
             {b.verified
               ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-pine/10 text-pine flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Verified</span>
-              : <button className="text-[10px] px-2 py-0.5 rounded bg-amber/10 text-amber hover:bg-amber/20">Verify</button>}
+              : <button className="text-[10px] px-2 py-0.5 rounded-[3px] bg-amber/10 text-amber hover:bg-amber/20">Verify</button>}
           </li>
         );
       })}

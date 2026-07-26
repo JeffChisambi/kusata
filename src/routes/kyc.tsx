@@ -148,7 +148,7 @@ function KycPage() {
       <div className="flex items-center gap-0.5 border-b border-border -mx-8 px-8">
         <FilterTabsDropdown activeTab={activeTab} setActiveTab={setActiveTab} applications={applications} />
         <div className="ml-auto flex items-center gap-2 py-2">
-          <button className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border text-sm text-muted-foreground hover:bg-muted/40">
+          <button className="flex items-center gap-1.5 h-9 px-3 rounded-[3px] border border-border text-sm text-muted-foreground hover:bg-muted/40">
             <Download className="w-3.5 h-3.5" /> Export
           </button>
         </div>
@@ -163,10 +163,10 @@ function KycPage() {
             <div className="flex items-center justify-between px-5 py-3 border-t border-border text-xs text-muted-foreground">
               <div>Showing <span className="text-foreground font-medium">{Math.min(rows.length, 25)}</span> of {rows.length}</div>
               <div className="flex items-center gap-1">
-                <button className="h-8 px-3 rounded-md border border-border hover:bg-muted/40">Previous</button>
-                <button className="h-8 w-8 rounded-md bg-pine text-primary-foreground text-xs font-medium">1</button>
-                <button className="h-8 w-8 rounded-md hover:bg-muted/40">2</button>
-                <button className="h-8 px-3 rounded-md border border-border hover:bg-muted/40">Next</button>
+                <button className="h-8 px-3 rounded-[3px] border border-border hover:bg-muted/40">Previous</button>
+                <button className="h-8 w-8 rounded-[3px] bg-pine text-primary-foreground text-xs font-medium">1</button>
+                <button className="h-8 w-8 rounded-[3px] hover:bg-muted/40">2</button>
+                <button className="h-8 px-3 rounded-[3px] border border-border hover:bg-muted/40">Next</button>
               </div>
             </div>
           </Card>
@@ -459,7 +459,7 @@ function RowMenu({ onReview }: { onReview: () => void }) {
     <div ref={ref} className="relative inline-block">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-8 h-8 rounded-md hover:bg-muted/60 inline-flex items-center justify-center"
+        className="w-8 h-8 rounded-[3px] hover:bg-muted/60 inline-flex items-center justify-center"
       >
         <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
       </button>
@@ -548,20 +548,20 @@ function ReviewPanel({
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={onReject}
-              className="h-9 px-4 rounded-lg border border-rose/30 text-rose text-sm hover:bg-rose/10 flex items-center gap-1.5 transition-colors"
+              className="h-9 px-4 rounded-[3px] border border-rose/30 text-rose text-sm hover:bg-rose/10 flex items-center gap-1.5 transition-colors"
             >
               <XCircle className="w-3.5 h-3.5" /> Reject
             </button>
-            <button className="h-9 px-4 rounded-lg border border-border text-sm text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5 transition-colors">
+            <button className="h-9 px-4 rounded-[3px] border border-border text-sm text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5 transition-colors">
               <FilePlus className="w-3.5 h-3.5" /> Request docs
             </button>
             <button
               onClick={onApprove}
-              className="h-9 px-4 rounded-lg bg-pine text-primary-foreground text-sm hover:bg-pine/90 flex items-center gap-1.5 transition-colors"
+              className="h-9 px-4 rounded-[3px] bg-pine text-primary-foreground text-sm hover:bg-pine/90 flex items-center gap-1.5 transition-colors"
             >
               <ShieldCheck className="w-3.5 h-3.5" /> Approve
             </button>
-            <button onClick={onClose} className="w-9 h-9 rounded-lg hover:bg-muted/60 flex items-center justify-center text-muted-foreground ml-1">
+            <button onClick={onClose} className="w-9 h-9 rounded-[3px] hover:bg-muted/60 flex items-center justify-center text-muted-foreground ml-1">
               <XCircle className="w-4 h-4" />
             </button>
           </div>
