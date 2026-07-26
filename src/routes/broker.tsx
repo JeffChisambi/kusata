@@ -1,5 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+function useCssVar(...vars: string[]) {
+  const read = () =>
+    vars.map((v) =>
+      getComputedStyle(document.documentElement).getPropertyValue(v).trim()
+    );
+  const [values, setValues] = useState<string[]>(() =>
+    typeof document !== "undefined" ? read() : vars.map(() => "")
+  );
+  useEffect(() => {
+    setValues(read());
+    const obs = new MutationObserver(() => setValues(read()));
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+  return values;
+}
 import {
   Users,
   FileCheck2,
@@ -329,6 +346,9 @@ function KpiGrid() {
 }
 
 function ClientGrowthChart() {
+  const [pine, border, mutedFg, card, fg] = useCssVar(
+    "--pine", "--border", "--muted-foreground", "--card", "--foreground"
+  );
   return (
     <BrokerCard
       title="Client Activity"
@@ -339,35 +359,35 @@ function ClientGrowthChart() {
         <AreaChart data={clientGrowth} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
           <defs>
             <linearGradient id="brokerClientGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="hsl(var(--pine))" stopOpacity={0.25} />
-              <stop offset="100%" stopColor="hsl(var(--pine))" stopOpacity={0} />
+              <stop offset="0%" stopColor={pine} stopOpacity={0.25} />
+              <stop offset="100%" stopColor={pine} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+          <CartesianGrid strokeDasharray="3 3" stroke={border} />
           <XAxis
             dataKey="day"
-            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 11, fill: mutedFg }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 11, fill: mutedFg }}
             axisLine={false}
             tickLine={false}
           />
           <Tooltip
             contentStyle={{
-              background: "hsl(var(--card))",
-              border: "1px solid hsl(var(--border))",
+              background: card,
+              border: `1px solid ${border}`,
               borderRadius: 10,
               fontSize: 12,
             }}
-            labelStyle={{ color: "hsl(var(--foreground))" }}
+            labelStyle={{ color: fg }}
           />
           <Area
             type="monotone"
             dataKey="clients"
-            stroke="hsl(var(--pine))"
+            stroke={pine}
             strokeWidth={2}
             fill="url(#brokerClientGrad)"
             dot={false}
@@ -379,33 +399,36 @@ function ClientGrowthChart() {
 }
 
 function TradeVolumeChart() {
+  const [pine, border, mutedFg, card] = useCssVar(
+    "--pine", "--border", "--muted-foreground", "--card"
+  );
   return (
     <BrokerCard title="Trade Volume" subtitle="Daily MWK volume — last 7 days">
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={tradeVolume} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+          <CartesianGrid strokeDasharray="3 3" stroke={border} />
           <XAxis
             dataKey="day"
-            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 11, fill: mutedFg }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 11, fill: mutedFg }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v) => fmtMoney(v).replace("MK ", "")}
           />
           <Tooltip
             contentStyle={{
-              background: "hsl(var(--card))",
-              border: "1px solid hsl(var(--border))",
+              background: card,
+              border: `1px solid ${border}`,
               borderRadius: 10,
               fontSize: 12,
             }}
             formatter={(v: number) => [fmtMoney(v), "Volume"]}
           />
-          <Bar dataKey="volume" fill="hsl(var(--pine))" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="volume" fill={pine} radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </BrokerCard>
