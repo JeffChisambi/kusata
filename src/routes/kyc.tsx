@@ -495,7 +495,7 @@ function ReviewPanel({
   app: KycApplication; onClose: () => void; onApprove: () => void; onReject: () => void;
 }) {
   const [docTab, setDocTab] = useState<"front" | "back" | "selfie">("front");
-  const [actionTab, setActionTab] = useState<"checklist" | "ocr" | "notes">("checklist");
+  const [infoTab, setInfoTab] = useState<"checklist" | "ocr" | "notes">("checklist");
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -526,210 +526,264 @@ function ReviewPanel({
     { label: "Nationality", value: "Malawian", match: true },
   ];
 
+  const passCount = steps.filter((s) => s.ok).length;
+  const allPass = passCount === steps.length;
+  const hasIssues = app.flags.length > 0 || app.livenessScore < 75;
+
+  // Score colour helpers
+  const scoreColor = (v: number) => v >= 85 ? "text-pine" : v >= 70 ? "text-amber" : "text-rose";
+  const scoreBarColor = (v: number) => v >= 85 ? "bg-pine" : v >= 70 ? "bg-amber" : "bg-rose";
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
 
-        {/* Header */}
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-border shrink-0">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2.5">
-              <Initials name={app.name} />
-              <div>
-                <div className="font-semibold">{app.name}</div>
-                <div className="text-xs text-muted-foreground font-mono flex items-center gap-2">
-                  {app.id} · {app.userId}
-                  <button className="hover:text-foreground"><Copy className="w-3 h-3" /></button>
-                </div>
-              </div>
-              <KycStatusBadge status={app.status} />
-              <TierBadge tier={app.tierRequested} />
-            </div>
+      {/* ── Section 1: Identity ── */}
+      <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border shrink-0">
+        <Initials name={app.name} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-sm leading-none">{app.name}</span>
+            <KycStatusBadge status={app.status} />
+            <TierBadge tier={app.tierRequested} />
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={onReject}
-              className="h-9 px-4 rounded-[3px] border border-rose/30 text-rose text-sm hover:bg-rose/10 flex items-center gap-1.5 transition-colors"
-            >
-              <XCircle className="w-3.5 h-3.5" /> Reject
-            </button>
-            <button className="h-9 px-4 rounded-[3px] border border-border text-sm text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5 transition-colors">
-              <FilePlus className="w-3.5 h-3.5" /> Request docs
-            </button>
-            <button
-              onClick={onApprove}
-              className="h-9 px-4 rounded-[3px] bg-pine text-primary-foreground text-sm hover:bg-pine/90 flex items-center gap-1.5 transition-colors"
-            >
-              <ShieldCheck className="w-3.5 h-3.5" /> Approve
-            </button>
-            <button onClick={onClose} className="w-9 h-9 rounded-[3px] hover:bg-muted/60 flex items-center justify-center text-muted-foreground ml-1">
-              <XCircle className="w-4 h-4" />
-            </button>
+          <div className="text-xs text-muted-foreground mt-1">
+            {docTypeLabel[app.docType]}
+            {app.phone && <span className="mx-1.5 opacity-40">·</span>}
+            {app.phone && <span>{app.phone}</span>}
+            {app.city && <span className="mx-1.5 opacity-40">·</span>}
+            {app.city && <span>{app.city}</span>}
+            <span className="mx-1.5 opacity-40">·</span>
+            <span>Submitted {relativeTime(app.submittedAt)}</span>
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          className="w-8 h-8 rounded-[3px] hover:bg-muted/60 flex items-center justify-center text-muted-foreground shrink-0 transition-colors"
+          aria-label="Close"
+        >
+          <XCircle className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* ── Section 2: Risk signals strip ── */}
+      <div className={`flex items-center gap-5 px-5 py-2 border-b shrink-0 ${hasIssues ? "bg-amber/5 border-amber/20" : "border-border bg-muted/10"}`}>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">Signals</span>
+
+        {/* OCR */}
+        <div className="flex items-center gap-1.5">
+          <ScanLine className="w-3 h-3 text-muted-foreground shrink-0" />
+          <span className="text-xs text-muted-foreground">OCR</span>
+          <div className="w-14 h-1 bg-muted rounded-full overflow-hidden mx-0.5">
+            <div className={`h-full ${scoreBarColor(app.ocrConfidence)} rounded-full`} style={{ width: `${app.ocrConfidence}%` }} />
+          </div>
+          <span className={`text-xs font-semibold tabular-nums ${scoreColor(app.ocrConfidence)}`}>{app.ocrConfidence}%</span>
+        </div>
+
+        <span className="text-border text-xs">·</span>
+
+        {/* Face match */}
+        <div className="flex items-center gap-1.5">
+          <Camera className="w-3 h-3 text-muted-foreground shrink-0" />
+          <span className="text-xs text-muted-foreground">Face</span>
+          <div className="w-14 h-1 bg-muted rounded-full overflow-hidden mx-0.5">
+            <div className={`h-full ${scoreBarColor(app.faceMatchScore)} rounded-full`} style={{ width: `${app.faceMatchScore}%` }} />
+          </div>
+          <span className={`text-xs font-semibold tabular-nums ${scoreColor(app.faceMatchScore)}`}>{app.faceMatchScore}%</span>
+        </div>
+
+        <span className="text-border text-xs">·</span>
+
+        {/* Liveness */}
+        <div className="flex items-center gap-1.5">
+          <Fingerprint className="w-3 h-3 text-muted-foreground shrink-0" />
+          <span className="text-xs text-muted-foreground">Liveness</span>
+          <div className="w-14 h-1 bg-muted rounded-full overflow-hidden mx-0.5">
+            <div className={`h-full ${scoreBarColor(app.livenessScore)} rounded-full`} style={{ width: `${app.livenessScore}%` }} />
+          </div>
+          <span className={`text-xs font-semibold tabular-nums ${scoreColor(app.livenessScore)}`}>{app.livenessScore}%</span>
+        </div>
+
+        {/* Flags */}
+        {app.flags.length > 0 && (
+          <>
+            <span className="text-border text-xs">·</span>
+            {app.flags.map((f) => (
+              <span key={f} className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber/10 text-amber">
+                <AlertTriangle className="w-3 h-3" /> {f}
+              </span>
+            ))}
+          </>
+        )}
+
+        {/* Pass count summary */}
+        <div className={`ml-auto text-[11px] font-medium shrink-0 ${allPass ? "text-pine" : "text-muted-foreground"}`}>
+          {passCount}/{steps.length} checks
+        </div>
+      </div>
+
+      {/* ── Section 3: Document + Info ── */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+
+        {/* Left: Document viewer */}
+        <div className="w-72 shrink-0 border-r border-border flex flex-col">
+
+          {/* Document view tabs */}
+          <div className="flex border-b border-border px-3 pt-0.5 shrink-0">
+            {(["front", "back", "selfie"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setDocTab(t)}
+                className={`relative py-2.5 px-3 text-xs font-medium transition-colors ${
+                  docTab === t ? "text-pine" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t === "front" ? "Front" : t === "back" ? "Back" : "Selfie"}
+                {docTab === t && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-pine rounded-full" />}
+              </button>
+            ))}
+          </div>
+
+          {/* Document image area */}
+          <div className="flex-1 bg-muted/20 flex flex-col gap-3 p-4 min-h-0 overflow-hidden">
+            <div className="w-full aspect-[3/2] rounded-md border border-border bg-card flex flex-col items-center justify-center gap-2 relative overflow-hidden shrink-0">
+              {docTab === "selfie" ? (
+                <>
+                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                    <User className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <span className="text-xs text-muted-foreground">Selfie photo</span>
+                </>
+              ) : (
+                <div className="w-full h-full absolute inset-0 flex flex-col items-center justify-center gap-2">
+                  <div className="w-14 h-9 rounded border-2 border-muted-foreground/20 flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-muted-foreground/40" />
+                  </div>
+                  <span className="text-xs text-muted-foreground">{docTypeLabel[app.docType]} · {docTab}</span>
+                </div>
+              )}
+              {/* Corner scan markers */}
+              {docTab !== "selfie" && (
+                <div className="absolute inset-2.5 pointer-events-none">
+                  <div className="absolute top-0 left-0 w-3.5 h-3.5 border-t-2 border-l-2 border-pine/40 rounded-tl" />
+                  <div className="absolute top-0 right-0 w-3.5 h-3.5 border-t-2 border-r-2 border-pine/40 rounded-tr" />
+                  <div className="absolute bottom-0 left-0 w-3.5 h-3.5 border-b-2 border-l-2 border-pine/40 rounded-bl" />
+                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 border-b-2 border-r-2 border-pine/40 rounded-br" />
+                </div>
+              )}
+            </div>
+
+            {/* Document controls */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button className="h-7 px-2.5 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1 transition-colors">
+                <ZoomIn className="w-3 h-3" /> Zoom
+              </button>
+              <button className="h-7 px-2.5 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1 transition-colors">
+                <ExternalLink className="w-3 h-3" /> Open
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Body */}
-        <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Right: Checklist / OCR / Notes */}
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
 
-          {/* Left: document viewer */}
-          <div className="w-80 shrink-0 border-r border-border flex flex-col">
-            {/* Doc tabs */}
-            <div className="flex items-center gap-0 border-b border-border px-4 pt-1 shrink-0">
-              {(["front", "back", "selfie"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setDocTab(t)}
-                  className={`relative py-2.5 px-3 text-xs font-medium capitalize transition-colors ${
-                    docTab === t ? "text-pine" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {t === "selfie" ? "Selfie" : t === "front" ? "Front" : "Back"}
-                  {docTab === t && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-pine rounded-full" />}
-                </button>
-              ))}
-            </div>
-
-            {/* Document placeholder */}
-            <div className="flex-1 bg-muted/30 flex flex-col items-center justify-center gap-3 p-4 min-h-0">
-              <div className="w-full aspect-[3/2] rounded-[3px] border-2 border-dashed border-border bg-card flex flex-col items-center justify-center gap-2 relative overflow-hidden">
-                {docTab === "selfie" ? (
-                  <>
-                    <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
-                      <User className="w-10 h-10 text-muted-foreground" />
-                    </div>
-                    <span className="text-xs text-muted-foreground">Selfie photo</span>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-full h-full absolute inset-0 flex flex-col items-center justify-center gap-2">
-                      <div className="w-16 h-10 rounded border-2 border-muted-foreground/30 flex items-center justify-center">
-                        <FileText className="w-6 h-6 text-muted-foreground/50" />
-                      </div>
-                      <span className="text-xs text-muted-foreground">{docTypeLabel[app.docType]} · {docTab}</span>
-                    </div>
-                  </>
-                )}
-                {/* Scan overlay lines */}
-                {docTab !== "selfie" && (
-                  <div className="absolute inset-3 border border-pine/20 rounded-lg pointer-events-none">
-                    <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-pine/50 rounded-tl" />
-                    <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-pine/50 rounded-tr" />
-                    <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-pine/50 rounded-bl" />
-                    <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-pine/50 rounded-br" />
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <button className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5">
-                  <ZoomIn className="w-3.5 h-3.5" /> Zoom
-                </button>
-                <button className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5">
-                  <RotateCw className="w-3.5 h-3.5" /> Rotate
-                </button>
-                <button className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5">
-                  <ExternalLink className="w-3.5 h-3.5" /> Open
-                </button>
-              </div>
-            </div>
-
-            {/* Scores */}
-            <div className="shrink-0 border-t border-border p-4 space-y-2.5">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Verification Scores</div>
-              <ScoreRow label="OCR Confidence" value={app.ocrConfidence} icon={ScanLine} />
-              <ScoreRow label="Face Match" value={app.faceMatchScore} icon={Camera} />
-              <ScoreRow label="Liveness" value={app.livenessScore} icon={Fingerprint} />
-            </div>
+          {/* Info tabs */}
+          <div className="flex border-b border-border px-5 shrink-0">
+            {(["checklist", "ocr", "notes"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setInfoTab(t)}
+                className={`relative py-2.5 px-3 text-xs font-medium transition-colors ${
+                  infoTab === t ? "text-pine" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t === "checklist"
+                  ? `Checklist · ${passCount}/${steps.length}`
+                  : t === "ocr"
+                  ? "OCR Data"
+                  : "Notes"}
+                {infoTab === t && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-pine rounded-full" />}
+              </button>
+            ))}
           </div>
 
-          {/* Right: details panel */}
-          <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-            {/* Applicant meta */}
-            <div className="shrink-0 grid grid-cols-2 gap-x-6 gap-y-2 px-6 py-4 border-b border-border text-sm">
-              <MetaRow icon={Phone} label="Phone" value={app.phone} />
-              <MetaRow icon={MapPin} label="City" value={app.city} />
-              <MetaRow icon={Calendar} label="Submitted" value={fmtDate(app.submittedAt)} />
-              {app.reviewedAt && <MetaRow icon={CheckCircle2} label="Reviewed" value={fmtDate(app.reviewedAt)} />}
-              {app.reviewer && <MetaRow icon={User} label="Reviewer" value={app.reviewer} />}
-              <MetaRow icon={FileText} label="Document" value={docTypeLabel[app.docType]} />
-            </div>
+          {/* Tab content */}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {/* Checklist */}
+            {infoTab === "checklist" && (
+              <ul className="divide-y divide-border px-5">
+                {steps.map((s, i) => (
+                  <li key={i} className="flex items-center gap-3 py-2.5">
+                    {s.ok
+                      ? <CheckCircle2 className="w-4 h-4 text-pine shrink-0" />
+                      : <XCircle className="w-4 h-4 text-muted-foreground/50 shrink-0" />}
+                    <span className={`text-sm flex-1 ${s.ok ? "text-foreground" : "text-muted-foreground"}`}>{s.label}</span>
+                    <span className={`text-[11px] font-medium shrink-0 ${s.ok ? "text-pine" : "text-muted-foreground"}`}>
+                      {s.ok ? "Pass" : "–"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
 
-            {/* Flags */}
-            {app.flags.length > 0 && (
-              <div className="shrink-0 flex flex-wrap gap-2 px-6 py-3 border-b border-border">
-                {app.flags.map((f) => (
-                  <span key={f} className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full bg-amber/10 text-amber">
-                    <AlertTriangle className="w-3 h-3" /> {f}
-                  </span>
+            {/* OCR Data */}
+            {infoTab === "ocr" && (
+              <div className="px-5">
+                {ocrFields.map((f) => (
+                  <div key={f.label} className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
+                    <span className="text-xs text-muted-foreground">{f.label}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium">{f.value}</span>
+                      {f.match
+                        ? <CheckCircle2 className="w-3.5 h-3.5 text-pine" />
+                        : <AlertTriangle className="w-3.5 h-3.5 text-amber" />}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
 
-            {/* Sub-tabs */}
-            <div className="shrink-0 flex items-center gap-0.5 border-b border-border px-6">
-              {(["checklist", "ocr", "notes"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setActionTab(t)}
-                  className={`relative py-2.5 px-3 text-xs font-medium capitalize transition-colors ${
-                    actionTab === t ? "text-pine" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {t === "ocr" ? "OCR Data" : t.charAt(0).toUpperCase() + t.slice(1)}
-                  {actionTab === t && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-pine rounded-full" />}
+            {/* Notes */}
+            {infoTab === "notes" && (
+              <div className="p-5 space-y-3">
+                {app.notes && (
+                  <div className="rounded-[3px] bg-muted/30 border border-border p-3 text-sm text-muted-foreground">
+                    {app.notes}
+                  </div>
+                )}
+                <textarea
+                  className="w-full h-28 rounded-[3px] border border-border bg-transparent p-3 text-sm resize-none focus:outline-none focus:border-pine/50 placeholder:text-muted-foreground/50"
+                  placeholder="Add internal review notes…"
+                />
+                <button className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 transition-colors">
+                  Save note
                 </button>
-              ))}
-            </div>
-
-            {/* Sub-tab content */}
-            <div className="flex-1 min-h-0 overflow-y-auto p-6 scrollbar-thin-gray">
-              {actionTab === "checklist" && (
-                <ul className="space-y-2">
-                  {steps.map((s, i) => (
-                    <li key={i} className="flex items-center gap-3 py-1.5 border-b border-border last:border-0">
-                      {s.ok
-                        ? <CheckCircle2 className="w-4 h-4 text-pine shrink-0" />
-                        : <XCircle className="w-4 h-4 text-muted-foreground shrink-0" />}
-                      <span className={`text-sm ${s.ok ? "text-foreground" : "text-muted-foreground"}`}>{s.label}</span>
-                      {s.ok
-                        ? <span className="ml-auto text-[11px] text-pine font-medium">Pass</span>
-                        : <span className="ml-auto text-[11px] text-muted-foreground">Pending</span>}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {actionTab === "ocr" && (
-                <div className="space-y-0">
-                  {ocrFields.map((f) => (
-                    <div key={f.label} className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
-                      <span className="text-xs text-muted-foreground uppercase tracking-wider">{f.label}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{f.value}</span>
-                        {f.match
-                          ? <CheckCircle2 className="w-3.5 h-3.5 text-pine" />
-                          : <AlertTriangle className="w-3.5 h-3.5 text-amber" />}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {actionTab === "notes" && (
-                <div className="space-y-3">
-                  {app.notes && (
-                    <div className="rounded-[3px] bg-muted/40 border border-border p-3 text-sm text-muted-foreground">
-                      {app.notes}
-                    </div>
-                  )}
-                  <textarea
-                    className="w-full h-28 rounded-[3px] border border-border bg-muted/30 p-3 text-sm resize-none focus:outline-none focus:border-pine/40 placeholder:text-muted-foreground"
-                    placeholder="Add internal review notes…"
-                  />
-                  <button className="h-9 px-4 rounded-[3px] border border-border text-sm text-muted-foreground hover:bg-muted/40">
-                    Save note
-                  </button>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
+      </div>
+
+      {/* ── Section 4: Decision footer ── */}
+      <div className="flex items-center gap-2 px-5 py-3 border-t border-border bg-background shrink-0">
+        <button className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5 transition-colors">
+          <FilePlus className="w-3.5 h-3.5" /> Request docs
+        </button>
+        <div className="flex-1" />
+        <button
+          onClick={onReject}
+          className="h-8 px-4 rounded-[3px] border border-rose/30 text-rose text-xs font-medium hover:bg-rose/8 flex items-center gap-1.5 transition-colors"
+        >
+          <XCircle className="w-3.5 h-3.5" /> Reject
+        </button>
+        <button
+          onClick={onApprove}
+          className="h-8 px-4 rounded-[3px] bg-pine text-primary-foreground text-xs font-medium hover:bg-pine/90 flex items-center gap-1.5 transition-colors"
+        >
+          <ShieldCheck className="w-3.5 h-3.5" /> Approve
+        </button>
+      </div>
+
     </div>
   );
 }
