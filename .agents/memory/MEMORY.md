@@ -1,1 +1,2 @@
 - [SSR hydration crashes from client-only state](tanstack-start-ssr-hydration.md) — useState initializers reading localStorage/matchMedia/window crash hydration; init to a fixed default, sync in useEffect after mount.
+- [Route guard allowlists](route-guard-allowlists.md) — every authenticated route linked from navigation must be included in role allowlists or navigation silently redirects away.

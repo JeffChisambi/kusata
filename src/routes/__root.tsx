@@ -83,26 +83,33 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   // Block route loading BEFORE any component renders — no flash possible
   beforeLoad: ({ location }) => {
     // Server-side: no localStorage, skip auth check (SSR renders the spinner shell)
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
 
     const authed = isAuthenticated();
-    const onLogin = location.pathname === '/login';
+    const onLogin = location.pathname === "/login";
 
     if (!authed && !onLogin) {
-      throw redirect({ to: '/login' });
+      throw redirect({ to: "/login" });
     }
 
     if (authed && onLogin) {
       const user = getCurrentUser();
-      throw redirect({ to: user?.role === 'BROKER' ? '/broker' : '/' });
+      throw redirect({ to: user?.role === "BROKER" ? "/broker" : "/" });
     }
 
     if (authed && !onLogin) {
       const user = getCurrentUser();
-      const brokerAllowed = ['/broker', '/users', '/kyc', '/notifications', '/coming-soon'];
+      const brokerAllowed = [
+        "/broker",
+        "/users",
+        "/kyc",
+        "/orders",
+        "/notifications",
+        "/coming-soon",
+      ];
       const isBrokerAllowed = brokerAllowed.some((p) => location.pathname.startsWith(p));
-      if (user?.role === 'BROKER' && !isBrokerAllowed) {
-        throw redirect({ to: '/broker' });
+      if (user?.role === "BROKER" && !isBrokerAllowed) {
+        throw redirect({ to: "/broker" });
       }
     }
   },
@@ -125,7 +132,6 @@ function RootShell({ children }: { children: ReactNode }) {
     </html>
   );
 }
-
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
@@ -135,4 +141,3 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
-
