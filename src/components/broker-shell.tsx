@@ -133,16 +133,10 @@ function BrokerSidebar({
       {/* Header */}
       <div className="relative z-10 flex items-center h-16 px-3 shrink-0">
         {!collapsed && (
-          <>
-            <div className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg bg-muted">
-              <ChevronLeft className="w-3 h-3 text-muted-foreground" />
-              <ChevronRight className="w-3 h-3 text-muted-foreground" />
-            </div>
-            <div className="ml-3 flex-1 min-w-0">
-              <div className="text-[15px] font-bold text-foreground leading-none">Pine</div>
-              <div className="text-[9px] tracking-[0.18em] text-muted-foreground mt-0.5">BROKER PORTAL</div>
-            </div>
-          </>
+          <div className="flex-1 min-w-0">
+            <div className="text-[15px] font-bold text-foreground leading-none">Pine</div>
+            <div className="text-[9px] tracking-[0.18em] text-muted-foreground mt-0.5">BROKER PORTAL</div>
+          </div>
         )}
         <button
           onClick={onToggleCollapse}
