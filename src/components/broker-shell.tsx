@@ -144,13 +144,6 @@ function BrokerSidebar({
                   <div className="border-t border-sidebar-border" />
                 </div>
               )}
-              {!collapsed && (
-                <div className="px-4 pb-1 pt-1">
-                  <span className="text-[9px] font-semibold tracking-[0.16em] text-muted-foreground">
-                    {section}
-                  </span>
-                </div>
-              )}
               <ul className="px-2 space-y-px">
                 {items.map((item) => (
                   <BrokerNavItem
