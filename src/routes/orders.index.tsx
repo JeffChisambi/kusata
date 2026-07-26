@@ -5,6 +5,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   CircleAlert,
   ClipboardList,
@@ -217,16 +218,19 @@ function OrdersPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <label className="sr-only" htmlFor="order-side-filter">Order type</label>
-        <select
-          id="order-side-filter"
-          value={sideFilter}
-          onChange={(event) => setSideFilter(event.target.value as "ALL" | OrderSide)}
-          className="h-10 min-w-36 rounded-[3px] border border-border bg-card px-3 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-pine/20"
-        >
-          <option value="ALL">All orders</option>
-          <option value="BUY">Buy orders</option>
-          <option value="SELL">Sell orders</option>
-        </select>
+        <div className="relative">
+          <select
+            id="order-side-filter"
+            value={sideFilter}
+            onChange={(event) => setSideFilter(event.target.value as "ALL" | OrderSide)}
+            className="h-10 min-w-36 appearance-none rounded-[3px] border border-border bg-card pl-3 pr-8 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-pine/20"
+          >
+            <option value="ALL">All orders</option>
+            <option value="BUY">Buy orders</option>
+            <option value="SELL">Sell orders</option>
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
           <button onClick={() => showNotice("Order list is up to date")} className="flex h-10 items-center gap-2 rounded-[3px] border border-border px-3 text-sm font-medium text-muted-foreground hover:bg-muted">
