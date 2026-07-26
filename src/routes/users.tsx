@@ -196,8 +196,6 @@ function UserStats({ users }: { users: UserRow[] }) {
 
   const items = [
     { icon: Clock, label: "Pending KYC", value: pending.toLocaleString(), sub: pending > 0 ? "Awaiting review" : "None pending", tone: pending > 0 ? "amber" : "pine", trend: pending > 0 ? "queue" : "clear", up: false },
-    { icon: Snowflake, label: "Frozen", value: frozen.toLocaleString(), sub: frozen > 0 ? "Accounts on hold" : "None frozen", tone: frozen > 0 ? "amber" : "pine", trend: frozen > 0 ? "hold" : "clear", up: false },
-    { icon: ShieldAlert, label: "High risk", value: highRisk.toLocaleString(), sub: highRisk > 0 ? "Needs review" : "All clear", tone: highRisk > 0 ? "rose" : "pine", trend: highRisk > 0 ? "review" : "clear", up: false },
   ] as const;
 
   return (
