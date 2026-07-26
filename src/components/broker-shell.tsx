@@ -281,41 +281,43 @@ function BrokerNavItem({
     const flyout = flyoutTop !== null
       ? createPortal(
           <div
-            className="fixed z-[200] pl-2"
+            className="fixed z-[200] pl-3"
             style={{ top: flyoutTop, left: "4.5rem" }}
             onMouseEnter={cancelHide}
             onMouseLeave={scheduleHide}
           >
-            <div className="bg-card rounded-[4px] shadow-xl border border-border min-w-[192px] overflow-hidden">
-              <div className={`px-3.5 py-2.5 flex items-center gap-2.5 border-b border-border ${active ? "bg-muted/60" : ""}`}>
-                <div className="w-6 h-6 rounded-[3px] flex items-center justify-center shrink-0 bg-muted">
-                  <Icon className={`w-3.5 h-3.5 ${active ? "text-foreground" : "text-muted-foreground"}`} />
+            {hasChildren ? (
+              <div className="bg-[#1a1a1a] rounded-[6px] shadow-2xl overflow-hidden min-w-[160px]">
+                <div className="px-3.5 py-2.5 border-b border-white/10">
+                  <span className="text-[12px] font-semibold text-white leading-none">{item.label}</span>
+                  {item.badge != null && (
+                    <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/10 text-white/60 leading-none">{item.badge}</span>
+                  )}
                 </div>
-                <span className="text-[12px] font-semibold leading-none text-foreground">{item.label}</span>
-                {item.badge != null && (
-                  <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground leading-none shrink-0">{item.badge}</span>
-                )}
-              </div>
-              {hasChildren ? (
-                <ul className="py-1 max-h-72 overflow-y-auto scrollbar-thin-gray">
+                <ul className="py-1 max-h-72 overflow-y-auto">
                   {item.children!.map((c) => (
                     <li key={c.label}>
                       <Link
                         to={c.href ?? "/coming-soon"}
-                        className="w-full flex items-center gap-2 px-3.5 py-[7px] text-[12px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors text-left"
+                        className="w-full flex items-center gap-2 px-3.5 py-[7px] text-[12px] text-white/60 hover:text-white hover:bg-white/8 transition-colors text-left"
                       >
                         <span className="flex-1 truncate">{c.label}</span>
                         {c.badge != null && (
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground leading-none shrink-0">{c.badge}</span>
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-white/10 text-white/50 leading-none shrink-0">{c.badge}</span>
                         )}
                       </Link>
                     </li>
                   ))}
                 </ul>
-              ) : (
-                <div className="px-3.5 py-2.5 text-[12px] text-muted-foreground">{item.label}</div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="bg-[#1a1a1a] rounded-[6px] shadow-2xl px-3 py-1.5 flex items-center gap-2">
+                <span className="text-[13px] font-medium text-white leading-none whitespace-nowrap">{item.label}</span>
+                {item.badge != null && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/15 text-white/70 leading-none shrink-0">{item.badge}</span>
+                )}
+              </div>
+            )}
           </div>,
           document.body,
         )
