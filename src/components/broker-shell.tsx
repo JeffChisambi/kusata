@@ -329,13 +329,8 @@ function BrokerNavItem({
       : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
   }`;
 
-  const activeIndicator = active
-    ? <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-foreground" />
-    : null;
-
   const rowContent = (icon: React.ReactNode, label: string, badge?: string | number, chevron?: React.ReactNode) => (
     <>
-      {activeIndicator}
       {icon}
       <span className="flex-1 text-left truncate">{label}</span>
       {badge != null && (
