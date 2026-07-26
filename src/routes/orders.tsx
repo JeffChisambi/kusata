@@ -321,7 +321,9 @@ function KpiStrip({ orders }: { orders: Order[] }) {
               <span className="text-xs text-muted-foreground">{kpi.label}</span>
               <Icon className={`h-4 w-4 ${kpi.color}`} />
             </div>
-            <div className={`mt-3 text-2xl font-bold tracking-tight ${kpi.color}`}>{kpi.value}</div>
+            <div className="mt-3 text-2xl font-bold tracking-tight text-foreground">
+              {kpi.value}
+            </div>
             <div className="mt-1 text-[11px] text-muted-foreground">{kpi.detail}</div>
           </div>
         );
@@ -978,32 +980,19 @@ function OrdersPage() {
       )}
       <KpiStrip orders={orders} />
 
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">Order blotter</h1>
-            <span className="rounded-full bg-pine/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-pine">
-              Live queue
-            </span>
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Review clean client instructions and route execution with confidence.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => showNotice("Order queue is up to date")}
-            className="flex h-9 items-center gap-2 rounded-[3px] border border-border px-3 text-xs font-medium text-muted-foreground hover:bg-muted"
-          >
-            <RefreshCw className="h-3.5 w-3.5" /> Refresh
-          </button>
-          <button
-            onClick={() => setShowNewOrder(true)}
-            className="flex h-9 items-center gap-2 rounded-[3px] bg-pine px-3 text-xs font-semibold text-primary-foreground hover:bg-pine/90"
-          >
-            <FilePlus2 className="h-3.5 w-3.5" /> Receive order
-          </button>
-        </div>
+      <div className="flex items-center justify-end gap-2">
+        <button
+          onClick={() => showNotice("Order queue is up to date")}
+          className="flex h-9 items-center gap-2 rounded-[3px] border border-border px-3 text-xs font-medium text-muted-foreground hover:bg-muted"
+        >
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        </button>
+        <button
+          onClick={() => setShowNewOrder(true)}
+          className="flex h-9 items-center gap-2 rounded-[3px] bg-pine px-3 text-xs font-semibold text-primary-foreground hover:bg-pine/90"
+        >
+          <FilePlus2 className="h-3.5 w-3.5" /> Receive order
+        </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
