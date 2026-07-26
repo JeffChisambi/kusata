@@ -167,7 +167,7 @@ function KpiGrid() {
     <div className="flex gap-4">
       {KPIS.map((k) => {
         const Icon = k.icon;
-        const trendColor = k.trend === "up" ? "text-pine" : k.trend === "down" ? "text-rose-500" : "text-amber-500";
+        const trendColor = "text-muted-foreground";
         const TrendIcon  = k.trend === "up" ? TrendingUp : k.trend === "down" ? TrendingDown : Clock;
         return (
           <div key={k.label} className="flex-1 rounded-[3px] bg-card border border-border p-4 flex flex-col gap-3">
