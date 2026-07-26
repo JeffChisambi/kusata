@@ -79,7 +79,7 @@ export function BrokerShell({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>({ [activeLabel]: true });
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean | null>(null);
 
   useEffect(() => {
     setCollapsed(window.localStorage.getItem("pine-broker-sidebar-collapsed") === "1");
@@ -120,17 +120,22 @@ function BrokerSidebar({
   open: Record<string, boolean>;
   setOpen: (v: Record<string, boolean>) => void;
   activeLabel: string;
-  collapsed: boolean;
+  collapsed: boolean | null;
   onToggleCollapse: () => void;
 }) {
+  const isCollapsed = collapsed === true;
   return (
     <aside
-      className="relative shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border transition-all duration-300 ease-in-out overflow-visible"
-      style={{ width: collapsed ? "4.5rem" : "17rem" }}
+      className="relative shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border overflow-visible"
+      style={{
+        width: collapsed === null ? 0 : isCollapsed ? "4.5rem" : "17rem",
+        transition: collapsed === null ? "none" : "width 300ms ease-in-out",
+        visibility: collapsed === null ? "hidden" : "visible",
+      }}
     >
       {/* Header */}
       <div className="relative z-10 flex items-center h-16 px-3 shrink-0">
-        {!collapsed && (
+        {!isCollapsed && (
           <div className="flex-1 min-w-0">
             <div className="text-[15px] font-bold text-foreground leading-none">Pine</div>
             <div className="text-[9px] tracking-[0.18em] text-muted-foreground mt-0.5">BROKER PORTAL</div>
@@ -138,10 +143,10 @@ function BrokerSidebar({
         )}
         <button
           onClick={onToggleCollapse}
-          className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors ${collapsed ? "mx-auto" : "ml-auto"}`}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors ${isCollapsed ? "mx-auto" : "ml-auto"}`}
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          {collapsed
+          {isCollapsed
             ? <ChevronsRight className="w-4 h-4" />
             : <ChevronsLeft className="w-4 h-4" />}
         </button>
@@ -154,9 +159,8 @@ function BrokerSidebar({
           if (!items.length) return null;
           return (
             <div key={section} className={sectionIdx > 0 ? "mt-1" : ""}>
-              {/* Section divider + label */}
               {sectionIdx > 0 && (
-                <div className={`mx-4 mb-2 ${collapsed ? "" : ""}`}>
+                <div className="mx-4 mb-2">
                   <div className="border-t border-sidebar-border" />
                 </div>
               )}
@@ -168,7 +172,7 @@ function BrokerSidebar({
                     active={item.label === activeLabel}
                     isOpen={!!open[item.label]}
                     onToggle={() => setOpen({ ...open, [item.label]: !open[item.label] })}
-                    collapsed={collapsed}
+                    collapsed={isCollapsed}
                   />
                 ))}
               </ul>
@@ -179,7 +183,7 @@ function BrokerSidebar({
 
       {/* User footer */}
       <div className="shrink-0 border-t border-sidebar-border p-3">
-        <UserFooter collapsed={collapsed} />
+        <UserFooter collapsed={isCollapsed} />
       </div>
     </aside>
   );

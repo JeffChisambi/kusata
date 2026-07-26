@@ -428,7 +428,7 @@ function TradeVolumeChart() {
             }}
             formatter={(v: number) => [fmtMoney(v), "Volume"]}
           />
-          <Bar dataKey="volume" fill={pine} radius={[4, 4, 0, 0]} />
+          <Bar dataKey="volume" fill={pine} radius={[4, 4, 0, 0]} activeBar={{ fill: pine, fillOpacity: 0.75 }} />
         </BarChart>
       </ResponsiveContainer>
     </BrokerCard>
