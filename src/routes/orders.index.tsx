@@ -11,8 +11,6 @@ import {
   Clock3,
   Download,
   FilePlus2,
-  Filter,
-  ListFilter,
   MoreHorizontal,
   RefreshCw,
   X,
@@ -330,7 +328,6 @@ function exportOrders(orders: Order[]) {
 function OrdersPage() {
   const [orders, setOrders] = useState(() => ordersStore.getAll());
   const [sideFilter, setSideFilter] = useState<"ALL" | OrderSide>("ALL");
-  const [showFilters, setShowFilters] = useState(false);
   const [showNewOrder, setShowNewOrder] = useState(false);
   const [notice, setNotice] = useState("");
 
@@ -375,30 +372,13 @@ function OrdersPage() {
           <button onClick={() => showNotice("Order list is up to date")} className="flex h-10 items-center gap-2 rounded-[3px] border border-border px-3 text-sm font-medium text-muted-foreground hover:bg-muted">
             <RefreshCw className="h-3.5 w-3.5" /> Refresh
           </button>
-        <button onClick={() => setShowFilters((v) => !v)} className={`flex h-10 items-center gap-2 rounded-[3px] border px-3 text-sm ${showFilters || sideFilter !== "ALL" ? "border-border bg-muted text-foreground" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
-          <ListFilter className="h-3.5 w-3.5" /> Filters
-          {sideFilter !== "ALL" && <span className="rounded-full bg-foreground px-1.5 text-[10px] text-background">1</span>}
-        </button>
-        <button onClick={() => exportOrders(filteredOrders)} className="flex h-10 items-center gap-2 rounded-[3px] border border-border px-3 text-sm text-muted-foreground hover:bg-muted/40">
-          <Download className="h-3.5 w-3.5" /> Export
-        </button>
+          <button onClick={() => exportOrders(filteredOrders)} className="flex h-10 items-center gap-2 rounded-[3px] border border-border px-3 text-sm text-muted-foreground hover:bg-muted/40">
+            <Download className="h-3.5 w-3.5" /> Export
+          </button>
           <button onClick={() => setShowNewOrder(true)} className="flex h-10 items-center gap-2 rounded-[3px] bg-pine px-3 text-sm font-semibold text-primary-foreground hover:bg-pine/90">
             <FilePlus2 className="h-3.5 w-3.5" /> Receive order
           </button>
         </div>
-
-        {showFilters && (
-          <div className="flex w-full items-center gap-2 rounded-[3px] border border-border bg-card p-3 text-xs">
-            <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="font-medium">Side</span>
-            {(["ALL", "BUY", "SELL"] as const).map((side) => (
-              <button key={side} onClick={() => setSideFilter(side)} className={`rounded-[3px] px-2.5 py-1.5 ${sideFilter === side ? "bg-muted font-semibold text-foreground" : "text-muted-foreground hover:bg-muted"}`}>
-                {side === "ALL" ? "All sides" : side}
-              </button>
-            ))}
-            <button onClick={() => { setSideFilter("ALL"); setShowFilters(false); }} className="ml-auto text-muted-foreground hover:text-foreground">Clear</button>
-          </div>
-        )}
       </div>
 
       <BrokerCard
