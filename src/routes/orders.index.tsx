@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -10,10 +10,8 @@ import {
   ClipboardList,
   Clock3,
   Download,
-  FilePlus2,
   MoreHorizontal,
   RefreshCw,
-  X,
   XCircle,
 } from "lucide-react";
 import { BrokerCard, BrokerShell } from "@/components/broker-shell";
@@ -177,142 +175,6 @@ function OrderTable({ orders }: { orders: Order[] }) {
   );
 }
 
-function NewOrderPanel({ onClose, onCreate }: { onClose: () => void; onCreate: (order: Order) => void }) {
-  const [form, setForm] = useState({
-    client: "",
-    clientId: "",
-    ticker: "",
-    company: "",
-    side: "BUY" as OrderSide,
-    quantity: "",
-    limitPrice: "",
-    tif: "DAY" as "DAY" | "GTC",
-    channel: "Broker assisted" as Order["channel"],
-    instructions: "",
-  });
-
-  const update = (key: keyof typeof form, value: string) =>
-    setForm((current) => ({ ...current, [key]: value }));
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    const quantity = Number(form.quantity);
-    const limitPrice = Number(form.limitPrice);
-    if (!form.client || !form.ticker || !quantity || !limitPrice) return;
-    onCreate({
-      id: `ORD-${5050 + Math.floor(Math.random() * 40)}`,
-      client: form.client,
-      clientId: form.clientId || "NEW CLIENT",
-      account: "Individual · new",
-      ticker: form.ticker.toUpperCase(),
-      company: form.company || `${form.ticker.toUpperCase()} security`,
-      side: form.side,
-      quantity,
-      filled: 0,
-      limitPrice,
-      value: quantity * limitPrice,
-      status: "READY",
-      received: "Just now",
-      exchange: "MSE",
-      tif: form.tif,
-      channel: form.channel,
-      risk: "REVIEW",
-      instructions: form.instructions || "Review client instructions before routing to the market.",
-    });
-  };
-
-  const inputClass = "h-9 w-full rounded-[3px] border border-input bg-background px-3 text-sm focus:border-border focus:outline-none";
-  return (
-    <div className="fixed inset-0 z-[100] flex justify-end bg-black/30 backdrop-blur-[1px]" onMouseDown={onClose}>
-      <div className="h-full w-full max-w-lg overflow-y-auto bg-card shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="flex items-start gap-3 border-b border-border px-6 py-5">
-          <div className="flex-1">
-            <div className="text-lg font-semibold">Receive new order</div>
-            <p className="mt-1 text-xs text-muted-foreground">Format the client instruction before it enters the execution queue.</p>
-          </div>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-[3px] text-muted-foreground hover:bg-muted" aria-label="Close">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <form onSubmit={submit} className="space-y-5 p-6">
-          <section>
-            <div className="mb-3 text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">CLIENT</div>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="col-span-2 text-xs font-medium">
-                Client name
-                <input required value={form.client} onChange={(e) => update("client", e.target.value)} placeholder="e.g. Chisomo Banda" className={`${inputClass} mt-1.5`} />
-              </label>
-              <label className="text-xs font-medium">
-                Client ID
-                <input value={form.clientId} onChange={(e) => update("clientId", e.target.value)} placeholder="U-0041" className={`${inputClass} mt-1.5`} />
-              </label>
-              <label className="text-xs font-medium">
-                Channel
-                <select value={form.channel} onChange={(e) => update("channel", e.target.value)} className={`${inputClass} mt-1.5`}>
-                  <option>Broker assisted</option>
-                  <option>Mobile app</option>
-                  <option>Web portal</option>
-                </select>
-              </label>
-            </div>
-          </section>
-          <section>
-            <div className="mb-3 text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">TRADE INSTRUCTION</div>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-xs font-medium">
-                Side
-                <select value={form.side} onChange={(e) => update("side", e.target.value)} className={`${inputClass} mt-1.5`}>
-                  <option value="BUY">Buy</option>
-                  <option value="SELL">Sell</option>
-                </select>
-              </label>
-              <label className="text-xs font-medium">
-                Ticker
-                <input required value={form.ticker} onChange={(e) => update("ticker", e.target.value)} placeholder="AIRTEL" className={`${inputClass} mt-1.5 uppercase`} />
-              </label>
-              <label className="col-span-2 text-xs font-medium">
-                Security name
-                <input value={form.company} onChange={(e) => update("company", e.target.value)} placeholder="Airtel Malawi Ltd" className={`${inputClass} mt-1.5`} />
-              </label>
-              <label className="text-xs font-medium">
-                Shares
-                <input required type="number" min="1" value={form.quantity} onChange={(e) => update("quantity", e.target.value)} placeholder="500" className={`${inputClass} mt-1.5`} />
-              </label>
-              <label className="text-xs font-medium">
-                Limit price
-                <input required type="number" min="0.01" step="0.01" value={form.limitPrice} onChange={(e) => update("limitPrice", e.target.value)} placeholder="21.00" className={`${inputClass} mt-1.5`} />
-              </label>
-              <label className="text-xs font-medium">
-                Time in force
-                <select value={form.tif} onChange={(e) => update("tif", e.target.value)} className={`${inputClass} mt-1.5`}>
-                  <option value="DAY">Day order</option>
-                  <option value="GTC">Good till cancelled</option>
-                </select>
-              </label>
-              <div className="rounded-[3px] border border-border bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground">
-                <span className="block text-[10px] uppercase tracking-[0.1em]">Estimated value</span>
-                <span className="mt-1 block font-semibold text-foreground">
-                  {form.quantity && form.limitPrice ? fmtMoney(Number(form.quantity) * Number(form.limitPrice)) : "—"}
-                </span>
-              </div>
-            </div>
-          </section>
-          <label className="block text-xs font-medium">
-            Broker instructions
-            <textarea value={form.instructions} onChange={(e) => update("instructions", e.target.value)} placeholder="Add routing notes, callback requirements, or client limits…" rows={4} className="mt-1.5 w-full resize-none rounded-[3px] border border-input bg-background px-3 py-2 text-sm focus:border-border focus:outline-none" />
-          </label>
-          <div className="flex gap-3 border-t border-border pt-5">
-            <button type="button" onClick={onClose} className="h-10 flex-1 rounded-[3px] border border-border text-sm font-medium hover:bg-muted">Discard</button>
-            <button type="submit" className="h-10 flex-1 rounded-[3px] bg-pine text-sm font-semibold text-primary-foreground hover:bg-pine/90">
-              <span className="inline-flex items-center gap-2"><FilePlus2 className="h-4 w-4" /> Add to queue</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 function exportOrders(orders: Order[]) {
   const headers = ["Order ID", "Client", "Client ID", "Side", "Ticker", "Quantity", "Filled", "Limit Price", "Estimated Value", "Status", "Time in Force", "Received", "Exchange"];
   const rows = orders.map((o) => [o.id, o.client, o.clientId, o.side, o.ticker, o.quantity, o.filled, o.limitPrice, o.value, statusLabel(o.status), o.tif, o.received, o.exchange]);
@@ -328,7 +190,6 @@ function exportOrders(orders: Order[]) {
 function OrdersPage() {
   const [orders, setOrders] = useState(() => ordersStore.getAll());
   const [sideFilter, setSideFilter] = useState<"ALL" | OrderSide>("ALL");
-  const [showNewOrder, setShowNewOrder] = useState(false);
   const [notice, setNotice] = useState("");
 
   useEffect(() => ordersStore.subscribe(() => setOrders(ordersStore.getAll())), []);
@@ -343,7 +204,6 @@ function OrdersPage() {
   );
 
   const showNotice = (msg: string) => { setNotice(msg); window.setTimeout(() => setNotice(""), 2800); };
-  const addOrder = (order: Order) => { ordersStore.add(order); showNotice(`${order.id} added to the order list`); };
   const orderViewLabel = sideFilter === "ALL" ? "All orders" : `${sideFilter === "BUY" ? "Buy" : "Sell"} orders`;
 
   return (
@@ -375,9 +235,6 @@ function OrdersPage() {
           <button onClick={() => exportOrders(filteredOrders)} className="flex h-10 items-center gap-2 rounded-[3px] border border-border px-3 text-sm text-muted-foreground hover:bg-muted/40">
             <Download className="h-3.5 w-3.5" /> Export
           </button>
-          <button onClick={() => setShowNewOrder(true)} className="flex h-10 items-center gap-2 rounded-[3px] bg-pine px-3 text-sm font-semibold text-primary-foreground hover:bg-pine/90">
-            <FilePlus2 className="h-3.5 w-3.5" /> Receive order
-          </button>
         </div>
       </div>
 
@@ -394,7 +251,6 @@ function OrdersPage() {
         </div>
       </BrokerCard>
 
-      {showNewOrder && <NewOrderPanel onClose={() => setShowNewOrder(false)} onCreate={addOrder} />}
     </BrokerShell>
   );
 }
