@@ -1,9 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import {
   Users, FileCheck2, Wallet,
   CreditCard, Headphones, TrendingUp, TrendingDown,
   Clock, ArrowUpRight, ArrowDownRight, CheckCircle2,
-  XCircle, AlertTriangle, MoreHorizontal,
+  XCircle, AlertTriangle, MoreHorizontal, Mail, Phone,
+  MapPin, WalletCards, ChevronRight, CircleUserRound,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
@@ -56,11 +58,46 @@ const recentKyc = [
 ];
 
 const recentOrders = [
-  { client: "C. Banda",   ticker: "AIRTEL", type: "BUY",  shares: 20, value: 42_000,  status: "FILLED"   },
-  { client: "G. Mwale",   ticker: "NBM",    type: "SELL", shares: 5,  value: 18_500,  status: "FILLED"   },
-  { client: "T. Phiri",   ticker: "FDH",    type: "BUY",  shares: 10, value: 9_200,   status: "PENDING"  },
-  { client: "P. Gondwe",  ticker: "ILLOVO", type: "BUY",  shares: 3,  value: 31_800,  status: "CANCELLED"},
-  { client: "M. Chirwa",  ticker: "STANDARD", type: "SELL", shares: 8, value: 22_400, status: "FILLED"  },
+  {
+    id: "ORD-5041", client: "Chisomo Banda", initials: "CB", clientId: "U-0041",
+    email: "chisomo.banda@email.com", phone: "+265 991 204 841", location: "Lilongwe",
+    accountType: "Individual", kyc: "Verified", wallet: 184_250,
+    ticker: "AIRTEL", company: "Airtel Malawi Ltd", type: "BUY", shares: 20,
+    price: 2_100, value: 42_000, status: "FILLED", placed: "Today, 09:14",
+    executed: "Today, 09:18", channel: "Mobile app",
+  },
+  {
+    id: "ORD-5040", client: "Grace Mwale", initials: "GM", clientId: "U-0082",
+    email: "grace.mwale@email.com", phone: "+265 888 410 822", location: "Blantyre",
+    accountType: "Individual", kyc: "Verified", wallet: 92_600,
+    ticker: "NBM", company: "National Bank of Malawi", type: "SELL", shares: 5,
+    price: 3_700, value: 18_500, status: "FILLED", placed: "Today, 09:02",
+    executed: "Today, 09:07", channel: "Broker assisted",
+  },
+  {
+    id: "ORD-5039", client: "Tadala Phiri", initials: "TP", clientId: "U-0017",
+    email: "tadala.phiri@email.com", phone: "+265 999 351 017", location: "Mzuzu",
+    accountType: "Individual", kyc: "Verified", wallet: 12_850,
+    ticker: "FDH", company: "FDH Financial Holdings", type: "BUY", shares: 10,
+    price: 920, value: 9_200, status: "PENDING", placed: "Today, 08:55",
+    executed: "—", channel: "Mobile app",
+  },
+  {
+    id: "ORD-5038", client: "Peter Gondwe", initials: "PG", clientId: "U-0055",
+    email: "peter.gondwe@email.com", phone: "+265 888 602 055", location: "Lilongwe",
+    accountType: "Joint", kyc: "Verified", wallet: 46_400,
+    ticker: "ILLOVO", company: "Illovo Sugar Malawi", type: "BUY", shares: 3,
+    price: 10_600, value: 31_800, status: "CANCELLED", placed: "Today, 08:40",
+    executed: "—", channel: "Mobile app",
+  },
+  {
+    id: "ORD-5037", client: "Mercy Chirwa", initials: "MC", clientId: "U-0093",
+    email: "mercy.chirwa@email.com", phone: "+265 991 706 093", location: "Blantyre",
+    accountType: "Individual", kyc: "Verified", wallet: 67_900,
+    ticker: "STANDARD", company: "Standard Bank Malawi", type: "SELL", shares: 8,
+    price: 2_800, value: 22_400, status: "FILLED", placed: "Today, 08:22",
+    executed: "Today, 08:28", channel: "Broker assisted",
+  },
 ];
 
 const supportTickets = [
@@ -251,45 +288,142 @@ function KycQueue() {
 }
 
 function RecentOrders() {
+  const [selectedOrder, setSelectedOrder] = useState(recentOrders[0]);
 
   return (
     <BrokerCard
-      title="Recent Orders"
-      subtitle="Latest client trades"
+      title="Orders"
+      subtitle="Client order activity and trade instructions"
       action={
-        <button className="text-[12px] text-pine hover:underline flex items-center gap-1">
+        <Link data-testid="link-view-all-orders" to="/orders" className="text-[12px] text-pine hover:underline flex items-center gap-1">
           View all <ArrowUpRight className="w-3.5 h-3.5" />
-        </button>
+        </Link>
       }
     >
-      <div className="overflow-x-auto">
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="border-b border-border">
-              {["Client", "Type", "Status"].map((h) => (
-                <th key={h} className="text-left py-2 pr-4 text-[11px] font-semibold text-muted-foreground tracking-wide">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {recentOrders.map((o, i) => (
-              <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                <td className="py-2.5 pr-4 font-medium">{o.client}</td>
-                <td className="py-2.5 pr-4">
-                  <span className="font-semibold text-muted-foreground flex items-center gap-0.5">
-                    {o.type === "BUY"
-                      ? <ArrowUpRight className="inline w-3.5 h-3.5 text-pine" />
-                      : <ArrowDownRight className="inline w-3.5 h-3.5 text-rose-500" />}
-                    {o.type}
-                  </span>
-                </td>
-                <td className="py-2.5 font-medium text-muted-foreground">{o.status}</td>
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.9fr)] gap-5">
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="border-b border-border">
+                {["Client", "Order", "Value", "Placed", "Status", ""].map((h) => (
+                  <th key={h} className="text-left py-2 pr-4 text-[10px] font-semibold text-muted-foreground tracking-[0.08em] uppercase whitespace-nowrap">{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {recentOrders.map((o) => {
+                const active = selectedOrder.id === o.id;
+                return (
+                  <tr
+                    key={o.id}
+                    onClick={() => setSelectedOrder(o)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") setSelectedOrder(o);
+                    }}
+                    tabIndex={0}
+                    data-testid={`row-order-${o.id}`}
+                    className={`border-b border-border last:border-0 cursor-pointer transition-colors ${active ? "bg-pine/5" : "hover:bg-muted/30"}`}
+                  >
+                    <td className="py-3 pr-4">
+                      <div className="flex items-center gap-2.5 min-w-[150px]">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${active ? "bg-pine text-white" : "bg-muted text-muted-foreground"}`}>
+                          {o.initials}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{o.client}</div>
+                          <div className="text-[10px] text-muted-foreground">{o.clientId} · {o.accountType}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 pr-4 min-w-[140px]">
+                      <div className="font-semibold flex items-center gap-1">
+                        {o.type === "BUY" ? <ArrowUpRight className="w-3.5 h-3.5 text-pine" /> : <ArrowDownRight className="w-3.5 h-3.5 text-rose-500" />}
+                        {o.type} {o.shares.toLocaleString()} {o.ticker}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">{o.company}</div>
+                    </td>
+                    <td className="py-3 pr-4 font-semibold whitespace-nowrap">{fmtMoney(o.value)}</td>
+                    <td className="py-3 pr-4 text-[11px] text-muted-foreground whitespace-nowrap">{o.placed}</td>
+                    <td className="py-3 pr-2">
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full ${
+                        o.status === "FILLED" ? "bg-pine/10 text-pine" :
+                        o.status === "PENDING" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+                        "bg-muted text-muted-foreground"
+                      }`}>
+                        {o.status === "FILLED" ? <CheckCircle2 className="w-3 h-3" /> : o.status === "PENDING" ? <Clock className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                        {o.status}
+                      </span>
+                    </td>
+                    <td className="py-3 pr-1"><ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${active ? "rotate-90 text-pine" : ""}`} /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div className="flex items-center justify-between pt-3 text-[11px] text-muted-foreground">
+            <span>Showing {recentOrders.length} of 48 orders</span>
+            <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-pine" /> Live updates</span>
+          </div>
+        </div>
+
+        <OrderReview order={selectedOrder} />
       </div>
     </BrokerCard>
+  );
+}
+
+function OrderReview({ order }: { order: (typeof recentOrders)[number] }) {
+  return (
+    <div className="rounded-[3px] border border-border bg-muted/20 overflow-hidden">
+      <div className="px-4 py-3 border-b border-border flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-full bg-pine/10 text-pine flex items-center justify-center">
+            <CircleUserRound className="w-4.5 h-4.5" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold">{order.client}</div>
+            <div className="text-[10px] text-muted-foreground">{order.clientId} · {order.accountType} account</div>
+          </div>
+        </div>
+        <span className={`text-[10px] font-semibold px-2 py-1 rounded-full ${order.status === "FILLED" ? "bg-pine/10 text-pine" : order.status === "PENDING" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" : "bg-muted text-muted-foreground"}`}>{order.status}</span>
+      </div>
+      <div className="p-4 space-y-4">
+        <div className="rounded-[3px] bg-card border border-border p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className={`text-[11px] font-bold tracking-[0.12em] ${order.type === "BUY" ? "text-pine" : "text-rose-500"}`}>{order.type} ORDER</span>
+            <span className="font-mono text-[10px] text-muted-foreground">{order.id}</span>
+          </div>
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <div className="text-lg font-bold">{order.ticker}</div>
+              <div className="text-[11px] text-muted-foreground">{order.company}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-bold">{fmtMoney(order.value)}</div>
+              <div className="text-[11px] text-muted-foreground">{order.shares.toLocaleString()} shares @ {fmtMoney(order.price)}</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground mb-2">CLIENT INFORMATION</div>
+          <div className="grid grid-cols-2 gap-y-2.5 text-[11px]">
+            <span className="flex items-center gap-1.5 text-muted-foreground"><Mail className="w-3 h-3" /> {order.email}</span>
+            <span className="flex items-center gap-1.5 text-muted-foreground"><Phone className="w-3 h-3" /> {order.phone}</span>
+            <span className="flex items-center gap-1.5 text-muted-foreground"><MapPin className="w-3 h-3" /> {order.location}</span>
+            <span className="flex items-center gap-1.5 text-muted-foreground"><WalletCards className="w-3 h-3" /> {fmtMoney(order.wallet)} available</span>
+          </div>
+        </div>
+        <div className="border-t border-border pt-3 space-y-2 text-[11px]">
+          <div className="flex justify-between"><span className="text-muted-foreground">Placed</span><span>{order.placed}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Executed</span><span>{order.executed}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Order source</span><span>{order.channel}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">KYC status</span><span className="text-pine font-medium">{order.kyc}</span></div>
+        </div>
+        <Link data-testid={`link-client-profile-${order.clientId}`} to="/users" className="flex items-center justify-center gap-1.5 w-full h-8 rounded-[3px] border border-border text-[11px] font-medium hover:bg-muted transition-colors">
+          View client profile <ArrowUpRight className="w-3 h-3" />
+        </Link>
+      </div>
+    </div>
   );
 }
 
@@ -345,11 +479,13 @@ function BrokerDashboard() {
         <TradeVolumeChart />
       </div>
 
-      {/* Tables row */}
+      {/* KYC row */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <KycQueue />
-        <RecentOrders />
       </div>
+
+      {/* Orders row */}
+      <RecentOrders />
 
       {/* Support row */}
       <SupportTickets />
