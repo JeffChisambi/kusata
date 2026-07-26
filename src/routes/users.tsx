@@ -222,7 +222,7 @@ function UserStats({ users }: { users: UserRow[] }) {
         const toneMap = { pine: "text-pine bg-pine/10", amber: "text-amber bg-amber/10", rose: "text-rose bg-rose/10" }[it.tone];
         const Trend = it.up ? TrendingUp : TrendingDown;
         return (
-          <div key={it.label} className="rounded-[3px] bg-card border border-border p-4">
+          <div key={it.label} className="flex-1 min-w-0 rounded-[3px] bg-card border border-border p-4">
             <div className="flex items-center justify-between">
               <div className="w-9 h-9 flex items-center justify-center text-muted-foreground">
                 <Icon className="w-4 h-4" />
