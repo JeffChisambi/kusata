@@ -67,6 +67,11 @@ const TIME_RANGES = [
   { label: "Last 90 days",  value: "90d", short: "Last 90d" },
 ];
 
+// ─── Module-level collapsed cache ─────────────────────────────────────────────
+// Persists across client-side navigations (remounts) so the sidebar never
+// flashes open: after the first mount the correct value is already known.
+let _collapsedCache: boolean | null = null;
+
 // ─── BrokerShell ───────────────────────────────────────────────────────────────
 
 export function BrokerShell({
@@ -79,15 +84,24 @@ export function BrokerShell({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>({ [activeLabel]: true });
+  // Start hidden (null) on SSR; on the client the cache may already be populated.
   const [collapsed, setCollapsed] = useState<boolean | null>(null);
+  const [transitionReady, setTransitionReady] = useState(false);
 
   useEffect(() => {
-    setCollapsed(window.localStorage.getItem("pine-broker-sidebar-collapsed") === "1");
+    // If we've navigated before, the cache is already set — use it immediately.
+    if (_collapsedCache === null) {
+      _collapsedCache = window.localStorage.getItem("pine-broker-sidebar-collapsed") === "1";
+    }
+    setCollapsed(_collapsedCache);
+    // Enable CSS transition only after the sidebar has painted at its real size.
+    requestAnimationFrame(() => requestAnimationFrame(() => setTransitionReady(true)));
   }, []);
 
   const toggleCollapse = () => {
     setCollapsed((c) => {
-      const next = !c;
+      const next = !(c ?? false);
+      _collapsedCache = next;
       window.localStorage.setItem("pine-broker-sidebar-collapsed", next ? "1" : "0");
       return next;
     });
@@ -100,6 +114,7 @@ export function BrokerShell({
         setOpen={setOpen}
         activeLabel={activeLabel}
         collapsed={collapsed}
+        transitionReady={transitionReady}
         onToggleCollapse={toggleCollapse}
       />
       <main className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
@@ -115,12 +130,13 @@ export function BrokerShell({
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
 function BrokerSidebar({
-  open, setOpen, activeLabel, collapsed, onToggleCollapse,
+  open, setOpen, activeLabel, collapsed, transitionReady, onToggleCollapse,
 }: {
   open: Record<string, boolean>;
   setOpen: (v: Record<string, boolean>) => void;
   activeLabel: string;
   collapsed: boolean | null;
+  transitionReady: boolean;
   onToggleCollapse: () => void;
 }) {
   const isCollapsed = collapsed === true;
@@ -129,7 +145,7 @@ function BrokerSidebar({
       className="relative shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border overflow-visible"
       style={{
         width: collapsed === null ? 0 : isCollapsed ? "4.5rem" : "17rem",
-        transition: collapsed === null ? "none" : "width 300ms ease-in-out",
+        transition: transitionReady ? "width 300ms ease-in-out" : "none",
         visibility: collapsed === null ? "hidden" : "visible",
       }}
     >
