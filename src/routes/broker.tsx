@@ -235,12 +235,6 @@ function KycQueue() {
 }
 
 function RecentOrders() {
-  const statusColor = (s: string) => {
-    if (s === "FILLED")    return "text-pine";
-    if (s === "PENDING")   return "text-amber-500";
-    if (s === "CANCELLED") return "text-rose-500";
-    return "text-muted-foreground";
-  };
 
   return (
     <BrokerCard
@@ -267,14 +261,16 @@ function RecentOrders() {
                 <td className="py-2.5 pr-4 font-medium">{o.client}</td>
                 <td className="py-2.5 pr-4">{o.ticker}</td>
                 <td className="py-2.5 pr-4">
-                  <span className={`font-semibold ${o.type === "BUY" ? "text-pine" : "text-rose-500"}`}>
-                    {o.type === "BUY" ? <ArrowUpRight className="inline w-3.5 h-3.5 mr-0.5" /> : <ArrowDownRight className="inline w-3.5 h-3.5 mr-0.5" />}
+                  <span className="font-semibold text-muted-foreground flex items-center gap-0.5">
+                    {o.type === "BUY"
+                      ? <ArrowUpRight className="inline w-3.5 h-3.5 text-pine" />
+                      : <ArrowDownRight className="inline w-3.5 h-3.5 text-rose-500" />}
                     {o.type}
                   </span>
                 </td>
                 <td className="py-2.5 pr-4 text-muted-foreground">{o.shares}</td>
                 <td className="py-2.5 pr-4">{fmtMoney(o.value)}</td>
-                <td className={`py-2.5 font-medium ${statusColor(o.status)}`}>{o.status}</td>
+                <td className="py-2.5 font-medium text-muted-foreground">{o.status}</td>
               </tr>
             ))}
           </tbody>
