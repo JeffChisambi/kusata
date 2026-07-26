@@ -415,7 +415,7 @@ function UsersTable({
 }) {
   const allChecked = rows.length > 0 && rows.every((r) => checked.has(r.id));
   return (
-    <div className="-mt-2 -mx-5 overflow-x-auto">
+    <div className="-mt-5 -mx-5">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-y border-border bg-muted/30">
