@@ -120,7 +120,7 @@ function Sidebar({
         )}
         <button
           onClick={onToggleCollapse}
-          className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors ${collapsed ? "mx-auto" : "ml-auto"}`}
+          className={`shrink-0 w-8 h-8 rounded-[3px] flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors ${collapsed ? "mx-auto" : "ml-auto"}`}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed
@@ -251,7 +251,7 @@ function NavItem({
 
   /* ── Collapsed: icon only + portal flyout (escapes overflow-y:auto) ── */
   if (collapsed) {
-    const cls = `relative w-full flex items-center justify-center p-2.5 rounded-lg transition-colors ${
+    const cls = `relative w-full flex items-center justify-center p-2.5 rounded-[3px] transition-colors ${
       active ? "bg-muted" : "hover:bg-muted"
     }`;
 
@@ -339,7 +339,7 @@ function NavItem({
   }
 
   /* ── Expanded: icon + label ── */
-  const rowCls = `w-full flex items-center gap-2.5 px-3 py-[7px] rounded-lg text-[13px] font-[450] transition-colors ${
+  const rowCls = `w-full flex items-center gap-2.5 px-3 py-[7px] rounded-[3px] text-[13px] font-[450] transition-colors ${
     active
       ? "bg-muted text-foreground"
       : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -394,7 +394,7 @@ function NavItem({
         <ul className="mt-1 ml-4 space-y-0.5 pb-1">
           {item.children!.map((c, idx) => {
             const isLast = idx === item.children!.length - 1;
-            const childCls = "w-full flex items-center gap-2 pr-2 py-[7px] text-[12px] transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-lg text-left";
+            const childCls = "w-full flex items-center gap-2 pr-2 py-[7px] text-[12px] transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-[3px] text-left";
             const childContent = (
               <>
                 <span className="flex-1 truncate">{c.label}</span>
@@ -473,7 +473,7 @@ function Topbar({ eyebrow, title }: { eyebrow: string; title: string }) {
           <input
             type="text"
             placeholder="Search users, orders, tickets, ledger…"
-            className="w-full h-10 pl-11 pr-4 rounded-lg bg-muted/60 border border-transparent focus:outline-none focus:border-pine/40 text-sm"
+            className="w-full h-10 pl-11 pr-4 rounded-[3px] bg-muted/60 border border-transparent focus:outline-none focus:border-pine/40 text-sm"
           />
         </div>
       </div>
@@ -482,7 +482,7 @@ function Topbar({ eyebrow, title }: { eyebrow: string; title: string }) {
         <div ref={rangeRef} className="relative hidden md:block">
           <button
             onClick={() => setRangeOpen((o) => !o)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-[3px] border text-sm transition-colors ${
               rangeOpen
                 ? "border-pine/40 bg-pine/5 text-pine"
                 : "border-border hover:bg-muted/40 text-foreground"
@@ -538,7 +538,7 @@ function Topbar({ eyebrow, title }: { eyebrow: string; title: string }) {
         </div>
         <button
           onClick={() => setDark((d) => !d)}
-          className="w-10 h-10 rounded-lg bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors"
+          className="w-10 h-10 rounded-[3px] bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors"
           aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
         >
           {dark
@@ -547,7 +547,7 @@ function Topbar({ eyebrow, title }: { eyebrow: string; title: string }) {
         </button>
         <Link
           to="/notifications"
-          className="w-10 h-10 rounded-lg bg-muted/60 flex items-center justify-center relative hover:bg-muted transition-colors"
+          className="w-10 h-10 rounded-[3px] bg-muted/60 flex items-center justify-center relative hover:bg-muted transition-colors"
           aria-label="Notifications"
         >
           <Bell className="w-4 h-4 text-muted-foreground" />
