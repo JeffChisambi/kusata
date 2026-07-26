@@ -52,4 +52,12 @@ export const queryKeys = {
     all: ['audit'] as const,
     search: (filters?: Record<string, unknown>) => [...queryKeys.audit.all, 'search', filters] as const,
   },
+
+  // Current admin user (me)
+  me: {
+    all: ['me'] as const,
+    profile: () => [...queryKeys.me.all, 'profile'] as const,
+    sessions: () => [...queryKeys.me.all, 'sessions'] as const,
+    notifPrefs: () => [...queryKeys.me.all, 'notif-prefs'] as const,
+  },
 };
