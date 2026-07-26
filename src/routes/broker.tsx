@@ -482,7 +482,7 @@ function KycQueue() {
             <div className="flex-1 min-w-0">
               <div className="text-[13px] font-medium text-foreground truncate">{row.name}</div>
               <div className="text-[11px] text-muted-foreground">
-                {row.id} · {row.submitted}
+                {row.submitted}
               </div>
             </div>
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
