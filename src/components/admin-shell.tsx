@@ -421,7 +421,7 @@ function NavItem({
   /* ── Collapsed: icon only + portal flyout (escapes overflow-y:auto) ── */
   if (collapsed) {
     const cls = `relative w-full flex items-center justify-center p-2.5 rounded-lg transition-colors ${
-      active ? "bg-pine/10" : "hover:bg-muted"
+      active ? "bg-muted" : "hover:bg-muted"
     }`;
 
     const flyout = flyoutTop !== null
@@ -434,15 +434,15 @@ function NavItem({
           >
             <div className="bg-card rounded-xl shadow-xl border border-border min-w-[192px] overflow-hidden">
               {/* Header */}
-              <div className={`px-3.5 py-2.5 flex items-center gap-2.5 border-b ${active ? "border-pine/20 bg-pine/5" : "border-border"}`}>
-                <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${active ? "bg-pine/15" : "bg-muted"}`}>
-                  <Icon className={`w-3.5 h-3.5 ${active ? "text-pine" : "text-muted-foreground"}`} />
+              <div className={`px-3.5 py-2.5 flex items-center gap-2.5 border-b border-border ${active ? "bg-muted/60" : ""}`}>
+                <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 bg-muted">
+                  <Icon className={`w-3.5 h-3.5 ${active ? "text-foreground" : "text-muted-foreground"}`} />
                 </div>
-                <span className={`text-[12px] font-semibold leading-none ${active ? "text-pine" : "text-foreground"}`}>
+                <span className="text-[12px] font-semibold leading-none text-foreground">
                   {item.label}
                 </span>
                 {item.badge != null && (
-                  <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-pine/10 text-pine leading-none shrink-0">
+                  <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground leading-none shrink-0">
                     {item.badge}
                   </span>
                 )}
@@ -456,7 +456,7 @@ function NavItem({
                       <>
                         <span className="flex-1 truncate">{c.label}</span>
                         {c.badge != null && (
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-pine/10 text-pine leading-none shrink-0">
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground leading-none shrink-0">
                             {c.badge}
                           </span>
                         )}

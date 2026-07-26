@@ -222,8 +222,8 @@ function UserFooter({ collapsed }: { collapsed: boolean }) {
         onClick={() => setMenuOpen((o) => !o)}
         className={`w-full flex items-center rounded-[6px] px-2 py-2 hover:bg-muted cursor-pointer transition-colors ${collapsed ? "justify-center" : "gap-2.5"}`}
       >
-        <div className="w-8 h-8 shrink-0 rounded-full bg-pine/10 flex items-center justify-center ring-1 ring-pine/20">
-          <span className="text-[11px] font-bold text-pine">{initials}</span>
+        <div className="w-8 h-8 shrink-0 rounded-full bg-muted flex items-center justify-center ring-1 ring-border">
+          <span className="text-[11px] font-bold text-foreground">{initials}</span>
         </div>
         {!collapsed && (
           <>
@@ -286,7 +286,7 @@ function BrokerNavItem({
 
   /* ── Collapsed: icon only + portal flyout ── */
   if (collapsed) {
-    const cls = `relative w-full flex items-center justify-center p-2.5 rounded-[4px] transition-colors ${active ? "bg-pine/10" : "hover:bg-muted"}`;
+    const cls = `relative w-full flex items-center justify-center p-2.5 rounded-[4px] transition-colors ${active ? "bg-muted" : "hover:bg-muted"}`;
     const flyout = flyoutTop !== null
       ? createPortal(
           <div
