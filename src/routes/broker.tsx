@@ -406,7 +406,7 @@ function TradeVolumeChart() {
     <BrokerCard title="Trade Volume" subtitle="Daily MWK volume — last 7 days">
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={tradeVolume} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke={border} />
+          <CartesianGrid strokeDasharray="3 3" stroke={border} strokeWidth={1} />
           <XAxis
             dataKey="day"
             tick={{ fontSize: 11, fill: mutedFg }}
