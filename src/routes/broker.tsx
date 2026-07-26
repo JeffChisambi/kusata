@@ -250,7 +250,7 @@ function RecentOrders() {
         <table className="w-full text-[13px]">
           <thead>
             <tr className="border-b border-border">
-              {["Client", "Stock", "Type", "Shares", "Value", "Status"].map((h) => (
+              {["Client", "Type", "Status"].map((h) => (
                 <th key={h} className="text-left py-2 pr-4 text-[11px] font-semibold text-muted-foreground tracking-wide">{h}</th>
               ))}
             </tr>
@@ -259,7 +259,6 @@ function RecentOrders() {
             {recentOrders.map((o, i) => (
               <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                 <td className="py-2.5 pr-4 font-medium">{o.client}</td>
-                <td className="py-2.5 pr-4">{o.ticker}</td>
                 <td className="py-2.5 pr-4">
                   <span className="font-semibold text-muted-foreground flex items-center gap-0.5">
                     {o.type === "BUY"
@@ -268,8 +267,6 @@ function RecentOrders() {
                     {o.type}
                   </span>
                 </td>
-                <td className="py-2.5 pr-4 text-muted-foreground">{o.shares}</td>
-                <td className="py-2.5 pr-4">{fmtMoney(o.value)}</td>
                 <td className="py-2.5 font-medium text-muted-foreground">{o.status}</td>
               </tr>
             ))}
