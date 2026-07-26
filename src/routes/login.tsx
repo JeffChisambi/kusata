@@ -124,7 +124,7 @@ function LoginPage() {
         <img
           src="/logo.png"
           alt="Pine"
-          className="w-[78%] max-w-[480px] object-contain select-none"
+          className="w-[55%] max-w-[336px] object-contain select-none"
           draggable={false}
         />
       </div>
