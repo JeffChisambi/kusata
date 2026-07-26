@@ -284,7 +284,7 @@ function BrokerNavItem({
   };
   const scheduleHide = () => {
     cancelHide();
-    hideTimeoutRef.current = setTimeout(() => setFlyoutTop(null), 250);
+    setFlyoutTop(null);
   };
 
   /* ── Collapsed: icon only + portal flyout ── */

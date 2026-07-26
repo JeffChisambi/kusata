@@ -202,7 +202,7 @@ function UserStats({ users }: { users: UserRow[] }) {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 pt-6">
-      <div className="col-span-2 md:col-span-3 rounded-xl bg-card border border-border p-4 flex gap-4 items-start">
+      <div className="col-span-2 md:col-span-3 rounded-[3px] bg-card border border-border p-4 flex gap-4 items-start">
         <div className="w-9 h-9 flex items-center justify-center text-muted-foreground shrink-0">
           <Users className="w-4 h-4" />
         </div>
@@ -227,7 +227,7 @@ function UserStats({ users }: { users: UserRow[] }) {
         const toneMap = { pine: "text-pine bg-pine/10", amber: "text-amber bg-amber/10", rose: "text-rose bg-rose/10" }[it.tone];
         const Trend = it.up ? TrendingUp : TrendingDown;
         return (
-          <div key={it.label} className="rounded-xl bg-card border border-border p-4">
+          <div key={it.label} className="rounded-[3px] bg-card border border-border p-4">
             <div className="flex items-center justify-between">
               <div className="w-9 h-9 flex items-center justify-center text-muted-foreground">
                 <Icon className="w-4 h-4" />
@@ -357,7 +357,7 @@ function SelectPill({
         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180 text-pine" : "text-muted-foreground"}`} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[9rem] rounded-xl border border-border bg-card shadow-lg overflow-hidden py-1">
+        <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[9rem] rounded-[3px] border border-border bg-card shadow-lg overflow-hidden py-1">
           {options.map(([v, l]) => (
             <button
               key={v}
@@ -559,7 +559,7 @@ function RowMenu({ onViewMore }: { onViewMore: () => void }) {
         <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 z-50 w-40 rounded-xl border border-border bg-card shadow-lg py-1 overflow-hidden">
+        <div className="absolute right-0 top-full mt-1.5 z-50 w-40 rounded-[3px] border border-border bg-card shadow-lg py-1 overflow-hidden">
           <button
             onClick={() => { onViewMore(); setOpen(false); }}
             className="w-full text-left px-3.5 py-2 text-sm text-foreground hover:bg-muted/60 flex items-center gap-2.5 transition-colors"

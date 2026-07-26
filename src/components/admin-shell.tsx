@@ -743,7 +743,7 @@ export function Card({
   className?: string; action?: ReactNode;
 }) {
   return (
-    <div className={`rounded-2xl bg-card border border-border p-5 ${className}`}>
+    <div className={`rounded-[3px] bg-card border border-border p-5 ${className}`}>
       {(title || action) && (
         <div className="flex items-start justify-between mb-4">
           <div>

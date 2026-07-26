@@ -244,7 +244,7 @@ function KycStats({ applications }: { applications: KycApplication[] }) {
         const Icon = s.icon;
         const Trend = s.up ? TrendingUp : TrendingDown;
         return (
-          <div key={s.label} className="rounded-xl bg-card border border-border p-4">
+          <div key={s.label} className="rounded-[3px] bg-card border border-border p-4">
             <div className="flex items-center justify-between">
               <div className="w-9 h-9 flex items-center justify-center">
                 <Icon className="w-4 h-4 text-muted-foreground" />
@@ -310,7 +310,7 @@ function FilterTabsDropdown({
         {activeFilterTab && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-pine rounded-full" />}
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[13rem] rounded-xl border border-border bg-card shadow-lg py-1 overflow-hidden">
+        <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[13rem] rounded-[3px] border border-border bg-card shadow-lg py-1 overflow-hidden">
           {filterTabs.map((t) => {
             const Icon = t.icon;
             const count = applications.filter(t.filter).length;
@@ -511,7 +511,7 @@ function RowMenu({ onReview }: { onReview: () => void }) {
         <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 z-50 w-44 rounded-xl border border-border bg-card shadow-lg py-1 overflow-hidden">
+        <div className="absolute right-0 top-full mt-1.5 z-50 w-44 rounded-[3px] border border-border bg-card shadow-lg py-1 overflow-hidden">
           {items.map((it) => {
             const Icon = it.icon;
             return (

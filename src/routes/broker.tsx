@@ -133,7 +133,7 @@ function KpiGrid() {
         const trendColor = k.trend === "up" ? "text-pine" : k.trend === "down" ? "text-rose-500" : "text-amber-500";
         const TrendIcon  = k.trend === "up" ? TrendingUp : k.trend === "down" ? TrendingDown : Clock;
         return (
-          <div key={k.label} className="rounded-xl bg-card border border-border p-4 flex flex-col gap-3">
+          <div key={k.label} className="rounded-[3px] bg-card border border-border p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="w-9 h-9 flex items-center justify-center text-muted-foreground">
                 <Icon className="w-4.5 h-4.5" />
