@@ -319,7 +319,7 @@ function KpiStrip({ orders }: { orders: Order[] }) {
           <div key={kpi.label} className="rounded-[3px] border border-border bg-card p-4">
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">{kpi.label}</span>
-              <Icon className={`h-4 w-4 ${kpi.color}`} />
+              <Icon className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="mt-3 text-2xl font-bold tracking-tight text-foreground">
               {kpi.value}
