@@ -164,9 +164,6 @@ function OrderTable({ orders }: { orders: Order[] }) {
                 <td className="px-3 py-3.5">
                   <StatusPill status={order.status} />
                 </td>
-                <td className="px-3 py-3.5 pr-4">
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </td>
               </tr>
             ))
           )}
@@ -246,7 +243,6 @@ function OrdersPage() {
         className="overflow-hidden"
         title={orderViewLabel}
         subtitle={`${filteredOrders.length} orders shown · click an order to open`}
-        action={<button className="rounded-[3px] p-1.5 text-muted-foreground hover:bg-muted"><MoreHorizontal className="h-4 w-4" /></button>}
       >
         <OrderTable orders={filteredOrders} />
         <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
