@@ -26,16 +26,7 @@ export const brokerNav: NavGroup[] = [
   { section: "OVERVIEW", icon: LayoutDashboard, label: "Overview", href: "/broker" },
 
   // ── CLIENTS ──
-  {
-    section: "CLIENTS", icon: Users, label: "User Management", href: "/users", badge: 12,
-    children: [
-      { label: "All Users",         href: "/users" },
-      { label: "Login History",     href: "/users?tab=logins" },
-      { label: "Linked Banks",      href: "/users?tab=banks" },
-      { label: "Activity Timeline", href: "/users?tab=activity" },
-      { label: "Export" },
-    ],
-  },
+  { section: "CLIENTS", icon: Users, label: "Users", href: "/users", badge: 12 },
   {
     section: "CLIENTS", icon: ShieldCheck, label: "Auth & Security",
     children: [
