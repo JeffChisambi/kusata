@@ -718,8 +718,8 @@ function OrderReview({ order }: { order: (typeof recentOrders)[number] }) {
 function SupportTickets() {
   const priorityColor = (p: string) =>
     p === "HIGH"
-      ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
-      : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+      ? "text-rose-700 dark:text-rose-400"
+      : "text-amber-700 dark:text-amber-400";
 
   return (
     <BrokerCard
@@ -741,7 +741,7 @@ function SupportTickets() {
               <div className="flex items-center gap-2 mb-0.5">
                 <span className="text-[11px] text-muted-foreground font-mono">{t.id}</span>
                 <span
-                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${priorityColor(t.priority)}`}
+                  className={`text-[10px] font-semibold ${priorityColor(t.priority)}`}
                 >
                   {t.priority}
                 </span>
