@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 
 function useCssVar(...vars: string[]) {
@@ -490,6 +490,7 @@ function KycQueue() {
 
 function RecentOrders() {
   const [selectedOrder, setSelectedOrder] = useState(recentOrders[0]);
+  const navigate = useNavigate();
 
   return (
     <BrokerCard
@@ -526,12 +527,16 @@ function RecentOrders() {
                 return (
                   <tr
                     key={o.id}
-                    onClick={() => setSelectedOrder(o)}
+                    onClick={() => navigate({ to: "/orders/$orderId", params: { orderId: o.id } })}
                     onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") setSelectedOrder(o);
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        navigate({ to: "/orders/$orderId", params: { orderId: o.id } });
+                      }
                     }}
                     tabIndex={0}
                     data-testid={`row-order-${o.id}`}
+                    aria-label={`Open order ${o.id}`}
                     className={`border-b border-border last:border-0 cursor-pointer transition-colors ${active ? "bg-pine/5" : "hover:bg-muted/30"}`}
                   >
                     <td className="py-3 pr-4">
