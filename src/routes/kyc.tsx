@@ -590,7 +590,7 @@ function ReviewPanel({
 
             {/* Document placeholder */}
             <div className="flex-1 bg-muted/30 flex flex-col items-center justify-center gap-3 p-4 min-h-0">
-              <div className="w-full aspect-[3/2] rounded-xl border-2 border-dashed border-border bg-card flex flex-col items-center justify-center gap-2 relative overflow-hidden">
+              <div className="w-full aspect-[3/2] rounded-[3px] border-2 border-dashed border-border bg-card flex flex-col items-center justify-center gap-2 relative overflow-hidden">
                 {docTab === "selfie" ? (
                   <>
                     <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
@@ -619,13 +619,13 @@ function ReviewPanel({
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <button className="h-8 px-3 rounded-lg border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5">
+                <button className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5">
                   <ZoomIn className="w-3.5 h-3.5" /> Zoom
                 </button>
-                <button className="h-8 px-3 rounded-lg border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5">
+                <button className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5">
                   <RotateCw className="w-3.5 h-3.5" /> Rotate
                 </button>
-                <button className="h-8 px-3 rounded-lg border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5">
+                <button className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5">
                   <ExternalLink className="w-3.5 h-3.5" /> Open
                 </button>
               </div>
@@ -714,15 +714,15 @@ function ReviewPanel({
               {actionTab === "notes" && (
                 <div className="space-y-3">
                   {app.notes && (
-                    <div className="rounded-lg bg-muted/40 border border-border p-3 text-sm text-muted-foreground">
+                    <div className="rounded-[3px] bg-muted/40 border border-border p-3 text-sm text-muted-foreground">
                       {app.notes}
                     </div>
                   )}
                   <textarea
-                    className="w-full h-28 rounded-lg border border-border bg-muted/30 p-3 text-sm resize-none focus:outline-none focus:border-pine/40 placeholder:text-muted-foreground"
+                    className="w-full h-28 rounded-[3px] border border-border bg-muted/30 p-3 text-sm resize-none focus:outline-none focus:border-pine/40 placeholder:text-muted-foreground"
                     placeholder="Add internal review notes…"
                   />
-                  <button className="h-9 px-4 rounded-lg border border-border text-sm text-muted-foreground hover:bg-muted/40">
+                  <button className="h-9 px-4 rounded-[3px] border border-border text-sm text-muted-foreground hover:bg-muted/40">
                     Save note
                   </button>
                 </div>

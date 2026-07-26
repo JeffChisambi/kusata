@@ -192,7 +192,7 @@ function AdminUserFooter({ collapsed }: { collapsed: boolean }) {
     <div ref={menuRef} className="relative">
       <button
         onClick={() => setMenuOpen((o) => !o)}
-        className={`w-full flex items-center rounded-xl px-2 py-2 hover:bg-muted cursor-pointer transition-colors ${collapsed ? "justify-center" : "gap-2.5"}`}
+        className={`w-full flex items-center rounded-[3px] px-2 py-2 hover:bg-muted cursor-pointer transition-colors ${collapsed ? "justify-center" : "gap-2.5"}`}
       >
         <div className="w-8 h-8 shrink-0 rounded-full bg-muted flex items-center justify-center ring-1 ring-border">
           <span className="text-[11px] font-bold text-foreground">{initials}</span>
@@ -209,7 +209,7 @@ function AdminUserFooter({ collapsed }: { collapsed: boolean }) {
       </button>
 
       {menuOpen && (
-        <div className={`absolute ${collapsed ? 'left-full ml-2 bottom-0' : 'bottom-full mb-2 left-0 right-0'} z-50 bg-card border border-border rounded-xl shadow-xl overflow-hidden`}>
+        <div className={`absolute ${collapsed ? 'left-full ml-2 bottom-0' : 'bottom-full mb-2 left-0 right-0'} z-50 bg-card border border-border rounded-[3px] shadow-xl overflow-hidden`}>
           <div className="px-3.5 py-3 border-b border-border">
             <div className="text-[13px] font-medium text-foreground">{displayName}</div>
             <div className="text-[11px] text-muted-foreground mt-0.5">{user?.email ?? ''}</div>
@@ -263,7 +263,7 @@ function NavItem({
             onMouseEnter={cancelHide}
             onMouseLeave={scheduleHide}
           >
-            <div className="bg-card rounded-xl shadow-xl border border-border min-w-[192px] overflow-hidden">
+            <div className="bg-card rounded-[3px] shadow-xl border border-border min-w-[192px] overflow-hidden">
               {/* Header */}
               <div className={`px-3.5 py-2.5 flex items-center gap-2.5 border-b border-border ${active ? "bg-muted/60" : ""}`}>
                 <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 bg-muted">
@@ -496,7 +496,7 @@ function Topbar({ eyebrow, title }: { eyebrow: string; title: string }) {
           </button>
 
           {rangeOpen && (
-            <div className="absolute right-0 top-full mt-1.5 z-50 w-56 bg-card border border-border rounded-xl shadow-xl overflow-hidden">
+            <div className="absolute right-0 top-full mt-1.5 z-50 w-56 bg-card border border-border rounded-[3px] shadow-xl overflow-hidden">
               {/* Header */}
               <div className="px-3.5 pt-3 pb-2">
                 <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">

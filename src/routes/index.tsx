@@ -123,7 +123,7 @@ function Kpi({
   }[trend];
   const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Clock;
   return (
-    <div className="rounded-xl bg-card border border-border p-4 flex flex-col gap-3">
+    <div className="rounded-[3px] bg-card border border-border p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div className="w-9 h-9 flex items-center justify-center text-muted-foreground">
           <Icon className="w-4.5 h-4.5" />
@@ -165,7 +165,7 @@ function KpiDouble({
     );
   };
   return (
-    <div className="rounded-xl bg-card border border-border p-4 flex items-start gap-3">
+    <div className="rounded-[3px] bg-card border border-border p-4 flex items-start gap-3">
       <div className="w-9 h-9 flex items-center justify-center text-muted-foreground shrink-0">
         <Icon className="w-4.5 h-4.5" />
       </div>
@@ -339,7 +339,7 @@ function SystemHealthCard() {
             h.tone === "pine" ? "text-pine bg-pine/10" :
             h.tone === "amber" ? "text-amber bg-amber/10" : "text-rose bg-rose/10";
           return (
-            <div key={h.label} className="rounded-lg border border-border p-3 flex items-center gap-3">
+            <div key={h.label} className="rounded-[3px] border border-border p-3 flex items-center gap-3">
               <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${tone}`}>
                 <Icon className="w-4 h-4" />
               </div>

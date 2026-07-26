@@ -343,7 +343,7 @@ function SelectPill({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className={`flex items-center gap-2 h-9 pl-3 pr-2.5 rounded-lg border text-sm transition-colors cursor-pointer ${
+        className={`flex items-center gap-2 h-9 pl-3 pr-2.5 rounded-[3px] border text-sm transition-colors cursor-pointer ${
           open ? "border-pine/40 bg-pine/5 text-pine" : "border-border hover:bg-muted/40 text-foreground"
         }`}
       >
@@ -586,7 +586,7 @@ function UserModal({ user, onClose }: { user: UserRow; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-background rounded-2xl shadow-2xl border border-border overflow-hidden flex flex-col" style={{ maxHeight: "90vh" }}>
+      <div className="relative w-full max-w-lg bg-background rounded-[3px] shadow-2xl border border-border overflow-hidden flex flex-col" style={{ maxHeight: "90vh" }}>
         <UserDetails user={user} onClose={onClose} />
       </div>
     </div>
@@ -675,7 +675,7 @@ function QuickAction({
     tone === "rose" ? "hover:bg-rose/10 hover:text-rose hover:border-rose/30" :
     "hover:bg-muted/40";
   return (
-    <button className={`flex flex-col items-center gap-1 py-2.5 rounded-lg border border-border text-[11px] text-muted-foreground transition-colors ${cls}`}>
+    <button className={`flex flex-col items-center gap-1 py-2.5 rounded-[3px] border border-border text-[11px] text-muted-foreground transition-colors ${cls}`}>
       <Icon className="w-4 h-4" />
       {label}
     </button>
@@ -690,7 +690,7 @@ function MiniStat({
 }) {
   const toneMap = { pine: "text-pine bg-pine/10", amber: "text-amber bg-amber/10", rose: "text-rose bg-rose/10" }[tone];
   return (
-    <div className="rounded-lg border border-border p-2.5 flex items-center gap-2.5">
+    <div className="rounded-[3px] border border-border p-2.5 flex items-center gap-2.5">
       <div className={`w-8 h-8 rounded-md flex items-center justify-center ${toneMap}`}>
         <Icon className="w-3.5 h-3.5" />
       </div>
@@ -788,7 +788,7 @@ function DevicesTab({ user }: { user: UserRow }) {
   return (
     <ul className="space-y-2">
       {devices.map((d, i) => (
-        <li key={i} className="rounded-lg border border-border p-3">
+        <li key={i} className="rounded-[3px] border border-border p-3">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
               <Smartphone className="w-4 h-4 text-muted-foreground" />
@@ -826,7 +826,7 @@ function BanksTab({ user }: { user: UserRow }) {
       {banks.map((b, i) => {
         const Icon = b.icon;
         return (
-          <li key={i} className="rounded-lg border border-border p-3 flex items-center gap-3">
+          <li key={i} className="rounded-[3px] border border-border p-3 flex items-center gap-3">
             <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
               <Icon className="w-4 h-4 text-muted-foreground" />
             </div>
