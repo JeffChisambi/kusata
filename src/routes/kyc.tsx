@@ -234,8 +234,6 @@ function KycStats({ applications }: { applications: KycApplication[] }) {
     { label: "Approved", value: approved, icon: CheckCircle2, tone: "pine", trend: total > 0 ? `${Math.round((approved / total) * 100)}%` : "—", up: true },
     { label: "Rejected", value: rejected, icon: XCircle, tone: rejected > 0 ? "rose" : "pine", trend: total > 0 ? `${Math.round((rejected / total) * 100)}%` : "—", up: false },
     { label: "Manual Review", value: manual, icon: Eye, tone: manual > 0 ? "amber" : "pine", trend: manual > 0 ? "flagged" : "clear", up: false },
-    { label: "Awaiting Docs", value: additional, icon: FilePlus, tone: additional > 0 ? "amber" : "pine", trend: additional > 0 ? "outstanding" : "clear", up: false },
-    { label: "Avg OCR Score", value: `${avgScore}%`, icon: ScanLine, tone: avgScore >= 70 ? "pine" : "amber", trend: "confidence", up: avgScore >= 70 },
   ] as const;
 
   return (
