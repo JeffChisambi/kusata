@@ -144,10 +144,6 @@ function UsersPage() {
         {/* Main table */}
         <div className="flex-1 min-w-0">
           <Card>
-            <Tabs
-              tabs={tabs} active={activeTab} onChange={setActiveTab}
-              counts={tabs.map((t) => users.filter(t.filter).length)}
-            />
             <Toolbar
               riskFilter={riskFilter} setRiskFilter={setRiskFilter}
               selectedCount={checked.size}
@@ -159,6 +155,10 @@ function UsersPage() {
               onSelectAll={() => setChecked(new Set(filtered.map((r) => r.id)))}
               onClear={() => setChecked(new Set())}
               onOpenDrawer={setDrawerUser}
+              tabs={tabs}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              tabCounts={tabs.map((t) => users.filter(t.filter).length)}
             />
             <TableFooter total={filtered.length} />
           </Card>
@@ -243,7 +243,7 @@ function UserStats({ users }: { users: UserRow[] }) {
   );
 }
 
-function Tabs({
+function TabDropdown({
   tabs, active, onChange, counts,
 }: {
   tabs: { key: string; label: string }[];
@@ -251,53 +251,53 @@ function Tabs({
   onChange: (k: string) => void;
   counts: number[];
 }) {
-  const activeTab = tabs.find((t) => t.key === active);
-  return (
-    <>
-      {/* ── Dropdown on small screens ── */}
-      <div className="sm:hidden -mt-2 -mx-5 px-5 pb-3 border-b border-border flex items-center gap-2">
-        <label className="relative flex items-center gap-2 h-9 pl-3 pr-8 rounded-lg border border-border text-sm bg-background cursor-pointer flex-1">
-          <span className="font-medium text-foreground truncate flex-1">
-            {activeTab?.label}
-          </span>
-          <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded bg-pine/10 text-pine leading-none shrink-0">
-            {counts[tabs.indexOf(activeTab!)]}
-          </span>
-          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 absolute right-2" />
-          <select
-            className="absolute inset-0 opacity-0 cursor-pointer w-full"
-            value={active}
-            onChange={(e) => onChange(e.target.value)}
-          >
-            {tabs.map((t, i) => (
-              <option key={t.key} value={t.key}>{t.label} ({counts[i]})</option>
-            ))}
-          </select>
-        </label>
-      </div>
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const activeIdx = tabs.findIndex((t) => t.key === active);
+  const activeTab = tabs[activeIdx];
 
-      {/* ── Tab strip on sm+ screens ── */}
-      <div className="hidden sm:flex items-center gap-1 border-b border-border -mt-2 -mx-5 px-5 pb-0">
-        {tabs.map((t, i) => {
-          const isActive = t.key === active;
-          return (
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-pine transition-colors"
+      >
+        {activeTab?.label}
+        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-pine/10 text-pine leading-none">
+          {counts[activeIdx] ?? 0}
+        </span>
+        <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[11rem] rounded-[3px] border border-border bg-card shadow-lg overflow-hidden py-1">
+          {tabs.map((t, i) => (
             <button
               key={t.key}
-              onClick={() => onChange(t.key)}
-              className={`relative whitespace-nowrap px-3 py-3 text-sm font-medium transition-colors ${
-                isActive ? "text-pine" : "text-muted-foreground hover:text-foreground"
+              onClick={() => { onChange(t.key); setOpen(false); }}
+              className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-4 transition-colors ${
+                t.key === active ? "bg-pine/10 text-pine font-medium" : "text-foreground hover:bg-muted/50"
               }`}
             >
               {t.label}
-              <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded ${isActive ? "bg-pine/10 text-pine" : "bg-muted text-muted-foreground"}`}>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded leading-none ${
+                t.key === active ? "bg-pine/20 text-pine" : "bg-muted text-muted-foreground"
+              }`}>
                 {counts[i]}
               </span>
-              {isActive && <span className="absolute left-2 right-2 -bottom-px h-0.5 bg-pine rounded-full" />}
             </button>
-          );
-        })}
-      </div>
-    </>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -400,6 +400,7 @@ function BulkBtn({
 
 function UsersTable({
   rows, checked, onCheck, onSelectAll, onClear, onOpenDrawer,
+  tabs, activeTab, onTabChange, tabCounts,
 }: {
   rows: UserRow[];
   checked: Set<string>;
@@ -407,14 +408,18 @@ function UsersTable({
   onSelectAll: () => void;
   onClear: () => void;
   onOpenDrawer: (u: UserRow) => void;
+  tabs: { key: string; label: string }[];
+  activeTab: string;
+  onTabChange: (k: string) => void;
+  tabCounts: number[];
 }) {
   const allChecked = rows.length > 0 && rows.every((r) => checked.has(r.id));
   return (
-    <div className="mt-4 -mx-5 overflow-x-auto">
+    <div className="-mt-2 -mx-5 overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-[11px] uppercase tracking-wider text-muted-foreground border-y border-border bg-muted/30">
-            <th className="pl-5 py-2 text-left">
+          <tr className="border-y border-border bg-muted/30">
+            <th className="pl-5 py-2.5 text-left">
               <input
                 type="checkbox"
                 checked={allChecked}
@@ -422,12 +427,14 @@ function UsersTable({
                 className="accent-pine"
               />
             </th>
-            <th className="py-2 text-left font-medium">User</th>
-            <th className="py-2 text-left font-medium">Status</th>
-            <th className="py-2 text-left font-medium">Risk</th>
-            <th className="py-2 text-right font-medium">AUM</th>
-            <th className="py-2 text-right font-medium">Cash</th>
-            <th className="pr-5 py-2"></th>
+            <th className="py-2.5 text-left font-normal">
+              <TabDropdown tabs={tabs} active={activeTab} onChange={onTabChange} counts={tabCounts} />
+            </th>
+            <th className="py-2.5 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground">Status</th>
+            <th className="py-2.5 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground">Risk</th>
+            <th className="py-2.5 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground">AUM</th>
+            <th className="py-2.5 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground">Cash</th>
+            <th className="pr-5 py-2.5"></th>
           </tr>
         </thead>
         <tbody>
