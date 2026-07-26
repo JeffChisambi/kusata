@@ -129,9 +129,9 @@ function LoginPage() {
         />
       </div>
 
-      {/* ── Right: form panel — green background, white card ── */}
+      {/* ── Right: form panel — green background, transparent card ── */}
       <div className="flex-1 flex items-center justify-center bg-[#45B369] px-6 py-12">
-        <div className="w-full max-w-[400px] bg-white rounded-2xl shadow-2xl px-8 py-10">
+        <div className="w-full max-w-[400px] px-2 py-2">
 
           {/* Mobile logo (shown only when left panel is hidden) */}
           <div className="flex items-center gap-2.5 mb-8 lg:hidden">
@@ -157,7 +157,7 @@ function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="admin@pine.mw"
-                    className="w-full h-10 px-3.5 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-pine/30 focus:border-pine/60 transition"
+                    className="w-full h-10 px-3.5 rounded-[2px] border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-pine/30 focus:border-pine/60 transition"
                   />
                 </div>
 
@@ -172,7 +172,7 @@ function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full h-10 pl-3.5 pr-10 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-pine/30 focus:border-pine/60 transition"
+                      className="w-full h-10 pl-3.5 pr-10 rounded-[2px] border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-pine/30 focus:border-pine/60 transition"
                     />
                     <button
                       type="button"
@@ -185,7 +185,7 @@ function LoginPage() {
                 </div>
 
                 {error && (
-                  <p className="text-[13px] text-rose bg-rose/8 border border-rose/20 rounded-lg px-3.5 py-2.5">
+                  <p className="text-[13px] text-rose bg-rose/8 border border-rose/20 rounded-[2px] px-3.5 py-2.5">
                     {error}
                   </p>
                 )}
@@ -222,7 +222,7 @@ function LoginPage() {
 
               {setupData.qrDataUrl && (
                 <div className="mt-6 flex justify-center">
-                  <div className="bg-white p-4 rounded-xl shadow-sm border border-border">
+                  <div className="bg-white p-4 rounded-[2px] shadow-sm border border-border">
                     <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(setupData.qrDataUrl)}`}
                       alt="MFA QR Code"
@@ -234,9 +234,9 @@ function LoginPage() {
                 </div>
               )}
 
-              <div className="mt-4 p-4 bg-card border border-border rounded-xl">
+              <div className="mt-4 p-4 bg-card border border-border rounded-[2px]">
                 <p className="text-[11px] text-muted-foreground mb-2 font-medium">MANUAL ENTRY KEY</p>
-                <code className="block text-xs font-mono bg-background p-2 rounded break-all select-all border border-border">
+                <code className="block text-xs font-mono bg-background p-2 rounded-sm break-all select-all border border-border">
                   {setupData.secret}
                 </code>
                 <p className="text-[11px] text-muted-foreground mt-3">
@@ -256,13 +256,13 @@ function LoginPage() {
                     value={mfaCode}
                     onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
                     placeholder="000000"
-                    className="w-full h-12 px-4 rounded-lg border border-border bg-card text-lg text-center font-mono tracking-[0.5em] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-pine/30 focus:border-pine/60 transition"
+                    className="w-full h-12 px-4 rounded-[2px] border border-border bg-card text-lg text-center font-mono tracking-[0.5em] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-pine/30 focus:border-pine/60 transition"
                     autoFocus
                   />
                 </div>
 
                 {error && (
-                  <p className="text-[13px] text-rose bg-rose/8 border border-rose/20 rounded-lg px-3.5 py-2.5">{error}</p>
+                  <p className="text-[13px] text-rose bg-rose/8 border border-rose/20 rounded-[2px] px-3.5 py-2.5">{error}</p>
                 )}
 
                 <button
@@ -305,13 +305,13 @@ function LoginPage() {
                     value={mfaCode}
                     onChange={(e) => setMfaCode(useRecovery ? e.target.value : e.target.value.replace(/\D/g, ''))}
                     placeholder={useRecovery ? "XXXX-XXXX" : "000000"}
-                    className="w-full h-12 px-4 rounded-lg border border-border bg-card text-lg text-center font-mono tracking-[0.3em] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-pine/30 focus:border-pine/60 transition"
+                    className="w-full h-12 px-4 rounded-[2px] border border-border bg-card text-lg text-center font-mono tracking-[0.3em] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-pine/30 focus:border-pine/60 transition"
                     autoFocus
                   />
                 </div>
 
                 {error && (
-                  <p className="text-[13px] text-rose bg-rose/8 border border-rose/20 rounded-lg px-3.5 py-2.5">{error}</p>
+                  <p className="text-[13px] text-rose bg-rose/8 border border-rose/20 rounded-[2px] px-3.5 py-2.5">{error}</p>
                 )}
 
                 <button
@@ -348,10 +348,10 @@ function LoginPage() {
                 Save these recovery codes in a secure place. Each code can only be used once.
               </p>
 
-              <div className="mt-6 p-4 bg-card border border-border rounded-xl">
+              <div className="mt-6 p-4 bg-card border border-border rounded-[2px]">
                 <div className="grid grid-cols-2 gap-2">
                   {recoveryCodes.map((code, i) => (
-                    <code key={i} className="text-xs font-mono bg-background px-2 py-1.5 rounded border border-border text-center select-all">
+                    <code key={i} className="text-xs font-mono bg-background px-2 py-1.5 rounded-sm border border-border text-center select-all">
                       {code}
                     </code>
                   ))}
