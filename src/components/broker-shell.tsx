@@ -27,16 +27,7 @@ export const brokerNav: NavGroup[] = [
 
   // ── CLIENTS ──
   { section: "CLIENTS", icon: Users, label: "Users", href: "/users", badge: 12 },
-  {
-    section: "CLIENTS", icon: ShieldCheck, label: "Auth & Security",
-    children: [
-      { label: "Active Sessions" }, { label: "Force Logout" },
-      { label: "Password Resets" }, { label: "PIN Resets" },
-      { label: "Biometric Status" }, { label: "MFA" },
-      { label: "Failed Logins", badge: 38 }, { label: "Lockouts", badge: 6 },
-      { label: "IP Blacklist" }, { label: "Device Blacklist" },
-    ],
-  },
+  { section: "CLIENTS", icon: ShieldCheck, label: "Auth & Security", href: "/coming-soon" },
   { section: "CLIENTS", icon: FileCheck2, label: "KYC Management", href: "/kyc", badge: 2 },
 
   // ── TRADING ──
