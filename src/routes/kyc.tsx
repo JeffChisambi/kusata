@@ -237,12 +237,12 @@ function KycStats({ applications }: { applications: KycApplication[] }) {
   ] as const;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 pt-6">
+    <div className="flex flex-wrap gap-4 pt-6">
       {stats.map((s) => {
         const Icon = s.icon;
         const Trend = s.up ? TrendingUp : TrendingDown;
         return (
-          <div key={s.label} className="rounded-[3px] bg-card border border-border p-4">
+          <div key={s.label} className="flex-1 min-w-[160px] rounded-[3px] bg-card border border-border p-4">
             <div className="flex items-center justify-between">
               <div className="w-9 h-9 flex items-center justify-center">
                 <Icon className="w-4 h-4 text-muted-foreground" />
