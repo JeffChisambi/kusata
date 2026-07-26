@@ -745,10 +745,8 @@ function BrokerDashboard() {
       {/* KYC row */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <KycQueue />
+        <SupportTickets />
       </div>
-
-      {/* Support row */}
-      <SupportTickets />
     </BrokerShell>
   );
 }
