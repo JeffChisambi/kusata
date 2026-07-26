@@ -240,52 +240,6 @@ function LoginPage() {
                 </button>
               </form>
 
-              {/* ── Dev-only: quick login buttons (no MFA) ── */}
-              {import.meta.env.DEV && (
-                <div className="mt-6 pt-5 border-t border-dashed border-border">
-                  <p className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider mb-3">
-                    Dev Quick Login
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        localStorage.setItem('pine_admin_access_token', 'dev-admin-token');
-                        localStorage.setItem('pine_admin_refresh_token', 'dev-admin-refresh');
-                        localStorage.setItem('pine_admin_user', JSON.stringify({
-                          id: 'dev-admin-001',
-                          email: 'admin@pine.mw',
-                          firstName: 'Pine',
-                          lastName: 'Admin',
-                          role: 'SUPER_ADMIN',
-                        }));
-                        navigate({ to: '/' });
-                      }}
-                      className="flex-1 h-9 rounded-[3px] border border-amber/30 bg-amber/10 text-amber text-xs font-semibold hover:bg-amber/20 transition-colors"
-                    >
-                      🔑 Admin
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        localStorage.setItem('pine_admin_access_token', 'dev-broker-token');
-                        localStorage.setItem('pine_admin_refresh_token', 'dev-broker-refresh');
-                        localStorage.setItem('pine_admin_user', JSON.stringify({
-                          id: 'dev-broker-001',
-                          email: 'broker@pine.mw',
-                          firstName: 'Pine',
-                          lastName: 'Broker',
-                          role: 'BROKER',
-                        }));
-                        navigate({ to: '/broker' });
-                      }}
-                      className="flex-1 h-9 rounded-[3px] border border-sky/30 bg-sky/10 text-sky text-xs font-semibold hover:bg-sky/20 transition-colors"
-                    >
-                      🔑 Broker
-                    </button>
-                  </div>
-                </div>
-              )}
             </>
           )}
 

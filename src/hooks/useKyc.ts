@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { queryKeys } from '../lib/query-keys';
-import { kycStore } from '../lib/kyc-store';
 
 export type KycApplicationRow = {
   id: string;
@@ -28,22 +27,12 @@ export function useKycQueue(params?: { limit?: number; status?: string }) {
     queryKey: queryKeys.kyc.queue({ limit, status }),
     queryFn: async (): Promise<{ applications: KycApplicationRow[]; count: number }> => {
       try {
-        const result = await api.get<{ applications: KycApplicationRow[]; count: number }>(
+        return await api.get<{ applications: KycApplicationRow[]; count: number }>(
           `/v1/admin/kyc/queue?limit=${limit}${status ? `&status=${status}` : ''}`,
         );
-        // If API returns data, populate the store and return it
-        if (result?.applications?.length) {
-          return result;
-        }
       } catch {
-        // Fall through to mock data
+        return { applications: [], count: 0 };
       }
-      // Return mock store data when API is unavailable
-      const all = kycStore.getAll();
-      const filtered = status
-        ? all.filter((a) => a.status === status.toUpperCase())
-        : all;
-      return { applications: filtered.slice(0, limit), count: filtered.length };
     },
     refetchInterval: 30_000,
   });

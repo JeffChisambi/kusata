@@ -520,10 +520,6 @@ function ReviewPanel({
   const ocrFields = [
     { label: "Full name", value: app.name, match: true },
     { label: "Document type", value: docTypeLabel[app.docType], match: true },
-    { label: "Document number", value: `MW${app.id.slice(-6).toUpperCase()}`, match: true },
-    { label: "Date of birth", value: "12 Mar 1991", match: true },
-    { label: "Expiry date", value: "08 Oct 2028", match: app.ocrConfidence >= 80 },
-    { label: "Nationality", value: "Malawian", match: true },
   ];
 
   const passCount = steps.filter((s) => s.ok).length;
