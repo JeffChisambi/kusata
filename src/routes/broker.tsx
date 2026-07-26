@@ -739,7 +739,6 @@ function SupportTickets() {
           >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-[11px] text-muted-foreground font-mono">{t.id}</span>
                 <span
                   className={`text-[10px] font-semibold ${priorityColor(t.priority)}`}
                 >
@@ -747,9 +746,7 @@ function SupportTickets() {
                 </span>
               </div>
               <div className="text-[13px] font-medium text-foreground truncate">{t.issue}</div>
-              <div className="text-[11px] text-muted-foreground">
-                {t.client} · {t.time}
-              </div>
+              <div className="text-[11px] text-muted-foreground">{t.time}</div>
             </div>
             <button className="text-muted-foreground hover:text-foreground mt-1 shrink-0">
               <MoreHorizontal className="w-4 h-4" />
