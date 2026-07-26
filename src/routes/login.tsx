@@ -137,20 +137,20 @@ function LoginPage() {
           <div className="flex items-center gap-2.5 mb-8 lg:hidden">
             <img src="/logo.png" alt="Pine" className="w-9 h-9 object-contain" />
             <div>
-              <div className="font-bold text-[15px] leading-none">Pine</div>
-              <div className="text-[9px] tracking-[0.18em] text-muted-foreground mt-0.5">BROKER ADMIN</div>
+              <div className="font-bold text-[15px] leading-none text-white">Pine</div>
+              <div className="text-[9px] tracking-[0.18em] text-white/70 mt-0.5">BROKER ADMIN</div>
             </div>
           </div>
 
           {/* ── Step: Credentials ── */}
           {step === 'credentials' && (
             <>
-              <h2 className="text-[22px] font-bold text-foreground">Welcome back</h2>
-              <p className="text-sm text-muted-foreground mt-1">Sign in to your admin account</p>
+              <h2 className="text-[22px] font-bold text-white">Welcome back</h2>
+              <p className="text-sm text-white/80 mt-1">Sign in to your admin account</p>
 
               <form onSubmit={handleLogin} className="mt-8 space-y-4">
                 <div>
-                  <label className="block text-[13px] font-medium text-foreground mb-1.5">Email address</label>
+                  <label className="block text-[13px] font-medium text-white mb-1.5">Email address</label>
                   <input
                     type="email"
                     autoComplete="email"
@@ -163,7 +163,7 @@ function LoginPage() {
 
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[13px] font-medium text-foreground">Password</label>
+                    <label className="text-[13px] font-medium text-white">Password</label>
                   </div>
                   <div className="relative">
                     <input
@@ -177,7 +177,7 @@ function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-white/70 hover:text-white transition-colors"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -214,9 +214,9 @@ function LoginPage() {
             <>
               <div className="flex items-center gap-2 mb-2">
                 <Smartphone className="w-5 h-5 text-pine" />
-                <h2 className="text-[22px] font-bold text-foreground">Set up MFA</h2>
+                <h2 className="text-[22px] font-bold text-white">Set up MFA</h2>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-white/80">
                 Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
               </p>
 
@@ -235,18 +235,18 @@ function LoginPage() {
               )}
 
               <div className="mt-4 p-4 bg-card border border-border rounded-[2px]">
-                <p className="text-[11px] text-muted-foreground mb-2 font-medium">MANUAL ENTRY KEY</p>
+                <p className="text-[11px] text-white/70 mb-2 font-medium">MANUAL ENTRY KEY</p>
                 <code className="block text-xs font-mono bg-background p-2 rounded-sm break-all select-all border border-border">
                   {setupData.secret}
                 </code>
-                <p className="text-[11px] text-muted-foreground mt-3">
+                <p className="text-[11px] text-white/70 mt-3">
                   Can't scan? Open your authenticator app → Add account → Enter key manually → Use the key above
                 </p>
               </div>
 
               <form onSubmit={handleMfaSetupConfirm} className="mt-6 space-y-4">
                 <div>
-                  <label className="block text-[13px] font-medium text-foreground mb-1.5">
+                  <label className="block text-[13px] font-medium text-white mb-1.5">
                     Enter the 6-digit code from your app
                   </label>
                   <input
@@ -285,11 +285,11 @@ function LoginPage() {
             <>
               <div className="flex items-center gap-2 mb-2">
                 <KeyRound className="w-5 h-5 text-pine" />
-                <h2 className="text-[22px] font-bold text-foreground">
+                <h2 className="text-[22px] font-bold text-white">
                   {useRecovery ? "Recovery Code" : "Two-Factor Authentication"}
                 </h2>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-white/80">
                 {useRecovery
                   ? "Enter one of your recovery codes"
                   : "Enter the 6-digit code from your authenticator app"
@@ -329,7 +329,7 @@ function LoginPage() {
                 <button
                   type="button"
                   onClick={() => { setUseRecovery(!useRecovery); setMfaCode(""); setError(""); }}
-                  className="w-full text-center text-[13px] text-pine hover:text-pine/80 transition-colors"
+                  className="w-full text-center text-[13px] text-white/80 hover:text-white transition-colors"
                 >
                   {useRecovery ? "Use authenticator app instead" : "Use a recovery code"}
                 </button>
@@ -342,9 +342,9 @@ function LoginPage() {
             <>
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle2 className="w-5 h-5 text-pine" />
-                <h2 className="text-[22px] font-bold text-foreground">MFA Enabled!</h2>
+                <h2 className="text-[22px] font-bold text-white">MFA Verification</h2>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-white/80">
                 Save these recovery codes in a secure place. Each code can only be used once.
               </p>
 
@@ -359,7 +359,7 @@ function LoginPage() {
 
                 <button
                   onClick={handleCopyRecoveryCodes}
-                  className="mt-4 w-full flex items-center justify-center gap-2 h-9 rounded-[3px] border border-border bg-background text-sm font-medium text-foreground hover:bg-accent transition-colors"
+                  className="mt-4 w-full flex items-center justify-center gap-2 h-9 rounded-[3px] border border-border bg-background text-sm font-medium text-white hover:bg-accent hover:text-foreground transition-colors"
                 >
                   {copiedCodes ? <><CheckCircle2 className="w-3.5 h-3.5 text-pine" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy all codes</>}
                 </button>
@@ -374,7 +374,7 @@ function LoginPage() {
             </>
           )}
 
-          <p className="mt-8 text-center text-[12px] text-muted-foreground">
+          <p className="mt-8 text-center text-[12px] text-white/70">
             Authorised personnel only.
           </p>
         </div>

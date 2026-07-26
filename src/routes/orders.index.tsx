@@ -1,22 +1,20 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
   CheckCircle2,
   ChevronDown,
-  ChevronRight,
-  CircleAlert,
   ClipboardList,
   Clock3,
   Download,
-  MoreHorizontal,
+  Loader2,
   RefreshCw,
   XCircle,
 } from "lucide-react";
 import { BrokerCard, BrokerShell } from "@/components/broker-shell";
-import { ordersStore, type Order, type OrderStatus, type OrderSide } from "@/lib/orders-store";
+import { useOrders, useRefreshOrders, type Order, type DisplayStatus, type OrderSide } from "@/hooks/useOrders";
 
 export const Route = createFileRoute("/orders/")({
   head: () => ({
@@ -28,25 +26,22 @@ export const Route = createFileRoute("/orders/")({
   component: OrdersPage,
 });
 
-type DisplayStatus = OrderStatus;
-
 const fmtMoney = (n: number) =>
   `MK ${n.toLocaleString("en-MW", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
 
 const fmtShares = (n: number) => n.toLocaleString("en-MW");
 
 function statusLabel(status: DisplayStatus) {
-  return status === "READY"
-    ? "Ready"
-    : status === "PARTIAL"
-      ? "Partial fill"
-      : status === "EXECUTED"
-        ? "Executed"
-        : status === "REVIEW"
-          ? "Review"
-          : status === "REJECTED"
-            ? "Rejected"
-            : "Cancelled";
+  switch (status) {
+    case "READY": return "Ready";
+    case "PARTIAL": return "Partial fill";
+    case "EXECUTED": return "Executed";
+    case "SETTLED": return "Settled";
+    case "REJECTED": return "Rejected";
+    case "CANCELLED": return "Cancelled";
+    case "PENDING": return "Pending";
+    default: return status;
+  }
 }
 
 function StatusPill({ status }: { status: DisplayStatus }) {
@@ -55,11 +50,9 @@ function StatusPill({ status }: { status: DisplayStatus }) {
       ? Clock3
       : status === "PARTIAL"
         ? RefreshCw
-        : status === "EXECUTED"
+        : status === "EXECUTED" || status === "SETTLED"
           ? CheckCircle2
-          : status === "REVIEW"
-            ? CircleAlert
-            : XCircle;
+          : XCircle;
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">
       <Icon className="h-3.5 w-3.5" />
@@ -81,16 +74,16 @@ function SideBadge({ side }: { side: OrderSide }) {
   );
 }
 
-function KpiStrip({ orders }: { orders: Order[] }) {
+function KpiStrip({ orders, total }: { orders: Order[]; total: number }) {
   const ready = orders.filter((o) => o.status === "READY" || o.status === "PARTIAL").length;
-  const review = orders.filter((o) => o.risk === "REVIEW" || o.status === "REVIEW").length;
-  const executed = orders.filter((o) => o.status === "EXECUTED");
+  const rejected = orders.filter((o) => o.status === "REJECTED" || o.status === "CANCELLED").length;
+  const executed = orders.filter((o) => o.status === "EXECUTED" || o.status === "SETTLED");
   const executedValue = executed.reduce((sum, order) => sum + order.value, 0);
   const kpis = [
     { label: "Awaiting execution", value: ready, detail: "ready for the market", icon: Clock3 },
-    { label: "Needs attention", value: review, detail: "broker checks required", icon: AlertTriangle },
-    { label: "Executed today", value: executed.length, detail: `${fmtMoney(executedValue)} settled`, icon: CheckCircle2 },
-    { label: "Orders received", value: orders.length, detail: "in current blotter", icon: ClipboardList },
+    { label: "Needs attention", value: rejected, detail: "rejected / cancelled", icon: AlertTriangle },
+    { label: "Executed", value: executed.length, detail: `${fmtMoney(executedValue)} total value`, icon: CheckCircle2 },
+    { label: "Total orders", value: total, detail: "across all pages", icon: ClipboardList },
   ];
   return (
     <div className="grid grid-cols-2 gap-3 pt-6 xl:grid-cols-4">
@@ -144,7 +137,7 @@ function OrderTable({ orders }: { orders: Order[] }) {
               >
                 <td className="max-w-[150px] px-3 py-3.5 first:pl-4">
                   <div className="truncate font-medium">{order.client}</div>
-                  <div className="mt-1 truncate text-[11px] text-muted-foreground">{order.account}</div>
+                  <div className="mt-1 truncate text-[11px] text-muted-foreground font-mono">{order.id.slice(0, 8)}</div>
                 </td>
                 <td className="px-3 py-3.5">
                   <SideBadge side={order.side} />
@@ -174,8 +167,8 @@ function OrderTable({ orders }: { orders: Order[] }) {
 }
 
 function exportOrders(orders: Order[]) {
-  const headers = ["Order ID", "Client", "Client ID", "Side", "Ticker", "Quantity", "Filled", "Limit Price", "Estimated Value", "Status", "Time in Force", "Received", "Exchange"];
-  const rows = orders.map((o) => [o.id, o.client, o.clientId, o.side, o.ticker, o.quantity, o.filled, o.limitPrice, o.value, statusLabel(o.status), o.tif, o.received, o.exchange]);
+  const headers = ["Order ID", "Client", "Client ID", "Side", "Ticker", "Quantity", "Filled", "Limit Price", "Estimated Value", "Status", "Received"];
+  const rows = orders.map((o) => [o.id, o.client, o.clientId, o.side, o.ticker, o.quantity, o.filled, o.limitPrice, o.value, statusLabel(o.status), o.received]);
   const csv = [headers, ...rows].map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
   const link = document.createElement("a");
@@ -186,20 +179,17 @@ function exportOrders(orders: Order[]) {
 }
 
 function OrdersPage() {
-  const [orders, setOrders] = useState(() => ordersStore.getAll());
   const [sideFilter, setSideFilter] = useState<"ALL" | OrderSide>("ALL");
   const [notice, setNotice] = useState("");
+  const refreshOrders = useRefreshOrders();
 
-  useEffect(() => ordersStore.subscribe(() => setOrders(ordersStore.getAll())), []);
-
-  const filteredOrders = useMemo(
-    () =>
-      orders.filter((order) => {
-        const matchesSide = sideFilter === "ALL" || order.side === sideFilter;
-        return matchesSide;
-      }),
-    [orders, sideFilter],
+  // Fetch from the real API — pass side filter as a query param
+  const { data, isLoading, isError, error } = useOrders(
+    sideFilter === "ALL" ? {} : { side: sideFilter },
   );
+
+  const orders = data?.orders ?? [];
+  const total = data?.total ?? 0;
 
   const showNotice = (msg: string) => { setNotice(msg); window.setTimeout(() => setNotice(""), 2800); };
   const orderViewLabel = sideFilter === "ALL" ? "All orders" : `${sideFilter === "BUY" ? "Buy" : "Sell"} orders`;
@@ -211,7 +201,7 @@ function OrdersPage() {
           <CheckCircle2 className="h-4 w-4" /> {notice}
         </div>
       )}
-      <KpiStrip orders={orders} />
+      <KpiStrip orders={orders} total={total} />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <label className="sr-only" htmlFor="order-side-filter">Order type</label>
@@ -230,10 +220,13 @@ function OrdersPage() {
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <button onClick={() => showNotice("Order list is up to date")} className="flex h-10 items-center gap-2 rounded-[3px] border border-border px-3 text-sm font-medium text-muted-foreground hover:bg-muted">
+          <button
+            onClick={() => { refreshOrders(); showNotice("Refreshing orders…"); }}
+            className="flex h-10 items-center gap-2 rounded-[3px] border border-border px-3 text-sm font-medium text-muted-foreground hover:bg-muted"
+          >
             <RefreshCw className="h-3.5 w-3.5" /> Refresh
           </button>
-          <button onClick={() => exportOrders(filteredOrders)} className="flex h-10 items-center gap-2 rounded-[3px] border border-border px-3 text-sm text-muted-foreground hover:bg-muted/40">
+          <button onClick={() => exportOrders(orders)} className="flex h-10 items-center gap-2 rounded-[3px] border border-border px-3 text-sm text-muted-foreground hover:bg-muted/40">
             <Download className="h-3.5 w-3.5" /> Export
           </button>
         </div>
@@ -242,12 +235,24 @@ function OrdersPage() {
       <BrokerCard
         className="overflow-hidden"
         title={orderViewLabel}
-        subtitle={`${filteredOrders.length} orders shown · click an order to open`}
+        subtitle={
+          isLoading
+            ? "Loading orders…"
+            : isError
+              ? `Error: ${(error as Error)?.message ?? 'Failed to load'}`
+              : `${orders.length} orders shown · click an order to open`
+        }
       >
-        <OrderTable orders={filteredOrders} />
+        {isLoading ? (
+          <div className="flex items-center justify-center py-14 text-muted-foreground gap-2">
+            <Loader2 className="h-5 w-5 animate-spin" /> Loading orders from server…
+          </div>
+        ) : (
+          <OrderTable orders={orders} />
+        )}
         <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
-          <span>Showing <span className="font-medium text-foreground">{filteredOrders.length}</span> of {orders.length} orders</span>
-          <span className="hidden sm:inline">Last synced just now</span>
+          <span>Showing <span className="font-medium text-foreground">{orders.length}</span> of {total} orders</span>
+          <span className="hidden sm:inline">Auto-refreshes every 15s</span>
         </div>
       </BrokerCard>
 

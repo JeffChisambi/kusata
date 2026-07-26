@@ -56,6 +56,8 @@ export function useApproveKyc() {
       // re-fetched even though no user data changed.
       queryClient.invalidateQueries({ queryKey: queryKeys.kyc.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.stats() });
+      // Also invalidate the user list so the Users page reflects updated KYC status
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.list() });
     },
   });
 }
@@ -68,6 +70,7 @@ export function useRejectKyc() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.kyc.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.stats() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.list() });
     },
   });
 }
