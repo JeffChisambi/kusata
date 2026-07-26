@@ -491,15 +491,15 @@ function NavItem({
         <div className="relative">
           {item.href ? (
             <Link to={item.href} className={cls}>
-              <Icon className={`w-[18px] h-[18px] ${active ? "text-pine" : "text-muted-foreground"}`} />
+              <Icon className={`w-[18px] h-[18px] ${active ? "text-foreground" : "text-muted-foreground"}`} />
             </Link>
           ) : (
             <button className={cls}>
-              <Icon className={`w-[18px] h-[18px] ${active ? "text-pine" : "text-muted-foreground"}`} />
+              <Icon className={`w-[18px] h-[18px] ${active ? "text-foreground" : "text-muted-foreground"}`} />
             </button>
           )}
           {item.badge != null && (
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-pine" />
+            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-muted-foreground" />
           )}
         </div>
         {flyout}
@@ -510,7 +510,7 @@ function NavItem({
   /* ── Expanded: icon + label ── */
   const rowCls = `w-full flex items-center gap-2.5 px-3 py-[7px] rounded-lg text-[13px] font-[450] transition-colors ${
     active
-      ? "bg-pine/8 text-foreground"
+      ? "bg-muted text-foreground"
       : "text-muted-foreground hover:bg-muted hover:text-foreground"
   }`;
 
@@ -519,9 +519,7 @@ function NavItem({
       {icon}
       <span className="flex-1 text-left truncate">{label}</span>
       {badge != null && (
-        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none ${
-          active ? "bg-pine/15 text-pine" : "bg-muted text-muted-foreground"
-        }`}>
+        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none bg-muted text-muted-foreground">
           {badge}
         </span>
       )}
@@ -534,7 +532,7 @@ function NavItem({
       {hasChildren ? (
         <button onClick={onToggle} className={rowCls}>
           {rowContent(
-            <Icon className={`w-4 h-4 shrink-0 ${active ? "text-pine" : "text-muted-foreground"}`} />,
+            <Icon className={`w-4 h-4 shrink-0 ${active ? "text-foreground" : "text-muted-foreground"}`} />,
             item.label,
             item.badge,
             isOpen
@@ -545,7 +543,7 @@ function NavItem({
       ) : item.href ? (
         <Link to={item.href} className={rowCls}>
           {rowContent(
-            <Icon className={`w-4 h-4 shrink-0 ${active ? "text-pine" : "text-muted-foreground"}`} />,
+            <Icon className={`w-4 h-4 shrink-0 ${active ? "text-foreground" : "text-muted-foreground"}`} />,
             item.label,
             item.badge,
           )}

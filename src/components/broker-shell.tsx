@@ -296,13 +296,13 @@ function BrokerNavItem({
             onMouseLeave={scheduleHide}
           >
             <div className="bg-card rounded-[4px] shadow-xl border border-border min-w-[192px] overflow-hidden">
-              <div className={`px-3.5 py-2.5 flex items-center gap-2.5 border-b ${active ? "border-pine/20 bg-pine/5" : "border-border"}`}>
-                <div className={`w-6 h-6 rounded-[3px] flex items-center justify-center shrink-0 ${active ? "bg-pine/15" : "bg-muted"}`}>
-                  <Icon className={`w-3.5 h-3.5 ${active ? "text-pine" : "text-muted-foreground"}`} />
+              <div className={`px-3.5 py-2.5 flex items-center gap-2.5 border-b border-border ${active ? "bg-muted/60" : ""}`}>
+                <div className="w-6 h-6 rounded-[3px] flex items-center justify-center shrink-0 bg-muted">
+                  <Icon className={`w-3.5 h-3.5 ${active ? "text-foreground" : "text-muted-foreground"}`} />
                 </div>
-                <span className={`text-[12px] font-semibold leading-none ${active ? "text-pine" : "text-foreground"}`}>{item.label}</span>
+                <span className="text-[12px] font-semibold leading-none text-foreground">{item.label}</span>
                 {item.badge != null && (
-                  <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-pine/10 text-pine leading-none shrink-0">{item.badge}</span>
+                  <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground leading-none shrink-0">{item.badge}</span>
                 )}
               </div>
               {hasChildren ? (
@@ -315,7 +315,7 @@ function BrokerNavItem({
                       >
                         <span className="flex-1 truncate">{c.label}</span>
                         {c.badge != null && (
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-pine/10 text-pine leading-none shrink-0">{c.badge}</span>
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground leading-none shrink-0">{c.badge}</span>
                         )}
                       </Link>
                     </li>
@@ -338,9 +338,9 @@ function BrokerNavItem({
       >
         <div className="relative">
           {item.href
-            ? <Link to={item.href} className={cls}><Icon className={`w-[18px] h-[18px] ${active ? "text-pine" : "text-muted-foreground"}`} /></Link>
-            : <button className={cls}><Icon className={`w-[18px] h-[18px] ${active ? "text-pine" : "text-muted-foreground"}`} /></button>}
-          {item.badge != null && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-pine" />}
+            ? <Link to={item.href} className={cls}><Icon className={`w-[18px] h-[18px] ${active ? "text-foreground" : "text-muted-foreground"}`} /></Link>
+            : <button className={cls}><Icon className={`w-[18px] h-[18px] ${active ? "text-foreground" : "text-muted-foreground"}`} /></button>}
+          {item.badge != null && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-muted-foreground" />}
         </div>
         {flyout}
       </li>
@@ -350,12 +350,12 @@ function BrokerNavItem({
   /* ── Expanded: icon + label with left-border active indicator ── */
   const rowCls = `relative w-full flex items-center gap-2.5 px-3 py-[7px] rounded-[4px] text-[13px] font-[450] transition-colors ${
     active
-      ? "bg-pine/8 text-foreground font-medium"
+      ? "bg-muted text-foreground font-medium"
       : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
   }`;
 
   const activeIndicator = active
-    ? <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-pine" />
+    ? <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-foreground" />
     : null;
 
   const rowContent = (icon: React.ReactNode, label: string, badge?: string | number, chevron?: React.ReactNode) => (
@@ -364,7 +364,7 @@ function BrokerNavItem({
       {icon}
       <span className="flex-1 text-left truncate">{label}</span>
       {badge != null && (
-        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none ${active ? "bg-pine/15 text-pine" : "bg-muted text-muted-foreground"}`}>
+        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none bg-muted text-muted-foreground">
           {badge}
         </span>
       )}
@@ -377,14 +377,14 @@ function BrokerNavItem({
       {hasChildren ? (
         <button onClick={onToggle} className={rowCls}>
           {rowContent(
-            <Icon className={`w-4 h-4 shrink-0 ${active ? "text-pine" : "text-muted-foreground"}`} />,
+            <Icon className={`w-4 h-4 shrink-0 ${active ? "text-foreground" : "text-muted-foreground"}`} />,
             item.label, item.badge,
             isOpen ? <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" /> : <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />,
           )}
         </button>
       ) : item.href ? (
         <Link to={item.href} className={rowCls}>
-          {rowContent(<Icon className={`w-4 h-4 shrink-0 ${active ? "text-pine" : "text-muted-foreground"}`} />, item.label, item.badge)}
+          {rowContent(<Icon className={`w-4 h-4 shrink-0 ${active ? "text-foreground" : "text-muted-foreground"}`} />, item.label, item.badge)}
         </Link>
       ) : (
         <button className={rowCls}>
