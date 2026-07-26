@@ -113,14 +113,6 @@ const KPIS = [
     trend: "down" as const,
     sub: "MK 340K at risk",
   },
-  {
-    icon: Headphones,
-    label: "Open Tickets",
-    value: "18",
-    delta: "3 escalated",
-    trend: "flat" as const,
-    sub: "avg. resolution 6h",
-  },
 ];
 
 // ─── Components ───────────────────────────────────────────────────────────────
