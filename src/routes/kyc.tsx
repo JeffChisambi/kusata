@@ -146,29 +146,6 @@ function KycPage() {
 
       {/* Tab bar */}
       <div className="flex items-center gap-0.5 border-b border-border -mx-8 px-8">
-        <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
-          {tabs.map((t) => {
-            const Icon = t.icon;
-            const count = applications.filter(t.filter).length;
-            const isActive = t.key === activeTab;
-            return (
-              <button
-                key={t.key}
-                onClick={() => setActiveTab(t.key)}
-                className={`relative flex items-center gap-1.5 whitespace-nowrap px-3 py-3 text-[13px] font-medium transition-colors shrink-0 ${
-                  isActive ? "text-pine" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {t.label}
-                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${isActive ? "bg-pine/10 text-pine" : "bg-muted text-muted-foreground"}`}>
-                  {count}
-                </span>
-                {isActive && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-pine rounded-full" />}
-              </button>
-            );
-          })}
-        </div>
         <FilterTabsDropdown activeTab={activeTab} setActiveTab={setActiveTab} applications={applications} />
         <div className="ml-auto flex items-center gap-2 py-2">
           <button className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border text-sm text-muted-foreground hover:bg-muted/40">
@@ -280,7 +257,7 @@ function FilterTabsDropdown({
     return () => document.removeEventListener("mousedown", h);
   }, [open]);
 
-  const activeFilterTab = filterTabs.find((t) => t.key === activeTab);
+  const activeFilterTab = allTabs.find((t) => t.key === activeTab);
   const ButtonIcon = activeFilterTab?.icon ?? FileText;
 
   return (
@@ -297,8 +274,8 @@ function FilterTabsDropdown({
         {activeFilterTab && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-pine rounded-full" />}
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[13rem] rounded-[3px] border border-border bg-card shadow-lg py-1 overflow-hidden">
-          {filterTabs.map((t) => {
+        <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[13rem] rounded-[3px] border border-border bg-card shadow-lg py-1 overflow-hidden">
+          {allTabs.map((t) => {
             const Icon = t.icon;
             const count = applications.filter(t.filter).length;
             const isActive = t.key === activeTab;
