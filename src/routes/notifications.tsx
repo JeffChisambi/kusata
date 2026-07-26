@@ -80,10 +80,10 @@ const typeConfig: Record<NotifType, { icon: React.ComponentType<{ className?: st
 };
 
 const channelConfig: Record<Channel, { icon: React.ComponentType<{ className?: string }>; label: string; cls: string }> = {
-  push:      { icon: Smartphone,    label: "Push",      cls: "bg-sky/10 text-sky" },
-  email:     { icon: Mail,          label: "Email",     cls: "bg-violet-500/10 text-violet-500" },
-  sms:       { icon: MessageSquare, label: "SMS",       cls: "bg-amber/10 text-amber" },
-  broadcast: { icon: Megaphone,     label: "Broadcast", cls: "bg-pine/10 text-pine" },
+  push:      { icon: Smartphone,    label: "Push",      cls: "text-sky border border-sky/30" },
+  email:     { icon: Mail,          label: "Email",     cls: "text-violet-500 border border-violet-500/30" },
+  sms:       { icon: MessageSquare, label: "SMS",       cls: "text-amber border border-amber/30" },
+  broadcast: { icon: Megaphone,     label: "Broadcast", cls: "text-pine border border-pine/30" },
 };
 
 const segments = ["All Users", "Active Traders", "Tier 1 Users", "Tier 2 Users", "Inactive 30d", "New Signups", "KYC Pending"];
