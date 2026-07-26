@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { AdminShell, Card } from "@/components/admin-shell";
 import { RoleShell } from "@/components/role-shell";
+import { useNotificationsList, useNotificationStats } from "@/hooks/useNotifications";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
@@ -34,30 +35,12 @@ type Notif = {
   recipients: number;
 };
 
-/* ─────────────────────────── mock data ─────────────────────────── */
-
-const notifications: Notif[] = [
-  { id: "1",  type: "alert",   channel: "broadcast", title: "Trading suspended: MCB",              message: "Trading for Malawi Commercial Bank has been temporarily suspended pending regulatory review.",    sentAt: "2026-06-06T10:42:00Z", read: false, recipients: 184203 },
-  { id: "2",  type: "warning", channel: "push",      title: "Withdrawal limit approaching",         message: "15 users have reached 90% of their daily withdrawal limit. Review may be required.",             sentAt: "2026-06-06T09:15:00Z", read: false, recipients: 15 },
-  { id: "3",  type: "success", channel: "push",      title: "KYC batch approved",                  message: "12 KYC submissions were approved automatically after passing all verification checks.",           sentAt: "2026-06-06T08:30:00Z", read: false, recipients: 12 },
-  { id: "4",  type: "info",    channel: "email",     title: "Monthly statements dispatched",        message: "June 2026 account statements have been emailed to all 184,203 active users successfully.",       sentAt: "2026-06-06T07:00:00Z", read: false, recipients: 184203 },
-  { id: "5",  type: "alert",   channel: "sms",       title: "Failed OTP deliveries",               message: "38 OTP SMS messages failed delivery in the last hour. Provider: Airtel. Retrying automatically.", sentAt: "2026-06-06T06:50:00Z", read: false, recipients: 38 },
-  { id: "6",  type: "success", channel: "broadcast", title: "System maintenance complete",          message: "Scheduled maintenance completed successfully. All services restored and operating normally.",      sentAt: "2026-06-05T23:10:00Z", read: true,  recipients: 184203 },
-  { id: "7",  type: "info",    channel: "push",      title: "Market opens in 15 minutes",           message: "Malawi Stock Exchange opens at 09:00 WAT. 14,208 active traders have been notified.",            sentAt: "2026-06-05T08:45:00Z", read: true,  recipients: 14208 },
-  { id: "8",  type: "warning", channel: "email",     title: "Unverified accounts reminder",         message: "892 accounts registered over 30 days ago have not completed KYC. Reminder emails dispatched.",   sentAt: "2026-06-05T08:00:00Z", read: true,  recipients: 892 },
-  { id: "9",  type: "success", channel: "push",      title: "Dividend payments processed",          message: "NICO Holdings dividend of MWK 2.40 per share credited to 3,402 eligible portfolios.",            sentAt: "2026-06-04T14:22:00Z", read: true,  recipients: 3402 },
-  { id: "10", type: "info",    channel: "broadcast", title: "New trading hours effective Monday",   message: "MSE trading hours will change from 09:00–12:00 to 09:00–13:00 effective 9 June 2026.",           sentAt: "2026-06-04T09:00:00Z", read: true,  recipients: 184203 },
-  { id: "11", type: "alert",   channel: "email",     title: "AML flag: large transaction",         message: "A transaction of MWK 42M was flagged by AML rules. User U-90137 has been placed under review.",   sentAt: "2026-06-03T16:05:00Z", read: true,  recipients: 1 },
-  { id: "12", type: "success", channel: "sms",       title: "Bulk withdrawal batch settled",        message: "1,984 withdrawal transactions totalling MWK 942M settled successfully via RTGS.",                sentAt: "2026-06-03T15:30:00Z", read: true,  recipients: 1984 },
-];
-
 /* ─────────────────────────── helpers ─────────────────────────── */
 
-const NOW_UTC = Date.UTC(2026, 5, 6, 12, 0, 0);
-
 function relativeTime(iso: string) {
-  const diff = NOW_UTC - new Date(iso).getTime();
+  const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60_000);
+  if (m < 1) return "just now";
   if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ago`;
@@ -91,12 +74,45 @@ const segments = ["All Users", "Active Traders", "Tier 1 Users", "Tier 2 Users",
 /* ─────────────────────────── page ─────────────────────────── */
 
 function NotificationsPage() {
-  const [items, setItems] = useState<Notif[]>(notifications);
+  const { data: rawData, isLoading } = useNotificationsList();
+  const { data: stats } = useNotificationStats();
+
+  // The API may return { notifications: Notif[] } or Notif[] directly — handle both
+  const serverItems: Notif[] = (() => {
+    if (!rawData) return [];
+    if (Array.isArray(rawData)) return rawData as Notif[];
+    const d = rawData as Record<string, unknown>;
+    if (Array.isArray(d.notifications)) return d.notifications as Notif[];
+    if (Array.isArray(d.data)) return d.data as Notif[];
+    return [];
+  })();
+
+  const [items, setItems] = useState<Notif[]>([]);
   const [compose, setCompose] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
 
+  // Sync local state when server data arrives
+  useEffect(() => {
+    if (serverItems.length > 0) {
+      setItems(serverItems);
+    }
+  }, [rawData]);
+
   const unread = items.filter((n) => !n.read).length;
   const visible = filter === "unread" ? items.filter((n) => !n.read) : items;
+
+  // Derive "sent today" from items (sentAt within last 24h)
+  const sentToday = items.filter((n) => {
+    const diff = Date.now() - new Date(n.sentAt).getTime();
+    return diff < 24 * 60 * 60 * 1000;
+  }).length;
+
+  // "Scheduled" count from stats if available
+  const scheduled = (() => {
+    if (!stats) return 0;
+    const pending = stats.byStatus?.find((s) => s.status === "scheduled" || s.status === "pending");
+    return pending?.count ?? 0;
+  })();
 
   const markAllRead = () => setItems((prev) => prev.map((n) => ({ ...n, read: true })));
   const markRead = (id: string) => setItems((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
@@ -117,13 +133,13 @@ function NotificationsPage() {
           <SummaryCard
             icon={Send}
             label="Sent today"
-            value={items.filter((n) => relativeTime(n.sentAt).endsWith("h ago") || relativeTime(n.sentAt).endsWith("m ago")).length}
+            value={sentToday}
             sub="notifications dispatched"
           />
           <SummaryCard
             icon={Clock}
             label="Scheduled"
-            value={12}
+            value={scheduled}
             sub="pending delivery"
           />
         </div>
@@ -170,7 +186,9 @@ function NotificationsPage() {
             </div>
           }
         >
-          {visible.length === 0 ? (
+          {isLoading ? (
+            <div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>
+          ) : visible.length === 0 ? (
             <div className="py-16 text-center">
               <CheckCircle2 className="w-8 h-8 text-pine mx-auto mb-3" />
               <p className="text-sm font-medium">All caught up</p>
@@ -218,8 +236,8 @@ function SummaryCard({
 /* ─────────────────────────── feed item ─────────────────────────── */
 
 function NotifItem({ notif: n, onRead }: { notif: Notif; onRead: (id: string) => void }) {
-  const tc = typeConfig[n.type];
-  const cc = channelConfig[n.channel];
+  const tc = typeConfig[n.type] ?? typeConfig.info;
+  const cc = channelConfig[n.channel] ?? channelConfig.push;
   const TypeIcon = tc.icon;
   const ChanIcon = cc.icon;
 

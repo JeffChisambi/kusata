@@ -17,27 +17,20 @@ function useCssVar(...vars: string[]) {
   }, []);
   return values;
 }
+
 import {
   Users,
   FileCheck2,
   Wallet,
-  CreditCard,
   Headphones,
   TrendingUp,
   TrendingDown,
   Clock,
   ArrowUpRight,
-  ArrowDownRight,
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  MoreHorizontal,
-  Mail,
-  Phone,
-  MapPin,
-  WalletCards,
   ChevronRight,
-  CircleUserRound,
 } from "lucide-react";
 import {
   AreaChart,
@@ -51,6 +44,8 @@ import {
   Tooltip,
 } from "recharts";
 import { BrokerShell, BrokerCard } from "@/components/broker-shell";
+import { useDashboardStats, useDashboardCharts } from "@/hooks/useDashboard";
+import { useKycQueue } from "@/hooks/useKyc";
 
 export const Route = createFileRoute("/broker")({
   head: () => ({
@@ -75,179 +70,15 @@ const fmtMoney = (n: number) => {
   return `MK ${n}`;
 };
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const clientGrowth = [
-  { day: "Mon", clients: 420 },
-  { day: "Tue", clients: 438 },
-  { day: "Wed", clients: 451 },
-  { day: "Thu", clients: 466 },
-  { day: "Fri", clients: 480 },
-  { day: "Sat", clients: 475 },
-  { day: "Sun", clients: 493 },
-];
-
-const tradeVolume = [
-  { day: "Mon", volume: 2_800_000 },
-  { day: "Tue", volume: 3_400_000 },
-  { day: "Wed", volume: 2_100_000 },
-  { day: "Thu", volume: 4_200_000 },
-  { day: "Fri", volume: 3_900_000 },
-  { day: "Sat", volume: 1_200_000 },
-  { day: "Sun", volume: 900_000 },
-];
-
-const recentKyc = [
-  { name: "Chisomo Banda", id: "KYC-2841", submitted: "2 min ago", status: "PENDING" },
-  { name: "Grace Mwale", id: "KYC-2840", submitted: "18 min ago", status: "PENDING" },
-  { name: "Tadala Phiri", id: "KYC-2839", submitted: "34 min ago", status: "APPROVED" },
-  { name: "Peter Gondwe", id: "KYC-2838", submitted: "1 hr ago", status: "REJECTED" },
-  { name: "Mercy Chirwa", id: "KYC-2837", submitted: "2 hr ago", status: "APPROVED" },
-];
-
-const recentOrders = [
-  {
-    id: "ORD-5041",
-    client: "Chisomo Banda",
-    initials: "CB",
-    clientId: "U-0041",
-    email: "chisomo.banda@email.com",
-    phone: "+265 991 204 841",
-    location: "Lilongwe",
-    accountType: "Individual",
-    kyc: "Verified",
-    wallet: 184_250,
-    ticker: "AIRTEL",
-    company: "Airtel Malawi Ltd",
-    type: "BUY",
-    shares: 20,
-    price: 2_100,
-    value: 42_000,
-    status: "FILLED",
-    placed: "Today, 09:14",
-    executed: "Today, 09:18",
-    channel: "Mobile app",
-  },
-  {
-    id: "ORD-5040",
-    client: "Grace Mwale",
-    initials: "GM",
-    clientId: "U-0082",
-    email: "grace.mwale@email.com",
-    phone: "+265 888 410 822",
-    location: "Blantyre",
-    accountType: "Individual",
-    kyc: "Verified",
-    wallet: 92_600,
-    ticker: "NBM",
-    company: "National Bank of Malawi",
-    type: "SELL",
-    shares: 5,
-    price: 3_700,
-    value: 18_500,
-    status: "FILLED",
-    placed: "Today, 09:02",
-    executed: "Today, 09:07",
-    channel: "Broker assisted",
-  },
-  {
-    id: "ORD-5039",
-    client: "Tadala Phiri",
-    initials: "TP",
-    clientId: "U-0017",
-    email: "tadala.phiri@email.com",
-    phone: "+265 999 351 017",
-    location: "Mzuzu",
-    accountType: "Individual",
-    kyc: "Verified",
-    wallet: 12_850,
-    ticker: "FDH",
-    company: "FDH Financial Holdings",
-    type: "BUY",
-    shares: 10,
-    price: 920,
-    value: 9_200,
-    status: "PENDING",
-    placed: "Today, 08:55",
-    executed: "—",
-    channel: "Mobile app",
-  },
-  {
-    id: "ORD-5038",
-    client: "Peter Gondwe",
-    initials: "PG",
-    clientId: "U-0055",
-    email: "peter.gondwe@email.com",
-    phone: "+265 888 602 055",
-    location: "Lilongwe",
-    accountType: "Joint",
-    kyc: "Verified",
-    wallet: 46_400,
-    ticker: "ILLOVO",
-    company: "Illovo Sugar Malawi",
-    type: "BUY",
-    shares: 3,
-    price: 10_600,
-    value: 31_800,
-    status: "CANCELLED",
-    placed: "Today, 08:40",
-    executed: "—",
-    channel: "Mobile app",
-  },
-  {
-    id: "ORD-5037",
-    client: "Mercy Chirwa",
-    initials: "MC",
-    clientId: "U-0093",
-    email: "mercy.chirwa@email.com",
-    phone: "+265 991 706 093",
-    location: "Blantyre",
-    accountType: "Individual",
-    kyc: "Verified",
-    wallet: 67_900,
-    ticker: "STANDARD",
-    company: "Standard Bank Malawi",
-    type: "SELL",
-    shares: 8,
-    price: 2_800,
-    value: 22_400,
-    status: "FILLED",
-    placed: "Today, 08:22",
-    executed: "Today, 08:28",
-    channel: "Broker assisted",
-  },
-];
-
-const supportTickets = [
-  {
-    id: "TKT-910",
-    client: "R. Nkhonjera",
-    issue: "Withdrawal not received",
-    priority: "HIGH",
-    time: "5 min ago",
-  },
-  {
-    id: "TKT-909",
-    client: "L. Kachingwe",
-    issue: "KYC re-upload request",
-    priority: "MEDIUM",
-    time: "22 min ago",
-  },
-  {
-    id: "TKT-908",
-    client: "B. Mbewe",
-    issue: "Login locked out",
-    priority: "HIGH",
-    time: "1 hr ago",
-  },
-  {
-    id: "TKT-907",
-    client: "S. Tembo",
-    issue: "Wrong trade executed",
-    priority: "HIGH",
-    time: "3 hr ago",
-  },
-];
+function relativeTime(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} hr ago`;
+  return `${Math.floor(h / 24)} days ago`;
+}
 
 // ─── Custom icons ─────────────────────────────────────────────────────────────
 
@@ -272,47 +103,47 @@ function TradeVolumeIcon({ className }: { className?: string }) {
 
 // ─── KPI cards ────────────────────────────────────────────────────────────────
 
-const KPIS = [
-  {
-    icon: Users,
-    label: "Active Clients",
-    value: "493",
-    delta: "+13 today",
-    trend: "up" as const,
-    sub: "out of 512 registered",
-  },
-  {
-    icon: FileCheck2,
-    label: "Pending KYC",
-    value: "27",
-    delta: "needs review",
-    trend: "flat" as const,
-    sub: "avg. 4h to resolve",
-  },
-  {
-    icon: TradeVolumeIcon,
-    label: "Trade Volume (today)",
-    value: fmtMoney(3_900_000),
-    delta: "+18% vs yesterday",
-    trend: "up" as const,
-    sub: "48 orders executed",
-  },
-  {
-    icon: Wallet,
-    label: "Total Client Funds",
-    value: fmtMoney(84_500_000),
-    delta: "live",
-    trend: "up" as const,
-    sub: "across all wallets",
-  },
-];
-
-// ─── Components ───────────────────────────────────────────────────────────────
-
 function KpiGrid() {
+  const { data: stats, isLoading } = useDashboardStats();
+
+  const kpis = [
+    {
+      icon: Users,
+      label: "Active Clients",
+      value: isLoading ? "—" : (stats?.activeUsers ?? 0).toLocaleString(),
+      delta: isLoading ? "" : `+${stats?.todayNewUsers ?? 0} today`,
+      trend: "up" as const,
+      sub: isLoading ? "" : `out of ${(stats?.totalUsers ?? 0).toLocaleString()} registered`,
+    },
+    {
+      icon: FileCheck2,
+      label: "Pending KYC",
+      value: isLoading ? "—" : (stats?.pendingKyc ?? 0).toString(),
+      delta: "needs review",
+      trend: "flat" as const,
+      sub: "avg. 4h to resolve",
+    },
+    {
+      icon: TradeVolumeIcon,
+      label: "Trade Volume (today)",
+      value: isLoading ? "—" : fmtMoney(Number(stats?.todayVolume ?? 0)),
+      delta: isLoading ? "" : `${stats?.todayOrders ?? 0} orders`,
+      trend: "up" as const,
+      sub: "orders executed today",
+    },
+    {
+      icon: Wallet,
+      label: "Total Client Funds",
+      value: isLoading ? "—" : fmtMoney(Number(stats?.totalWalletBalance ?? 0)),
+      delta: "live",
+      trend: "up" as const,
+      sub: "across all wallets",
+    },
+  ];
+
   return (
     <div className="flex gap-4">
-      {KPIS.map((k) => {
+      {kpis.map((k) => {
         const Icon = k.icon;
         const trendColor = "text-muted-foreground";
         const trendIconColor =
@@ -327,11 +158,13 @@ function KpiGrid() {
               <div className="w-9 h-9 flex items-center justify-center text-muted-foreground">
                 <Icon className="w-4.5 h-4.5" />
               </div>
-              <span
-                className={`inline-flex items-center gap-1 text-[11px] font-medium ${trendColor}`}
-              >
-                <TrendIcon className={`w-3 h-3 ${trendIconColor}`} /> {k.delta}
-              </span>
+              {k.delta && (
+                <span
+                  className={`inline-flex items-center gap-1 text-[11px] font-medium ${trendColor}`}
+                >
+                  <TrendIcon className={`w-3 h-3 ${trendIconColor}`} /> {k.delta}
+                </span>
+              )}
             </div>
             <div>
               <div className="text-xs text-muted-foreground">{k.label}</div>
@@ -349,51 +182,68 @@ function ClientGrowthChart() {
   const [pine, border, mutedFg, card, fg] = useCssVar(
     "--pine", "--border", "--muted-foreground", "--card", "--foreground"
   );
+  const { data: charts, isLoading } = useDashboardCharts(7);
+
+  const data = (charts ?? []).map((d) => ({
+    day: new Date(d.date).toLocaleDateString("en-US", { weekday: "short" }),
+    clients: d.activeUsers,
+  }));
+
   return (
     <BrokerCard
       title="Client Activity"
       subtitle="Active client count — last 7 days"
       className="xl:col-span-2"
     >
-      <ResponsiveContainer width="100%" height={200}>
-        <AreaChart data={clientGrowth} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
-          <defs>
-            <linearGradient id="brokerClientGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={pine} stopOpacity={0.25} />
-              <stop offset="100%" stopColor={pine} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke={border} />
-          <XAxis
-            dataKey="day"
-            tick={{ fontSize: 11, fill: mutedFg }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fontSize: 11, fill: mutedFg }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <Tooltip
-            contentStyle={{
-              background: card,
-              border: `1px solid ${border}`,
-              borderRadius: 10,
-              fontSize: 12,
-            }}
-            labelStyle={{ color: fg }}
-          />
-          <Area
-            type="monotone"
-            dataKey="clients"
-            stroke={pine}
-            strokeWidth={2}
-            fill="url(#brokerClientGrad)"
-            dot={false}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+      {isLoading ? (
+        <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground">
+          Loading…
+        </div>
+      ) : data.length === 0 ? (
+        <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground">
+          No data available
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={data} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+            <defs>
+              <linearGradient id="brokerClientGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={pine} stopOpacity={0.25} />
+                <stop offset="100%" stopColor={pine} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={border} />
+            <XAxis
+              dataKey="day"
+              tick={{ fontSize: 11, fill: mutedFg }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: mutedFg }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip
+              contentStyle={{
+                background: card,
+                border: `1px solid ${border}`,
+                borderRadius: 10,
+                fontSize: 12,
+              }}
+              labelStyle={{ color: fg }}
+            />
+            <Area
+              type="monotone"
+              dataKey="clients"
+              stroke={pine}
+              strokeWidth={2}
+              fill="url(#brokerClientGrad)"
+              dot={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
     </BrokerCard>
   );
 }
@@ -402,53 +252,73 @@ function TradeVolumeChart() {
   const [pine, border, mutedFg, card] = useCssVar(
     "--pine", "--border", "--muted-foreground", "--card"
   );
+  const { data: charts, isLoading } = useDashboardCharts(7);
+
+  const data = (charts ?? []).map((d) => ({
+    day: new Date(d.date).toLocaleDateString("en-US", { weekday: "short" }),
+    volume: parseFloat(d.volume),
+  }));
+
   return (
     <BrokerCard title="Trade Volume" subtitle="Daily MWK volume — last 7 days">
-      <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={tradeVolume} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke={border} strokeWidth={1} />
-          <XAxis
-            dataKey="day"
-            tick={{ fontSize: 11, fill: mutedFg }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fontSize: 11, fill: mutedFg }}
-            axisLine={false}
-            tickLine={false}
-            tickFormatter={(v) => fmtMoney(v).replace("MK ", "")}
-          />
-          <Tooltip
-            contentStyle={{
-              background: card,
-              border: `1px solid ${border}`,
-              borderRadius: 10,
-              fontSize: 12,
-            }}
-            formatter={(v: number) => [fmtMoney(v), "Volume"]}
-          />
-          <Bar
-            dataKey="volume"
-            fill={pine}
-            barCategoryGap="0%"
-            barGap={0}
-            radius={[4, 4, 0, 0]}
-            activeBar={{ fill: pine, fillOpacity: 0.75 }}
-          />
-        </BarChart>
-      </ResponsiveContainer>
+      {isLoading ? (
+        <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground">
+          Loading…
+        </div>
+      ) : data.length === 0 ? (
+        <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground">
+          No data available
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={data} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={border} strokeWidth={1} />
+            <XAxis
+              dataKey="day"
+              tick={{ fontSize: 11, fill: mutedFg }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: mutedFg }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(v) => fmtMoney(v).replace("MK ", "")}
+            />
+            <Tooltip
+              contentStyle={{
+                background: card,
+                border: `1px solid ${border}`,
+                borderRadius: 10,
+                fontSize: 12,
+              }}
+              formatter={(v: number) => [fmtMoney(v), "Volume"]}
+            />
+            <Bar
+              dataKey="volume"
+              fill={pine}
+              barCategoryGap="0%"
+              barGap={0}
+              radius={[4, 4, 0, 0]}
+              activeBar={{ fill: pine, fillOpacity: 0.75 }}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
     </BrokerCard>
   );
 }
 
 function KycQueue() {
+  const { data, isLoading } = useKycQueue({ limit: 5 });
+  const items = data?.applications ?? [];
+
   const iconColor = (status: string) => {
     if (status === "PENDING") return "text-amber";
     if (status === "APPROVED") return "text-pine";
     return "text-rose";
   };
-  const Icon = (status: string) => {
+  const StatusIcon = (status: string) => {
     if (status === "PENDING") return <Clock className={`w-3.5 h-3.5 ${iconColor(status)}`} />;
     if (status === "APPROVED")
       return <CheckCircle2 className={`w-3.5 h-3.5 ${iconColor(status)}`} />;
@@ -465,38 +335,43 @@ function KycQueue() {
         </button>
       }
     >
-      <div className="space-y-1">
-        {recentKyc.map((row) => (
-          <div
-            key={row.id}
-            className="flex items-center gap-3 py-2.5 border-b border-border last:border-0"
-          >
-            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-              <span className="text-[11px] font-semibold text-muted-foreground">
-                {row.name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")}
+      {isLoading ? (
+        <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+      ) : items.length === 0 ? (
+        <div className="py-8 text-center text-sm text-muted-foreground">No pending applications</div>
+      ) : (
+        <div className="space-y-1">
+          {items.map((row) => (
+            <div
+              key={row.id}
+              className="flex items-center gap-3 py-2.5 border-b border-border last:border-0"
+            >
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                <span className="text-[11px] font-semibold text-muted-foreground">
+                  {row.userName
+                    .split(" ")
+                    .map((n: string) => n[0])
+                    .join("")}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-medium text-foreground truncate">{row.userName}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {relativeTime(row.submittedAt)}
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground w-24 shrink-0">
+                {StatusIcon(row.status)} {row.status}
               </span>
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-medium text-foreground truncate">{row.name}</div>
-              <div className="text-[11px] text-muted-foreground">
-                {row.submitted}
-              </div>
-            </div>
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground w-24 shrink-0">
-              {Icon(row.status)} {row.status}
-            </span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </BrokerCard>
   );
 }
 
 function RecentOrders() {
-  const [selectedOrder, setSelectedOrder] = useState(recentOrders[0]);
   const navigate = useNavigate();
 
   return (
@@ -513,246 +388,33 @@ function RecentOrders() {
         </Link>
       }
     >
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.9fr)] gap-5">
-        <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="border-b border-border">
-                {["Client", "Order", "Value", "Placed", "Status", ""].map((h) => (
-                  <th
-                    key={h}
-                    className="text-left py-2 pr-4 text-[10px] font-semibold text-muted-foreground tracking-[0.08em] uppercase whitespace-nowrap"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {recentOrders.map((o) => {
-                const active = selectedOrder.id === o.id;
-                return (
-                  <tr
-                    key={o.id}
-                    onClick={() => navigate({ to: "/orders/$orderId", params: { orderId: o.id } })}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        navigate({ to: "/orders/$orderId", params: { orderId: o.id } });
-                      }
-                    }}
-                    tabIndex={0}
-                    data-testid={`row-order-${o.id}`}
-                    aria-label={`Open order ${o.id}`}
-                    className={`border-b border-border last:border-0 cursor-pointer transition-colors ${active ? "bg-pine/5" : "hover:bg-muted/30"}`}
-                  >
-                    <td className="py-3 pr-4">
-                      <div className="flex items-center gap-2.5 min-w-[150px]">
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${active ? "bg-pine text-white" : "bg-muted text-muted-foreground"}`}
-                        >
-                          {o.initials}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-medium truncate">{o.client}</div>
-                          <div className="text-[10px] text-muted-foreground">
-                            {o.clientId} · {o.accountType}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 pr-4 min-w-[140px]">
-                      <div className="font-semibold flex items-center gap-1">
-                        {o.type === "BUY" ? (
-                          <ArrowUpRight className="w-3.5 h-3.5 text-pine" />
-                        ) : (
-                          <ArrowDownRight className="w-3.5 h-3.5 text-rose" />
-                        )}
-                        {o.type} {o.shares.toLocaleString()} {o.ticker}
-                      </div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5">{o.company}</div>
-                    </td>
-                    <td className="py-3 pr-4 font-semibold whitespace-nowrap">
-                      {fmtMoney(o.value)}
-                    </td>
-                    <td className="py-3 pr-4 text-[11px] text-muted-foreground whitespace-nowrap">
-                      {o.placed}
-                    </td>
-                    <td className="py-3 pr-2">
-                      <span
-                        className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full ${
-                          o.status === "FILLED"
-                            ? "bg-pine/10 text-pine"
-                            : o.status === "PENDING"
-                              ? "bg-amber/10 text-amber"
-                              : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {o.status === "FILLED" ? (
-                          <CheckCircle2 className="w-3 h-3" />
-                        ) : o.status === "PENDING" ? (
-                          <Clock className="w-3 h-3" />
-                        ) : (
-                          <XCircle className="w-3 h-3" />
-                        )}
-                        {o.status}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-1">
-                      <ChevronRight
-                        className={`w-4 h-4 text-muted-foreground transition-transform ${active ? "rotate-90 text-pine" : ""}`}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <div className="flex items-center justify-between pt-3 text-[11px] text-muted-foreground">
-            <span>Showing {recentOrders.length} of 48 orders</span>
-            <span className="inline-flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-pine" /> Live updates
-            </span>
-          </div>
-        </div>
-
-        <OrderReview order={selectedOrder} />
+      <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+        <div className="text-sm text-muted-foreground">No recent orders to display.</div>
+        <button
+          onClick={() => navigate({ to: "/orders" })}
+          className="inline-flex items-center gap-1.5 text-[12px] text-pine hover:underline"
+        >
+          Go to order blotter <ChevronRight className="w-3.5 h-3.5" />
+        </button>
       </div>
     </BrokerCard>
   );
 }
 
-function OrderReview({ order }: { order: (typeof recentOrders)[number] }) {
-  return (
-    <div className="rounded-[3px] border border-border bg-muted/20 overflow-hidden">
-      <div className="px-4 py-3 border-b border-border flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-full bg-pine/10 text-pine flex items-center justify-center">
-            <CircleUserRound className="w-4.5 h-4.5" />
-          </div>
-          <div>
-            <div className="text-sm font-semibold">{order.client}</div>
-            <div className="text-[10px] text-muted-foreground">
-              {order.clientId} · {order.accountType} account
-            </div>
-          </div>
-        </div>
-        <span
-          className={`text-[10px] font-semibold px-2 py-1 rounded-full ${order.status === "FILLED" ? "bg-pine/10 text-pine" : order.status === "PENDING" ? "bg-amber/10 text-amber" : "bg-muted text-muted-foreground"}`}
-        >
-          {order.status}
-        </span>
-      </div>
-      <div className="p-4 space-y-4">
-        <div className="rounded-[3px] bg-card border border-border p-3">
-          <div className="flex items-center justify-between mb-2">
-            <span
-              className={`text-[11px] font-bold tracking-[0.12em] ${order.type === "BUY" ? "text-pine" : "text-rose"}`}
-            >
-              {order.type} ORDER
-            </span>
-            <span className="font-mono text-[10px] text-muted-foreground">{order.id}</span>
-          </div>
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <div className="text-lg font-bold">{order.ticker}</div>
-              <div className="text-[11px] text-muted-foreground">{order.company}</div>
-            </div>
-            <div className="text-right">
-              <div className="text-lg font-bold">{fmtMoney(order.value)}</div>
-              <div className="text-[11px] text-muted-foreground">
-                {order.shares.toLocaleString()} shares @ {fmtMoney(order.price)}
-              </div>
-            </div>
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground mb-2">
-            CLIENT INFORMATION
-          </div>
-          <div className="grid grid-cols-2 gap-y-2.5 text-[11px]">
-            <span className="flex items-center gap-1.5 text-muted-foreground">
-              <Mail className="w-3 h-3" /> {order.email}
-            </span>
-            <span className="flex items-center gap-1.5 text-muted-foreground">
-              <Phone className="w-3 h-3" /> {order.phone}
-            </span>
-            <span className="flex items-center gap-1.5 text-muted-foreground">
-              <MapPin className="w-3 h-3" /> {order.location}
-            </span>
-            <span className="flex items-center gap-1.5 text-muted-foreground">
-              <WalletCards className="w-3 h-3" /> {fmtMoney(order.wallet)} available
-            </span>
-          </div>
-        </div>
-        <div className="border-t border-border pt-3 space-y-2 text-[11px]">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Placed</span>
-            <span>{order.placed}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Executed</span>
-            <span>{order.executed}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Order source</span>
-            <span>{order.channel}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">KYC status</span>
-            <span className="text-pine font-medium">{order.kyc}</span>
-          </div>
-        </div>
-        <Link
-          data-testid={`link-client-profile-${order.clientId}`}
-          to="/users"
-          className="flex items-center justify-center gap-1.5 w-full h-8 rounded-[3px] border border-border text-[11px] font-medium hover:bg-muted transition-colors"
-        >
-          View client profile <ArrowUpRight className="w-3 h-3" />
-        </Link>
-      </div>
-    </div>
-  );
-}
-
 function SupportTickets() {
-  const priorityColor = (p: string) =>
-    p === "HIGH"
-      ? "text-rose"
-      : "text-amber";
-
   return (
     <BrokerCard
       title="Support Tickets"
       subtitle="Open & escalated cases"
       action={
-        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-rose">
-          <AlertTriangle className="w-3.5 h-3.5" /> 3 escalated
+        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+          <AlertTriangle className="w-3.5 h-3.5" /> No escalations
         </span>
       }
     >
-      <div className="space-y-1">
-        {supportTickets.map((t) => (
-          <div
-            key={t.id}
-            className="flex items-start gap-3 py-2.5 border-b border-border last:border-0"
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span
-                  className={`text-[10px] font-semibold ${priorityColor(t.priority)}`}
-                >
-                  {t.priority}
-                </span>
-              </div>
-              <div className="text-[13px] font-medium text-foreground truncate">{t.issue}</div>
-              <div className="text-[11px] text-muted-foreground">{t.time}</div>
-            </div>
-            <button className="text-muted-foreground hover:text-foreground mt-1 shrink-0">
-              <MoreHorizontal className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
+      <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
+        <Headphones className="w-6 h-6 text-muted-foreground/40" />
+        <div className="text-sm text-muted-foreground">No open tickets</div>
       </div>
     </BrokerCard>
   );
