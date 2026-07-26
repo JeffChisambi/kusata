@@ -4,8 +4,9 @@ import { Link } from "@tanstack/react-router";
 import { getCurrentUser, logout } from "@/lib/auth";
 import {
   LayoutDashboard, Users, ShieldCheck, FileCheck2,
-  ChevronDown, ChevronRight, ChevronLeft, Search,
+  ChevronDown, ChevronRight, ChevronLeft,
   CircleUser, Clock, Sun, Moon, Bell, Check, LogOut,
+  ClipboardList, Settings2, Search,
 } from "lucide-react";
 
 // ─── Broker nav — scoped subset of the admin nav ───────────────────────────────
@@ -46,9 +47,15 @@ export const brokerNav: NavGroup[] = [
     ],
   },
   { section: "CLIENTS", icon: FileCheck2, label: "KYC Management", href: "/kyc", badge: 2 },
+
+  // ── TRADING ──
+  { section: "TRADING", icon: ClipboardList, label: "Orders", href: "/orders" },
+
+  // ── ACCOUNT ──
+  { section: "ACCOUNT", icon: Settings2, label: "Settings", href: "/settings" },
 ];
 
-export const brokerSectionOrder = ["OVERVIEW", "CLIENTS"];
+export const brokerSectionOrder = ["OVERVIEW", "CLIENTS", "TRADING", "ACCOUNT"];
 
 const BROKER_NOTIF_COUNT = 5;
 
@@ -120,45 +127,51 @@ function BrokerSidebar({
 }) {
   return (
     <aside
-      className="relative shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border rounded-tr-[22px] transition-all duration-300 ease-in-out overflow-visible"
+      className="relative shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border transition-all duration-300 ease-in-out overflow-visible"
       style={{ width: collapsed ? "4.5rem" : "17rem" }}
     >
-      {/* Collapse toggle */}
-      <button
-        onClick={onToggleCollapse}
-        className="absolute top-3 -right-4 z-20 w-8 h-8 rounded-full bg-muted border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-        title={collapsed ? "Expand" : "Collapse"}
-      >
-        {collapsed
-          ? <ChevronRight className="w-3.5 h-3.5" />
-          : <ChevronLeft className="w-3.5 h-3.5" />}
-      </button>
-
-      {/* Header */}
-      <div className="relative z-10 flex items-center h-16 px-4 shrink-0 border-b border-sidebar-border">
+      {/* Header — contains logo + collapse toggle */}
+      <div className="relative z-10 flex items-center h-16 px-4 shrink-0 border-b border-sidebar-border gap-3">
         <div className="w-8 h-8 shrink-0 flex items-center justify-center">
           <img src="/logo.png" alt="Pine" className="w-8 h-8 object-contain" />
         </div>
         {!collapsed && (
-          <div className="ml-3 flex-1 min-w-0">
+          <div className="flex-1 min-w-0">
             <div className="text-[15px] font-bold text-foreground leading-none">Pine</div>
             <div className="text-[9px] tracking-[0.18em] text-muted-foreground mt-0.5">BROKER PORTAL</div>
           </div>
         )}
+        <button
+          onClick={onToggleCollapse}
+          className="shrink-0 w-7 h-7 rounded-md border border-sidebar-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed
+            ? <ChevronRight className="w-3.5 h-3.5" />
+            : <ChevronLeft className="w-3.5 h-3.5" />}
+        </button>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto scrollbar-hide py-2">
-        {brokerSectionOrder.map((section) => {
+      <nav className="flex-1 overflow-y-auto scrollbar-hide py-3">
+        {brokerSectionOrder.map((section, sectionIdx) => {
           const items = brokerNav.filter((n) => n.section === section);
           if (!items.length) return null;
           return (
-            <div key={section} className="mb-1">
-              <div className={`flex items-center px-4 py-1.5 ${collapsed ? "justify-center" : ""}`}>
-                {collapsed
-                  ? <div className="w-6 border-t border-border" />
-                  : <span className="text-[9px] font-semibold tracking-[0.14em] text-muted-foreground">{section}</span>}
-              </div>
+            <div key={section} className={sectionIdx > 0 ? "mt-1" : ""}>
+              {/* Section divider + label */}
+              {sectionIdx > 0 && (
+                <div className={`mx-4 mb-2 ${collapsed ? "" : ""}`}>
+                  <div className="border-t border-sidebar-border" />
+                </div>
+              )}
+              {!collapsed && (
+                <div className="px-4 pb-1 pt-1">
+                  <span className="text-[9px] font-semibold tracking-[0.16em] text-muted-foreground">
+                    {section}
+                  </span>
+                </div>
+              )}
               <ul className="px-2 space-y-px">
                 {items.map((item) => (
                   <BrokerNavItem
@@ -210,7 +223,7 @@ function UserFooter({ collapsed }: { collapsed: boolean }) {
     <div ref={menuRef} className="relative">
       <button
         onClick={() => setMenuOpen((o) => !o)}
-        className={`w-full flex items-center rounded-xl px-2 py-2 hover:bg-muted cursor-pointer transition-colors ${collapsed ? "justify-center" : "gap-2.5"}`}
+        className={`w-full flex items-center rounded-[6px] px-2 py-2 hover:bg-muted cursor-pointer transition-colors ${collapsed ? "justify-center" : "gap-2.5"}`}
       >
         <div className="w-8 h-8 shrink-0 rounded-full bg-pine/10 flex items-center justify-center ring-1 ring-pine/20">
           <span className="text-[11px] font-bold text-pine">{initials}</span>
@@ -227,11 +240,19 @@ function UserFooter({ collapsed }: { collapsed: boolean }) {
       </button>
 
       {menuOpen && (
-        <div className={`absolute ${collapsed ? 'left-full ml-2 bottom-0' : 'bottom-full mb-2 left-0 right-0'} z-50 bg-card border border-border rounded-xl shadow-xl overflow-hidden`}>
+        <div className={`absolute ${collapsed ? 'left-full ml-2 bottom-0' : 'bottom-full mb-2 left-0 right-0'} z-50 bg-card border border-border rounded-[4px] shadow-xl overflow-hidden`}>
           <div className="px-3.5 py-3 border-b border-border">
             <div className="text-[13px] font-medium text-foreground">{displayName}</div>
             <div className="text-[11px] text-muted-foreground mt-0.5">{user?.email ?? ''}</div>
           </div>
+          <Link
+            to="/settings"
+            onClick={() => setMenuOpen(false)}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-foreground hover:bg-muted/60 transition-colors text-left"
+          >
+            <Settings2 className="w-4 h-4 text-muted-foreground" />
+            Settings
+          </Link>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-rose-500 hover:bg-rose-500/5 transition-colors text-left"
@@ -268,7 +289,7 @@ function BrokerNavItem({
 
   /* ── Collapsed: icon only + portal flyout ── */
   if (collapsed) {
-    const cls = `relative w-full flex items-center justify-center p-2.5 rounded-lg transition-colors ${active ? "bg-pine/10" : "hover:bg-muted"}`;
+    const cls = `relative w-full flex items-center justify-center p-2.5 rounded-[4px] transition-colors ${active ? "bg-pine/10" : "hover:bg-muted"}`;
     const flyout = flyoutTop !== null
       ? createPortal(
           <div
@@ -277,9 +298,9 @@ function BrokerNavItem({
             onMouseEnter={cancelHide}
             onMouseLeave={scheduleHide}
           >
-            <div className="bg-card rounded-xl shadow-xl border border-border min-w-[192px] overflow-hidden">
+            <div className="bg-card rounded-[4px] shadow-xl border border-border min-w-[192px] overflow-hidden">
               <div className={`px-3.5 py-2.5 flex items-center gap-2.5 border-b ${active ? "border-pine/20 bg-pine/5" : "border-border"}`}>
-                <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${active ? "bg-pine/15" : "bg-muted"}`}>
+                <div className={`w-6 h-6 rounded-[3px] flex items-center justify-center shrink-0 ${active ? "bg-pine/15" : "bg-muted"}`}>
                   <Icon className={`w-3.5 h-3.5 ${active ? "text-pine" : "text-muted-foreground"}`} />
                 </div>
                 <span className={`text-[12px] font-semibold leading-none ${active ? "text-pine" : "text-foreground"}`}>{item.label}</span>
@@ -329,13 +350,20 @@ function BrokerNavItem({
     );
   }
 
-  /* ── Expanded: icon + label ── */
-  const rowCls = `w-full flex items-center gap-2.5 px-3 py-[7px] rounded-lg text-[13px] font-[450] transition-colors ${
-    active ? "bg-pine/8 text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+  /* ── Expanded: icon + label with left-border active indicator ── */
+  const rowCls = `relative w-full flex items-center gap-2.5 px-3 py-[7px] rounded-[4px] text-[13px] font-[450] transition-colors ${
+    active
+      ? "bg-pine/8 text-foreground font-medium"
+      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
   }`;
+
+  const activeIndicator = active
+    ? <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-pine" />
+    : null;
 
   const rowContent = (icon: React.ReactNode, label: string, badge?: string | number, chevron?: React.ReactNode) => (
     <>
+      {activeIndicator}
       {icon}
       <span className="flex-1 text-left truncate">{label}</span>
       {badge != null && (
@@ -373,11 +401,11 @@ function BrokerNavItem({
             const isLast = idx === item.children!.length - 1;
             return (
               <li key={c.label} className="relative pl-[26px]">
-                <div className="pointer-events-none absolute left-[5px] top-0 h-[calc(50%+1px)] w-[14px] border-l-[1.5px] border-b-[1.5px] border-border rounded-bl-[6px]" />
+                <div className="pointer-events-none absolute left-[5px] top-0 h-[calc(50%+1px)] w-[14px] border-l-[1.5px] border-b-[1.5px] border-border rounded-bl-[4px]" />
                 {!isLast && <div className="pointer-events-none absolute left-[5px] top-1/2 bottom-0 w-[1.5px] bg-border" />}
                 <Link
                   to={c.href ?? "/coming-soon"}
-                  className="w-full flex items-center gap-2 pr-2 py-[7px] text-[12px] transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-lg text-left"
+                  className="w-full flex items-center gap-2 pr-2 py-[7px] text-[12px] transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-[3px] text-left"
                 >
                   <span className="flex-1 truncate">{c.label}</span>
                   {c.badge != null && (
@@ -426,7 +454,7 @@ function BrokerTopbar({ title }: { title: string }) {
   }, [dark, mounted]);
 
   return (
-    <header className="flex items-center gap-4 px-8 py-4 bg-background sticky top-0 z-10">
+    <header className="flex items-center gap-4 px-8 py-4 bg-background sticky top-0 z-10 border-b border-border">
       <div className="shrink-0 min-w-0">
         <div className="text-lg font-semibold">{title}</div>
       </div>
@@ -436,7 +464,7 @@ function BrokerTopbar({ title }: { title: string }) {
           <input
             type="text"
             placeholder="Search clients, orders, KYC, support…"
-            className="w-full h-10 pl-11 pr-4 rounded-lg bg-muted/60 border border-transparent focus:outline-none focus:border-pine/40 text-sm"
+            className="w-full h-10 pl-11 pr-4 rounded-[4px] bg-muted/60 border border-transparent focus:outline-none focus:border-pine/40 text-sm"
           />
         </div>
       </div>
@@ -445,7 +473,7 @@ function BrokerTopbar({ title }: { title: string }) {
         <div ref={rangeRef} className="relative hidden md:block">
           <button
             onClick={() => setRangeOpen((o) => !o)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-[4px] border text-sm transition-colors ${
               rangeOpen ? "border-pine/40 bg-pine/5 text-pine" : "border-border hover:bg-muted/40 text-foreground"
             }`}
           >
@@ -454,7 +482,7 @@ function BrokerTopbar({ title }: { title: string }) {
             <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform duration-150 ${rangeOpen ? "rotate-180" : ""}`} />
           </button>
           {rangeOpen && (
-            <div className="absolute right-0 top-full mt-1.5 z-50 w-56 bg-card border border-border rounded-xl shadow-xl overflow-hidden">
+            <div className="absolute right-0 top-full mt-1.5 z-50 w-56 bg-card border border-border rounded-[4px] shadow-xl overflow-hidden">
               <div className="px-3.5 pt-3 pb-2">
                 <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">TIME RANGE</span>
               </div>
@@ -486,7 +514,7 @@ function BrokerTopbar({ title }: { title: string }) {
         {/* Theme toggle */}
         <button
           onClick={() => setDark((d) => !d)}
-          className="w-10 h-10 rounded-lg bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors"
+          className="w-10 h-10 rounded-[4px] bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors"
           aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
         >
           {dark ? <Sun className="w-4 h-4 text-muted-foreground" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
@@ -495,7 +523,7 @@ function BrokerTopbar({ title }: { title: string }) {
         {/* Notifications */}
         <Link
           to="/notifications"
-          className="w-10 h-10 rounded-lg bg-muted/60 flex items-center justify-center relative hover:bg-muted transition-colors"
+          className="w-10 h-10 rounded-[4px] bg-muted/60 flex items-center justify-center relative hover:bg-muted transition-colors"
           aria-label="Notifications"
         >
           <Bell className="w-4 h-4 text-muted-foreground" />
@@ -517,7 +545,7 @@ export function BrokerCard({
   className?: string; action?: ReactNode;
 }) {
   return (
-    <div className={`rounded-2xl bg-card border border-border p-5 ${className}`}>
+    <div className={`rounded-[3px] bg-card border border-border p-5 ${className}`}>
       {(title || action) && (
         <div className="flex items-start justify-between mb-4">
           <div>

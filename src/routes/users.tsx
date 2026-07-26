@@ -140,27 +140,40 @@ function UsersPage() {
     <RoleShell activeLabel="User Management" eyebrow="Clients" title="User Management">
       <UserStats users={users} />
 
-      <Card>
-        <Tabs
-          tabs={tabs} active={activeTab} onChange={setActiveTab}
-          counts={tabs.map((t) => users.filter(t.filter).length)}
-        />
-        <Toolbar
-          riskFilter={riskFilter} setRiskFilter={setRiskFilter}
-          selectedCount={checked.size}
-        />
-        <UsersTable
-          rows={filtered}
-          checked={checked}
-          onCheck={toggle}
-          onSelectAll={() => setChecked(new Set(filtered.map((r) => r.id)))}
-          onClear={() => setChecked(new Set())}
-          onOpenDrawer={setDrawerUser}
-        />
-        <TableFooter total={filtered.length} />
-      </Card>
+      <div className="flex gap-4 items-start">
+        {/* Main table */}
+        <div className="flex-1 min-w-0">
+          <Card>
+            <Tabs
+              tabs={tabs} active={activeTab} onChange={setActiveTab}
+              counts={tabs.map((t) => users.filter(t.filter).length)}
+            />
+            <Toolbar
+              riskFilter={riskFilter} setRiskFilter={setRiskFilter}
+              selectedCount={checked.size}
+            />
+            <UsersTable
+              rows={filtered}
+              checked={checked}
+              onCheck={toggle}
+              onSelectAll={() => setChecked(new Set(filtered.map((r) => r.id)))}
+              onClear={() => setChecked(new Set())}
+              onOpenDrawer={setDrawerUser}
+            />
+            <TableFooter total={filtered.length} />
+          </Card>
+        </div>
 
-      {drawerUser && <UserModal user={drawerUser} onClose={() => setDrawerUser(null)} />}
+        {/* Inline detail panel */}
+        {drawerUser && (
+          <div
+            className="w-96 shrink-0 rounded-[3px] bg-card border border-border overflow-hidden flex flex-col sticky top-4"
+            style={{ maxHeight: "calc(100vh - 160px)" }}
+          >
+            <UserDetails user={drawerUser} onClose={() => setDrawerUser(null)} />
+          </div>
+        )}
+      </div>
     </RoleShell>
   );
 }

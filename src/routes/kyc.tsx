@@ -179,21 +179,39 @@ function KycPage() {
         </div>
       </div>
 
-      <Card className="!p-0 overflow-hidden">
-          <KycTable rows={rows} onSelect={setSelected} showDetailColumns={activeTab === "all"} />
+      <div className="flex gap-4 items-start">
+        {/* List */}
+        <div className="flex-1 min-w-0">
+          <Card className="!p-0 overflow-hidden">
+            <KycTable rows={rows} onSelect={setSelected} showDetailColumns={activeTab === "all"} />
 
-          <div className="flex items-center justify-between px-5 py-3 border-t border-border text-xs text-muted-foreground">
-            <div>Showing <span className="text-foreground font-medium">{Math.min(rows.length, 25)}</span> of {rows.length}</div>
-            <div className="flex items-center gap-1">
-              <button className="h-8 px-3 rounded-md border border-border hover:bg-muted/40">Previous</button>
-              <button className="h-8 w-8 rounded-md bg-pine text-primary-foreground text-xs font-medium">1</button>
-              <button className="h-8 w-8 rounded-md hover:bg-muted/40">2</button>
-              <button className="h-8 px-3 rounded-md border border-border hover:bg-muted/40">Next</button>
+            <div className="flex items-center justify-between px-5 py-3 border-t border-border text-xs text-muted-foreground">
+              <div>Showing <span className="text-foreground font-medium">{Math.min(rows.length, 25)}</span> of {rows.length}</div>
+              <div className="flex items-center gap-1">
+                <button className="h-8 px-3 rounded-md border border-border hover:bg-muted/40">Previous</button>
+                <button className="h-8 w-8 rounded-md bg-pine text-primary-foreground text-xs font-medium">1</button>
+                <button className="h-8 w-8 rounded-md hover:bg-muted/40">2</button>
+                <button className="h-8 px-3 rounded-md border border-border hover:bg-muted/40">Next</button>
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
 
-      {selected && <ReviewModal app={selected} onClose={() => setSelected(null)} onApprove={() => setSelected(null)} onReject={() => setSelected(null)} />}
+        {/* Inline review panel */}
+        {selected && (
+          <div
+            className="w-[560px] shrink-0 rounded-[3px] bg-card border border-border overflow-hidden flex flex-col sticky top-4"
+            style={{ maxHeight: "calc(100vh - 160px)" }}
+          >
+            <ReviewPanel
+              app={selected}
+              onClose={() => setSelected(null)}
+              onApprove={() => setSelected(null)}
+              onReject={() => setSelected(null)}
+            />
+          </div>
+        )}
+      </div>
     </RoleShell>
   );
 }
@@ -518,7 +536,7 @@ function RowMenu({ onReview }: { onReview: () => void }) {
 
 /* ─────────────────────────── review modal ─────────────────────────── */
 
-function ReviewModal({
+function ReviewPanel({
   app, onClose, onApprove, onReject,
 }: {
   app: KycApplication; onClose: () => void; onApprove: () => void; onReject: () => void;
@@ -556,9 +574,7 @@ function ReviewModal({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="relative w-full max-w-4xl bg-background rounded-2xl shadow-2xl border border-border overflow-hidden flex flex-col" style={{ maxHeight: "92vh" }}>
+    <div className="flex flex-col h-full overflow-hidden">
 
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-border shrink-0">
@@ -761,7 +777,6 @@ function ReviewModal({
             </div>
           </div>
         </div>
-      </div>
     </div>
   );
 }
