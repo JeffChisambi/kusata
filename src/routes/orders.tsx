@@ -1,10 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
-  Check,
   CheckCircle2,
   ChevronRight,
   CircleAlert,
@@ -17,12 +16,11 @@ import {
   MoreHorizontal,
   RefreshCw,
   Search,
-  Send,
-  ShieldCheck,
   X,
   XCircle,
 } from "lucide-react";
 import { BrokerCard, BrokerShell } from "@/components/broker-shell";
+import { ordersStore, type Order, type OrderStatus, type OrderSide } from "@/lib/orders-store";
 
 export const Route = createFileRoute("/orders")({
   head: () => ({
@@ -34,177 +32,6 @@ export const Route = createFileRoute("/orders")({
   validateSearch: () => ({}),
   component: OrdersPage,
 });
-
-type OrderStatus = "READY" | "PARTIAL" | "EXECUTED" | "CANCELLED" | "REJECTED" | "REVIEW";
-type OrderSide = "BUY" | "SELL";
-type RiskLevel = "LOW" | "REVIEW";
-
-type Order = {
-  id: string;
-  client: string;
-  clientId: string;
-  account: string;
-  ticker: string;
-  company: string;
-  side: OrderSide;
-  quantity: number;
-  filled: number;
-  limitPrice: number;
-  value: number;
-  status: OrderStatus;
-  received: string;
-  executed?: string;
-  exchange: string;
-  tif: "DAY" | "GTC";
-  channel: "Mobile app" | "Web portal" | "Broker assisted";
-  risk: RiskLevel;
-  instructions: string;
-};
-
-const INITIAL_ORDERS: Order[] = [
-  {
-    id: "ORD-5047",
-    client: "Madalitso Mbewe",
-    clientId: "U-0118",
-    account: "Individual · 0048",
-    ticker: "NBM",
-    company: "National Bank of Malawi",
-    side: "BUY",
-    quantity: 240,
-    filled: 0,
-    limitPrice: 185,
-    value: 44_400,
-    status: "READY",
-    received: "09:42",
-    exchange: "MSE",
-    tif: "DAY",
-    channel: "Mobile app",
-    risk: "LOW",
-    instructions: "Execute at limit price or better. Client has sufficient buying power.",
-  },
-  {
-    id: "ORD-5046",
-    client: "Tadala Phiri",
-    clientId: "U-0017",
-    account: "Individual · 0112",
-    ticker: "FDH",
-    company: "FDH Financial Holdings",
-    side: "SELL",
-    quantity: 400,
-    filled: 160,
-    limitPrice: 46,
-    value: 18_400,
-    status: "PARTIAL",
-    received: "09:35",
-    exchange: "MSE",
-    tif: "DAY",
-    channel: "Web portal",
-    risk: "LOW",
-    instructions: "Complete the remaining balance during today's session.",
-  },
-  {
-    id: "ORD-5045",
-    client: "Chisomo Banda",
-    clientId: "U-0041",
-    account: "Individual · 0091",
-    ticker: "AIRTEL",
-    company: "Airtel Malawi Ltd",
-    side: "BUY",
-    quantity: 500,
-    filled: 0,
-    limitPrice: 21,
-    value: 10_500,
-    status: "READY",
-    received: "09:28",
-    exchange: "MSE",
-    tif: "GTC",
-    channel: "Mobile app",
-    risk: "LOW",
-    instructions: "Good till cancelled. Do not route above the stated limit.",
-  },
-  {
-    id: "ORD-5044",
-    client: "Grace Mwale",
-    clientId: "U-0082",
-    account: "Individual · 0063",
-    ticker: "STANDARD",
-    company: "Standard Bank Malawi",
-    side: "SELL",
-    quantity: 80,
-    filled: 0,
-    limitPrice: 280,
-    value: 22_400,
-    status: "READY",
-    received: "09:17",
-    exchange: "MSE",
-    tif: "DAY",
-    channel: "Broker assisted",
-    risk: "REVIEW",
-    instructions: "Confirm the client callback before routing this order.",
-  },
-  {
-    id: "ORD-5043",
-    client: "Mercy Chirwa",
-    clientId: "U-0093",
-    account: "Individual · 0027",
-    ticker: "TNM",
-    company: "Telekom Networks Malawi",
-    side: "BUY",
-    quantity: 1_000,
-    filled: 1_000,
-    limitPrice: 18.2,
-    value: 18_200,
-    status: "EXECUTED",
-    received: "08:58",
-    executed: "09:04",
-    exchange: "MSE",
-    tif: "DAY",
-    channel: "Mobile app",
-    risk: "LOW",
-    instructions: "Execute at limit price or better.",
-  },
-  {
-    id: "ORD-5042",
-    client: "Peter Gondwe",
-    clientId: "U-0055",
-    account: "Individual · 0079",
-    ticker: "ILLOVO",
-    company: "Illovo Sugar Malawi",
-    side: "BUY",
-    quantity: 30,
-    filled: 0,
-    limitPrice: 1_060,
-    value: 31_800,
-    status: "REVIEW",
-    received: "08:40",
-    exchange: "MSE",
-    tif: "DAY",
-    channel: "Web portal",
-    risk: "REVIEW",
-    instructions: "Client requested a callback before execution.",
-  },
-  {
-    id: "ORD-5041",
-    client: "Stella Tembo",
-    clientId: "U-0064",
-    account: "Individual · 0038",
-    ticker: "AIRTEL",
-    company: "Airtel Malawi Ltd",
-    side: "SELL",
-    quantity: 300,
-    filled: 300,
-    limitPrice: 21.4,
-    value: 6_420,
-    status: "EXECUTED",
-    received: "08:12",
-    executed: "08:18",
-    exchange: "MSE",
-    tif: "DAY",
-    channel: "Mobile app",
-    risk: "LOW",
-    instructions: "Execute at limit price or better.",
-  },
-];
 
 type DisplayStatus = OrderStatus;
 
@@ -324,28 +151,14 @@ function KpiStrip({ orders }: { orders: Order[] }) {
   );
 }
 
-function OrderTable({
-  orders,
-  selectedId,
-  onSelect,
-}: {
-  orders: Order[];
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-}) {
+function OrderTable({ orders }: { orders: Order[] }) {
+  const navigate = useNavigate();
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[830px] text-[13px]">
+      <table className="w-full min-w-[700px] text-[13px]">
         <thead>
           <tr className="border-b border-border">
-            {[
-              "Client",
-              "Side / security",
-              "Quantity",
-              "Limit",
-              "Status",
-              "",
-            ].map((heading) => (
+            {["Client", "Side / security", "Quantity", "Limit", "Status", ""].map((heading) => (
               <th
                 key={heading}
                 className="px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground first:pl-4 last:pr-4"
@@ -363,53 +176,47 @@ function OrderTable({
               </td>
             </tr>
           ) : (
-            orders.map((order) => {
-              const selected = order.id === selectedId;
-              const displayStatus = order.status;
-              return (
-                <tr
-                  key={order.id}
-                  onClick={() => onSelect(order.id)}
-                  className={`cursor-pointer border-b border-border last:border-0 transition-colors ${selected ? "bg-muted/50" : "hover:bg-muted/30"}`}
-                >
-                  <td className="max-w-[150px] px-3 py-3.5 first:pl-4">
-                    <div className="truncate font-medium">{order.client}</div>
-                    <div className="mt-1 truncate text-[11px] text-muted-foreground">
-                      {order.account}
-                    </div>
-                  </td>
-                  <td className="px-3 py-3.5">
-                    <SideBadge side={order.side} />
-                    <div className="mt-1 font-semibold">{order.ticker}</div>
-                    <div className="max-w-[130px] truncate text-[11px] text-muted-foreground">
-                      {order.company}
-                    </div>
-                  </td>
-                  <td className="px-3 py-3.5">
-                    <div className="font-medium">{fmtShares(order.quantity)}</div>
-                    {order.filled > 0 && order.filled < order.quantity && (
-                      <div className="mt-1 text-[11px] text-muted-foreground">
-                        {fmtShares(order.filled)} filled
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-3 py-3.5">
-                    <div className="font-medium">{fmtMoney(order.limitPrice)}</div>
+            orders.map((order) => (
+              <tr
+                key={order.id}
+                onClick={() => navigate({ to: "/orders/$orderId", params: { orderId: order.id } })}
+                className="cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-muted/30"
+              >
+                <td className="max-w-[150px] px-3 py-3.5 first:pl-4">
+                  <div className="truncate font-medium">{order.client}</div>
+                  <div className="mt-1 truncate text-[11px] text-muted-foreground">
+                    {order.account}
+                  </div>
+                </td>
+                <td className="px-3 py-3.5">
+                  <SideBadge side={order.side} />
+                  <div className="mt-1 font-semibold">{order.ticker}</div>
+                  <div className="max-w-[130px] truncate text-[11px] text-muted-foreground">
+                    {order.company}
+                  </div>
+                </td>
+                <td className="px-3 py-3.5">
+                  <div className="font-medium">{fmtShares(order.quantity)}</div>
+                  {order.filled > 0 && order.filled < order.quantity && (
                     <div className="mt-1 text-[11px] text-muted-foreground">
-                      {fmtMoney(order.value)} est.
+                      {fmtShares(order.filled)} filled
                     </div>
-                  </td>
-                  <td className="px-3 py-3.5">
-                    <StatusPill status={displayStatus} />
-                  </td>
-                  <td className="px-3 py-3.5 pr-4">
-                    <ChevronRight
-                      className={`h-4 w-4 text-muted-foreground transition-transform ${selected ? "rotate-90 text-foreground" : ""}`}
-                    />
-                  </td>
-                </tr>
-              );
-            })
+                  )}
+                </td>
+                <td className="px-3 py-3.5">
+                  <div className="font-medium">{fmtMoney(order.limitPrice)}</div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    {fmtMoney(order.value)} est.
+                  </div>
+                </td>
+                <td className="px-3 py-3.5">
+                  <StatusPill status={order.status} />
+                </td>
+                <td className="px-3 py-3.5 pr-4">
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </td>
+              </tr>
+            ))
           )}
         </tbody>
       </table>
@@ -417,185 +224,6 @@ function OrderTable({
   );
 }
 
-function DetailRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-4 border-b border-border py-2.5 last:border-0">
-      <span className="shrink-0 text-xs text-muted-foreground">{label}</span>
-      <span className="text-right text-sm">{children}</span>
-    </div>
-  );
-}
-
-function OrderDetailPanel({
-  order,
-  onClose,
-  onExecute,
-  onReject,
-  onCancel,
-}: {
-  order: Order;
-  onClose: () => void;
-  onExecute: (quantity: number) => void;
-  onReject: () => void;
-  onCancel: () => void;
-}) {
-  const remaining = order.quantity - order.filled;
-  const [executionQty, setExecutionQty] = useState(String(remaining));
-  const [showReject, setShowReject] = useState(false);
-
-  useEffect(() => {
-    setExecutionQty(String(order.quantity - order.filled));
-    setShowReject(false);
-  }, [order.id, order.quantity, order.filled]);
-
-  const canExecute =
-    order.status === "READY" || order.status === "PARTIAL" || order.status === "REVIEW";
-  const qty = Math.max(0, Math.min(remaining, Number(executionQty) || 0));
-
-  return (
-    <aside className="overflow-hidden rounded-[3px] border border-border bg-card">
-      <div className="flex items-start gap-3 border-b border-border px-5 py-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-sm font-semibold">{order.id}</span>
-            <StatusPill status={order.status} />
-          </div>
-          <div className="mt-1 text-xs text-muted-foreground">
-            {order.client} · {order.clientId}
-          </div>
-        </div>
-        <button
-          onClick={onClose}
-          className="flex h-7 w-7 items-center justify-center rounded-[3px] text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label="Close order details"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-
-      <div className="space-y-5 p-5">
-        <div className="rounded-[3px] border border-pine/20 bg-pine/5 p-3">
-          <div className="flex items-center gap-2 text-xs font-semibold text-pine">
-            <ShieldCheck className="h-3.5 w-3.5" /> Execution-ready instruction
-          </div>
-          <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{order.instructions}</p>
-        </div>
-
-        <section>
-          <div className="mb-2 text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">
-            ORDER DETAILS
-          </div>
-          <DetailRow label="Direction">
-            <SideBadge side={order.side} />
-          </DetailRow>
-          <DetailRow label="Security">
-            <span className="font-semibold">{order.ticker}</span>
-            <span className="ml-1 text-xs text-muted-foreground">· {order.company}</span>
-          </DetailRow>
-          <DetailRow label="Quantity">{fmtShares(order.quantity)} shares</DetailRow>
-          <DetailRow label="Remaining">{fmtShares(remaining)} shares</DetailRow>
-          <DetailRow label="Limit price">{fmtMoney(order.limitPrice)}</DetailRow>
-          <DetailRow label="Estimated value">
-            <span className="font-semibold">{fmtMoney(order.value)}</span>
-          </DetailRow>
-          <DetailRow label="Time in force">{order.tif}</DetailRow>
-          <DetailRow label="Route">{order.exchange}</DetailRow>
-        </section>
-
-        <section>
-          <div className="mb-2 text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">
-            AUDIT TRAIL
-          </div>
-          <DetailRow label="Received">
-            {order.received} · {order.channel}
-          </DetailRow>
-          <DetailRow label="Executed">{order.executed ?? "Not yet executed"}</DetailRow>
-          <DetailRow label="Risk check">
-            <span
-              className={`inline-flex items-center gap-1 text-xs font-medium ${order.risk === "LOW" ? "text-pine" : "text-amber-600 dark:text-amber-300"}`}
-            >
-              {order.risk === "LOW" ? (
-                <Check className="h-3.5 w-3.5" />
-              ) : (
-                <CircleAlert className="h-3.5 w-3.5" />
-              )}
-              {order.risk === "LOW" ? "Passed" : "Manual review"}
-            </span>
-          </DetailRow>
-        </section>
-
-        {canExecute && (
-          <section className="space-y-3 border-t border-border pt-4">
-            <div>
-              <label htmlFor="execution-quantity" className="mb-1.5 block text-xs font-medium">
-                Shares executed now
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="execution-quantity"
-                  type="number"
-                  min={1}
-                  max={remaining}
-                  value={executionQty}
-                  onChange={(event) => setExecutionQty(event.target.value)}
-                  className="h-9 min-w-0 flex-1 rounded-[3px] border border-input bg-background px-3 text-sm focus:border-pine/50 focus:outline-none"
-                />
-                <button
-                  onClick={() => setExecutionQty(String(remaining))}
-                  className="h-9 rounded-[3px] border border-border px-3 text-xs text-muted-foreground hover:bg-muted"
-                >
-                  All
-                </button>
-              </div>
-            </div>
-            <button
-              disabled={qty === 0}
-              onClick={() => onExecute(qty)}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-[3px] bg-pine text-sm font-semibold text-primary-foreground transition-colors hover:bg-pine/90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Send className="h-4 w-4" />{" "}
-              {qty === remaining ? "Confirm execution" : "Record partial fill"}
-            </button>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => setShowReject((current) => !current)}
-                className="h-9 rounded-[3px] border border-rose/30 text-xs font-medium text-rose-500 hover:bg-rose/5"
-              >
-                Reject order
-              </button>
-              <button
-                onClick={onCancel}
-                className="h-9 rounded-[3px] border border-border text-xs font-medium text-muted-foreground hover:bg-muted"
-              >
-                Cancel order
-              </button>
-            </div>
-            {showReject && (
-              <div className="rounded-[3px] border border-rose/20 bg-rose/5 p-3">
-                <p className="text-xs leading-5 text-muted-foreground">
-                  Reject this order and remove it from the execution queue?
-                </p>
-                <button
-                  onClick={onReject}
-                  className="mt-2 text-xs font-semibold text-rose-500 hover:underline"
-                >
-                  Yes, reject order
-                </button>
-              </div>
-            )}
-          </section>
-        )}
-
-        {order.status === "EXECUTED" && (
-          <div className="flex items-start gap-2 rounded-[3px] bg-muted/50 p-3 text-xs text-muted-foreground">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-pine" />
-            This order is complete. {fmtShares(order.filled)} shares were recorded as executed.
-          </div>
-        )}
-      </div>
-    </aside>
-  );
-}
 
 function NewOrderPanel({
   onClose,
@@ -888,14 +516,16 @@ const TAB_FILTERS: { key: string; label: string; filter: (order: Order) => boole
 ];
 
 function OrdersPage() {
-  const [orders, setOrders] = useState(INITIAL_ORDERS);
+  const [orders, setOrders] = useState(() => ordersStore.getAll());
   const [activeTab, setActiveTab] = useState("queue");
   const [search, setSearch] = useState("");
   const [sideFilter, setSideFilter] = useState<"ALL" | OrderSide>("ALL");
-  const [selectedId, setSelectedId] = useState<string | null>("ORD-5047");
   const [showFilters, setShowFilters] = useState(false);
   const [showNewOrder, setShowNewOrder] = useState(false);
   const [notice, setNotice] = useState("");
+
+  // Stay in sync with store (mutations from the detail page flow back here)
+  useEffect(() => ordersStore.subscribe(() => setOrders(ordersStore.getAll())), []);
 
   const activeFilter = TAB_FILTERS.find((tab) => tab.key === activeTab) ?? TAB_FILTERS[0];
   const filteredOrders = useMemo(
@@ -913,47 +543,14 @@ function OrdersPage() {
       }),
     [activeFilter, orders, search, sideFilter],
   );
-  const selectedOrder = orders.find((order) => order.id === selectedId) ?? null;
-  const detailRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (selectedId && detailRef.current) {
-      detailRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [selectedId]);
 
   const showNotice = (message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(""), 2800);
   };
 
-  const updateOrder = (id: string, update: Partial<Order>, message: string) => {
-    setOrders((current) =>
-      current.map((order) => (order.id === id ? { ...order, ...update } : order)),
-    );
-    showNotice(message);
-  };
-
-  const executeOrder = (quantity: number) => {
-    if (!selectedOrder) return;
-    const nextFilled = selectedOrder.filled + quantity;
-    updateOrder(
-      selectedOrder.id,
-      {
-        filled: nextFilled,
-        status: nextFilled >= selectedOrder.quantity ? "EXECUTED" : "PARTIAL",
-        executed: nextFilled >= selectedOrder.quantity ? "Just now" : selectedOrder.executed,
-      },
-      nextFilled >= selectedOrder.quantity
-        ? `${selectedOrder.id} marked executed`
-        : `${selectedOrder.id} recorded as a partial fill`,
-    );
-  };
-
   const addOrder = (order: Order) => {
-    setOrders((current) => [order, ...current]);
-    setSelectedId(order.id);
-    setShowNewOrder(false);
+    ordersStore.add(order);
     setActiveTab("queue");
     showNotice(`${order.id} added to the execution queue`);
   };
@@ -1070,7 +667,7 @@ function OrdersPage() {
             </button>
           }
         >
-          <OrderTable orders={filteredOrders} selectedId={selectedId} onSelect={setSelectedId} />
+          <OrderTable orders={filteredOrders} />
           <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
             <span>
               Showing <span className="font-medium text-foreground">{filteredOrders.length}</span>{" "}
@@ -1079,29 +676,6 @@ function OrdersPage() {
             <span className="hidden sm:inline">Last synced just now</span>
           </div>
         </BrokerCard>
-        {selectedOrder && (
-          <div ref={detailRef}>
-            <OrderDetailPanel
-              order={selectedOrder}
-              onClose={() => setSelectedId(null)}
-              onExecute={executeOrder}
-              onReject={() =>
-                updateOrder(
-                  selectedOrder.id,
-                  { status: "REJECTED" },
-                  `${selectedOrder.id} rejected`,
-                )
-              }
-              onCancel={() =>
-                updateOrder(
-                  selectedOrder.id,
-                  { status: "CANCELLED" },
-                  `${selectedOrder.id} cancelled`,
-                )
-              }
-            />
-          </div>
-        )}
       </div>
 
       {showNewOrder && <NewOrderPanel onClose={() => setShowNewOrder(false)} onCreate={addOrder} />}
