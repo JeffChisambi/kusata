@@ -15,7 +15,6 @@ import {
   ListFilter,
   MoreHorizontal,
   RefreshCw,
-  Search,
   X,
   XCircle,
 } from "lucide-react";
@@ -328,17 +327,8 @@ function exportOrders(orders: Order[]) {
   URL.revokeObjectURL(url);
 }
 
-const TAB_FILTERS: { key: string; label: string; filter: (order: Order) => boolean }[] = [
-  { key: "queue", label: "Execution queue", filter: (o) => o.status === "READY" || o.status === "PARTIAL" || o.status === "REVIEW" },
-  { key: "all", label: "All orders", filter: () => true },
-  { key: "executed", label: "Executed", filter: (o) => o.status === "EXECUTED" },
-  { key: "attention", label: "Attention", filter: (o) => o.risk === "REVIEW" || o.status === "REJECTED" || o.status === "CANCELLED" },
-];
-
 function OrdersPage() {
   const [orders, setOrders] = useState(() => ordersStore.getAll());
-  const [activeTab, setActiveTab] = useState("queue");
-  const [search, setSearch] = useState("");
   const [sideFilter, setSideFilter] = useState<"ALL" | OrderSide>("ALL");
   const [showFilters, setShowFilters] = useState(false);
   const [showNewOrder, setShowNewOrder] = useState(false);
@@ -346,23 +336,18 @@ function OrdersPage() {
 
   useEffect(() => ordersStore.subscribe(() => setOrders(ordersStore.getAll())), []);
 
-  const activeFilter = TAB_FILTERS.find((t) => t.key === activeTab) ?? TAB_FILTERS[0];
   const filteredOrders = useMemo(
     () =>
       orders.filter((order) => {
-        const matchesTab = activeFilter.filter(order);
         const matchesSide = sideFilter === "ALL" || order.side === sideFilter;
-        const normalizedSearch = search.trim().toLowerCase();
-        const matchesSearch =
-          !normalizedSearch ||
-          `${order.id} ${order.client} ${order.clientId} ${order.ticker} ${order.company}`.toLowerCase().includes(normalizedSearch);
-        return matchesTab && matchesSide && matchesSearch;
+        return matchesSide;
       }),
-    [activeFilter, orders, search, sideFilter],
+    [orders, sideFilter],
   );
 
   const showNotice = (msg: string) => { setNotice(msg); window.setTimeout(() => setNotice(""), 2800); };
-  const addOrder = (order: Order) => { ordersStore.add(order); setActiveTab("queue"); showNotice(`${order.id} added to the execution queue`); };
+  const addOrder = (order: Order) => { ordersStore.add(order); showNotice(`${order.id} added to the order list`); };
+  const orderViewLabel = sideFilter === "ALL" ? "All orders" : `${sideFilter === "BUY" ? "Buy" : "Sell"} orders`;
 
   return (
     <BrokerShell activeLabel="Orders" title="Orders">
@@ -373,20 +358,23 @@ function OrdersPage() {
       )}
       <KpiStrip orders={orders} />
 
-      <div className="flex items-center justify-end gap-2">
-        <button onClick={() => showNotice("Order queue is up to date")} className="flex h-9 items-center gap-2 rounded-[3px] border border-border px-3 text-xs font-medium text-muted-foreground hover:bg-muted">
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
-        </button>
-        <button onClick={() => setShowNewOrder(true)} className="flex h-9 items-center gap-2 rounded-[3px] bg-pine px-3 text-xs font-semibold text-primary-foreground hover:bg-pine/90">
-          <FilePlus2 className="h-3.5 w-3.5" /> Receive order
-        </button>
-      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <label className="sr-only" htmlFor="order-side-filter">Order type</label>
+        <select
+          id="order-side-filter"
+          value={sideFilter}
+          onChange={(event) => setSideFilter(event.target.value as "ALL" | OrderSide)}
+          className="h-10 min-w-36 rounded-[3px] border border-border bg-card px-3 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-pine/20"
+        >
+          <option value="ALL">All orders</option>
+          <option value="BUY">Buy orders</option>
+          <option value="SELL">Sell orders</option>
+        </select>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[260px] flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search ID, client, ticker…" className="h-10 w-full rounded-[3px] border border-transparent bg-muted/60 pl-10 pr-3 text-sm focus:border-border focus:outline-none" />
-        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <button onClick={() => showNotice("Order list is up to date")} className="flex h-10 items-center gap-2 rounded-[3px] border border-border px-3 text-sm font-medium text-muted-foreground hover:bg-muted">
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          </button>
         <button onClick={() => setShowFilters((v) => !v)} className={`flex h-10 items-center gap-2 rounded-[3px] border px-3 text-sm ${showFilters || sideFilter !== "ALL" ? "border-border bg-muted text-foreground" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
           <ListFilter className="h-3.5 w-3.5" /> Filters
           {sideFilter !== "ALL" && <span className="rounded-full bg-foreground px-1.5 text-[10px] text-background">1</span>}
@@ -394,6 +382,11 @@ function OrdersPage() {
         <button onClick={() => exportOrders(filteredOrders)} className="flex h-10 items-center gap-2 rounded-[3px] border border-border px-3 text-sm text-muted-foreground hover:bg-muted/40">
           <Download className="h-3.5 w-3.5" /> Export
         </button>
+          <button onClick={() => setShowNewOrder(true)} className="flex h-10 items-center gap-2 rounded-[3px] bg-pine px-3 text-sm font-semibold text-primary-foreground hover:bg-pine/90">
+            <FilePlus2 className="h-3.5 w-3.5" /> Receive order
+          </button>
+        </div>
+
         {showFilters && (
           <div className="flex w-full items-center gap-2 rounded-[3px] border border-border bg-card p-3 text-xs">
             <Filter className="h-3.5 w-3.5 text-muted-foreground" />
@@ -408,22 +401,9 @@ function OrdersPage() {
         )}
       </div>
 
-      <div className="flex items-center gap-1 overflow-x-auto border-b border-border">
-        {TAB_FILTERS.map((tab) => {
-          const count = orders.filter(tab.filter).length;
-          return (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={`relative flex shrink-0 items-center gap-2 px-3 py-3 text-[13px] font-medium ${activeTab === tab.key ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              {tab.label}
-              <span className={`rounded px-1.5 py-0.5 text-[10px] ${activeTab === tab.key ? "bg-muted text-foreground" : "bg-muted text-muted-foreground"}`}>{count}</span>
-              {activeTab === tab.key && <span className="absolute bottom-[-1px] left-0 right-0 h-0.5 rounded-full bg-foreground" />}
-            </button>
-          );
-        })}
-      </div>
-
       <BrokerCard
         className="overflow-hidden"
-        title={activeFilter.label}
+        title={orderViewLabel}
         subtitle={`${filteredOrders.length} orders shown · click an order to open`}
         action={<button className="rounded-[3px] p-1.5 text-muted-foreground hover:bg-muted"><MoreHorizontal className="h-4 w-4" /></button>}
       >
