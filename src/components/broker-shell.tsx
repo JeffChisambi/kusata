@@ -3,11 +3,27 @@ import { createPortal } from "react-dom";
 import { Link } from "@tanstack/react-router";
 import { getCurrentUser, logout } from "@/lib/auth";
 import {
-  LayoutDashboard, Users, ShieldCheck, FileCheck2,
+  Users, ShieldCheck, FileCheck2,
   ChevronDown, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight,
   CircleUser, Clock, Sun, Moon, Bell, Check, LogOut,
   ClipboardList, Settings2, Search,
 } from "lucide-react";
+
+function NineDotsIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="currentColor" className={className} aria-hidden="true">
+      <circle cx="2.5" cy="2.5" r="1.75" />
+      <circle cx="8"   cy="2.5" r="1.75" />
+      <circle cx="13.5" cy="2.5" r="1.75" />
+      <circle cx="2.5" cy="8"   r="1.75" />
+      <circle cx="8"   cy="8"   r="1.75" />
+      <circle cx="13.5" cy="8"   r="1.75" />
+      <circle cx="2.5" cy="13.5" r="1.75" />
+      <circle cx="8"   cy="13.5" r="1.75" />
+      <circle cx="13.5" cy="13.5" r="1.75" />
+    </svg>
+  );
+}
 
 // ─── Broker nav — scoped subset of the admin nav ───────────────────────────────
 
@@ -23,7 +39,7 @@ export type NavGroup = {
 
 export const brokerNav: NavGroup[] = [
   // ── OVERVIEW ──
-  { section: "OVERVIEW", icon: LayoutDashboard, label: "Overview", href: "/broker" },
+  { section: "OVERVIEW", icon: NineDotsIcon, label: "Overview", href: "/broker" },
 
   // ── CLIENTS ──
   { section: "CLIENTS", icon: Users, label: "Users", href: "/users", badge: 12 },
