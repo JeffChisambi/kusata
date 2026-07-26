@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -453,7 +453,7 @@ function OrderDetailPanel({
   const qty = Math.max(0, Math.min(remaining, Number(executionQty) || 0));
 
   return (
-    <aside className="sticky top-4 overflow-hidden rounded-[3px] border border-border bg-card">
+    <aside className="overflow-hidden rounded-[3px] border border-border bg-card">
       <div className="flex items-start gap-3 border-b border-border px-5 py-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -473,7 +473,7 @@ function OrderDetailPanel({
         </button>
       </div>
 
-      <div className="max-h-[calc(100vh-150px)] space-y-5 overflow-y-auto p-5 scrollbar-thin-gray">
+      <div className="space-y-5 p-5">
         <div className="rounded-[3px] border border-pine/20 bg-pine/5 p-3">
           <div className="flex items-center gap-2 text-xs font-semibold text-pine">
             <ShieldCheck className="h-3.5 w-3.5" /> Execution-ready instruction
@@ -914,6 +914,13 @@ function OrdersPage() {
     [activeFilter, orders, search, sideFilter],
   );
   const selectedOrder = orders.find((order) => order.id === selectedId) ?? null;
+  const detailRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (selectedId && detailRef.current) {
+      detailRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [selectedId]);
 
   const showNotice = (message: string) => {
     setNotice(message);
@@ -1052,30 +1059,28 @@ function OrdersPage() {
         })}
       </div>
 
-      <div className="flex items-start gap-4">
-        <div className="min-w-0 flex-1">
-          <BrokerCard
-            className="overflow-hidden"
-            title={activeFilter.label}
-            subtitle={`${filteredOrders.length} orders shown · click an order to review execution details`}
-            action={
-              <button className="rounded-[3px] p-1.5 text-muted-foreground hover:bg-muted">
-                <MoreHorizontal className="h-4 w-4" />
-              </button>
-            }
-          >
-            <OrderTable orders={filteredOrders} selectedId={selectedId} onSelect={setSelectedId} />
-            <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
-              <span>
-                Showing <span className="font-medium text-foreground">{filteredOrders.length}</span>{" "}
-                of {orders.length} orders
-              </span>
-              <span className="hidden sm:inline">Last synced just now</span>
-            </div>
-          </BrokerCard>
-        </div>
+      <div className="flex flex-col gap-4">
+        <BrokerCard
+          className="overflow-hidden"
+          title={activeFilter.label}
+          subtitle={`${filteredOrders.length} orders shown · click an order to review execution details`}
+          action={
+            <button className="rounded-[3px] p-1.5 text-muted-foreground hover:bg-muted">
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          }
+        >
+          <OrderTable orders={filteredOrders} selectedId={selectedId} onSelect={setSelectedId} />
+          <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
+            <span>
+              Showing <span className="font-medium text-foreground">{filteredOrders.length}</span>{" "}
+              of {orders.length} orders
+            </span>
+            <span className="hidden sm:inline">Last synced just now</span>
+          </div>
+        </BrokerCard>
         {selectedOrder && (
-          <div className="w-full shrink-0 xl:w-[370px]">
+          <div ref={detailRef}>
             <OrderDetailPanel
               order={selectedOrder}
               onClose={() => setSelectedId(null)}
