@@ -485,7 +485,7 @@ function KycQueue() {
                 {row.submitted}
               </div>
             </div>
-            <span className="inline-flex items-center justify-end gap-1 text-[11px] font-medium text-muted-foreground w-24 shrink-0">
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground w-24 shrink-0">
               {Icon(row.status)} {row.status}
             </span>
           </div>
