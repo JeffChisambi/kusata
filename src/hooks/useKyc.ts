@@ -25,16 +25,14 @@ export function useKycQueue(params?: { limit?: number; status?: string }) {
 
   return useQuery({
     queryKey: queryKeys.kyc.queue({ limit, status }),
-    queryFn: async (): Promise<{ applications: KycApplicationRow[]; count: number }> => {
-      try {
-        return await api.get<{ applications: KycApplicationRow[]; count: number }>(
-          `/v1/admin/kyc/queue?limit=${limit}${status ? `&status=${status}` : ''}`,
-        );
-      } catch {
-        return { applications: [], count: 0 };
-      }
-    },
+    queryFn: (): Promise<{ applications: KycApplicationRow[]; count: number }> =>
+      api.get<{ applications: KycApplicationRow[]; count: number }>(
+        `/v1/admin/kyc/queue?limit=${limit}${status ? `&status=${status}` : ''}`,
+      ),
+    // Let TanStack Query surface errors via isError/error — don't swallow them.
+    // Previously this silently returned empty data on any failure, hiding outages.
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -52,8 +50,11 @@ export function useApproveKyc() {
     mutationFn: ({ applicationId, notes }: { applicationId: string; notes?: string }) =>
       api.post(`/v1/admin/kyc/${applicationId}/approve`, { notes }),
     onSuccess: () => {
+      // Narrow invalidation: only the KYC queue and dashboard stats are
+      // affected by a single review decision. Invalidating all of users.all
+      // previously caused the entire user list cache to be thrown away and
+      // re-fetched even though no user data changed.
       queryClient.invalidateQueries({ queryKey: queryKeys.kyc.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.stats() });
     },
   });
@@ -66,7 +67,6 @@ export function useRejectKyc() {
       api.post(`/v1/admin/kyc/${applicationId}/reject`, { reason, notes }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.kyc.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.stats() });
     },
   });

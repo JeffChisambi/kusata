@@ -18,7 +18,7 @@ export function useNotificationsList(filters: NotificationFilters = {}) {
 
   const qs = params.toString();
   return useQuery({
-    queryKey: queryKeys.notifications.list(filters),
+    queryKey: queryKeys.notifications.list(filters as Record<string, unknown>),
     queryFn: () => api.get(`/v1/admin/notifications${qs ? `?${qs}` : ''}`),
   });
 }
@@ -31,7 +31,21 @@ export function useNotificationStats() {
       byChannel: Array<{ channel: string; count: number }>;
     }>('/v1/admin/notifications/stats'),
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
+}
+
+/**
+ * Returns the count of notifications that are not in a terminal "read" state.
+ * Treats anything that isn't READ/DELIVERED as needing attention.
+ */
+export function useUnreadNotificationCount(): number {
+  const { data } = useNotificationStats();
+  if (!data?.byStatus) return 0;
+  const READ_STATUSES = new Set(['READ', 'DELIVERED']);
+  return data.byStatus
+    .filter((s) => !READ_STATUSES.has(s.status.toUpperCase()))
+    .reduce((sum, s) => sum + s.count, 0);
 }
 
 export function useBroadcastNotification() {

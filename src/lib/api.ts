@@ -4,14 +4,21 @@
  * Wraps fetch with:
  *   - Base URL configuration (VITE_API_URL)
  *   - Auto-attach Authorization header
- *   - 401 → redirect to login
- *   - Token refresh on 401 before redirect
+ *   - 401 → token refresh → retry once → redirect to login
+ *
+ * Fix: token refresh is deduplicated behind a single in-flight promise so
+ * concurrent 401s don't race and log the user out spuriously.
  */
+
+import { navigateTo } from './nav-registry';
 
 const BASE_URL = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL)
   || 'http://localhost:3000';
 
 class ApiClient {
+  /** In-flight refresh promise — shared across all concurrent requests. */
+  private _refreshPromise: Promise<boolean> | null = null;
+
   private getToken(): string | null {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('pine_admin_access_token');
@@ -42,11 +49,11 @@ class ApiClient {
       body: body ? JSON.stringify(body) : undefined,
     });
 
-    // Handle 401 — try refresh, then redirect to login
+    // Handle 401 — try refresh (deduplicated), then redirect to login
     if (res.status === 401 && !options?.skipAuth) {
       const refreshed = await this.tryRefresh();
       if (refreshed) {
-        // Retry the original request with new token
+        // Retry the original request with the new token
         headers['Authorization'] = `Bearer ${this.getToken()}`;
         const retryRes = await fetch(url, {
           method,
@@ -60,10 +67,10 @@ class ApiClient {
         }
       }
 
-      // Refresh failed — clear tokens and redirect
+      // Refresh failed — clear tokens and navigate to login via the router
       this.clearTokens();
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
+        navigateTo('/login');
       }
       throw new ApiError(401, 'Session expired. Please log in again.');
     }
@@ -92,7 +99,23 @@ class ApiClient {
     return json?.data !== undefined ? json.data : json;
   }
 
+  /**
+   * Deduplicates concurrent refresh attempts behind a single promise.
+   * If a refresh is already in flight, all callers await the same one.
+   */
   private async tryRefresh(): Promise<boolean> {
+    if (this._refreshPromise) {
+      return this._refreshPromise;
+    }
+
+    this._refreshPromise = this._doRefresh().finally(() => {
+      this._refreshPromise = null;
+    });
+
+    return this._refreshPromise;
+  }
+
+  private async _doRefresh(): Promise<boolean> {
     const refreshToken = typeof window !== 'undefined'
       ? localStorage.getItem('pine_admin_refresh_token')
       : null;
@@ -117,7 +140,7 @@ class ApiClient {
         return true;
       }
     } catch {
-      // Refresh failed silently
+      // Refresh failed — caller will handle redirect
     }
 
     return false;

@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, FileCheck2, Bell,
   ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight,
   Search, Clock, Sun, Moon, Check, LogOut,
 } from "lucide-react";
 import { getCurrentUser, logout } from "@/lib/auth";
+import { useKycQueue } from "@/hooks/useKyc";
+import { useUnreadNotificationCount } from "@/hooks/useNotifications";
 
 const TIME_RANGES = [
   { label: "Last 1 hour",    value: "1h",  short: "Last 1h"  },
@@ -29,16 +31,15 @@ export type NavGroup = {
 };
 
 export const nav: NavGroup[] = [
-  { section: "OVERVIEW", icon: LayoutDashboard, label: "Overview", href: "/" },
-  { section: "CLIENTS",  icon: Users,           label: "Users",           href: "/users",         badge: 12 },
-  { section: "CLIENTS",  icon: FileCheck2,      label: "KYC Management",  href: "/kyc",           badge: 27 },
-  { section: "ENGAGEMENT", icon: Bell,          label: "Notifications",   href: "/notifications" },
+  { section: "OVERVIEW",    icon: LayoutDashboard, label: "Overview",        href: "/"              },
+  { section: "CLIENTS",     icon: Users,           label: "Users",           href: "/users"         },
+  { section: "CLIENTS",     icon: FileCheck2,      label: "KYC Management",  href: "/kyc"           },
+  { section: "ENGAGEMENT",  icon: Bell,            label: "Notifications",   href: "/notifications" },
 ];
 
 export const sectionOrder = ["OVERVIEW", "CLIENTS", "ENGAGEMENT"];
 
-// Unread notification count — scheduled + failed items that need attention
-export const NOTIF_UNREAD_COUNT = 12;
+// NOTIF_UNREAD_COUNT was a hardcoded placeholder — now driven by useUnreadNotificationCount().
 
 // ─── Module-level collapsed cache ─────────────────────────────────────────────
 // Persists across client-side navigations (remounts) so the sidebar never
@@ -100,6 +101,18 @@ function Sidebar({
   transitionReady: boolean;
   onToggleCollapse: () => void;
 }) {
+  // Live pending KYC count for the nav badge — replaces hardcoded value.
+  const { data: kycData } = useKycQueue({ status: 'PENDING', limit: 1 });
+  const pendingKycCount = kycData?.count ?? 0;
+
+  // Merge live badge counts into the static nav definition.
+  const navWithBadges = nav.map((item) => {
+    if (item.label === 'KYC Management') {
+      return { ...item, badge: pendingKycCount > 0 ? pendingKycCount : undefined };
+    }
+    return item;
+  });
+
   // While collapsed is null (SSR / first paint), render nothing to prevent flash
   if (collapsed === null) {
     return <aside className="shrink-0" style={{ width: "17rem" }} />;
@@ -132,7 +145,7 @@ function Sidebar({
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto scrollbar-hide py-2">
         {sectionOrder.map((section) => {
-          const items = nav.filter((n) => n.section === section);
+          const items = navWithBadges.filter((n) => n.section === section);
           if (!items.length) return null;
           return (
             <div key={section} className="mb-1">
@@ -183,9 +196,12 @@ function AdminUserFooter({ collapsed }: { collapsed: boolean }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [menuOpen]);
 
+  const navigate = useNavigate();
   const handleLogout = async () => {
     await logout();
-    window.location.href = '/login';
+    // Use the router navigate instead of window.location.href so React state
+    // is torn down cleanly and the router's history stack stays consistent.
+    navigate({ to: '/login' });
   };
 
   return (
@@ -424,6 +440,7 @@ function NavItem({
 }
 
 function Topbar({ eyebrow, title }: { eyebrow: string; title: string }) {
+  const unreadCount = useUnreadNotificationCount();
   const [dark, setDark] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [range, setRange] = useState("24h");
@@ -551,9 +568,11 @@ function Topbar({ eyebrow, title }: { eyebrow: string; title: string }) {
           aria-label="Notifications"
         >
           <Bell className="w-4 h-4 text-muted-foreground" />
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-white text-[10px] font-bold flex items-center justify-center leading-none">
-            {NOTIF_UNREAD_COUNT}
-          </span>
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-white text-[10px] font-bold flex items-center justify-center leading-none">
+              {unreadCount}
+            </span>
+          )}
         </Link>
       </div>
     </header>

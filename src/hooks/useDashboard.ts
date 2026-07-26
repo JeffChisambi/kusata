@@ -16,7 +16,10 @@ export function useDashboardStats() {
       totalWalletBalance: string;
       todayNewUsers: number;
     }>('/v1/admin/dashboard/stats'),
-    refetchInterval: 30_000, // Refresh every 30s
+    refetchInterval: 30_000,
+    // Do not poll when the tab is in the background — avoids unnecessary load
+    // on the API from inactive sessions.
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -34,6 +37,7 @@ export function useDashboardCharts(days = 14) {
       activeUsers: number;
     }>>(`/v1/admin/dashboard/charts?days=${days}`),
     refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -45,6 +49,7 @@ export function useSystemHealth() {
       checks: Record<string, { status: string; latencyMs?: number }>;
       timestamp: string;
     }>('/v1/admin/dashboard/health'),
-    refetchInterval: 15_000, // Refresh every 15s
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
   });
 }

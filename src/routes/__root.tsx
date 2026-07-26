@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { isAuthenticated, getCurrentUser } from "@/lib/auth";
+import { registerNavigate } from "@/lib/nav-registry";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -99,7 +100,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
     if (authed && !onLogin) {
       const user = getCurrentUser();
-      const brokerAllowed = [
+      // Keep this list in sync with any new routes that brokers should access.
+      // Using `as const` ensures TypeScript catches typos at the call sites.
+      const BROKER_ALLOWED_PATHS = [
         "/broker",
         "/users",
         "/kyc",
@@ -107,8 +110,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         "/notifications",
         "/coming-soon",
         "/settings",
-      ];
-      const isBrokerAllowed = brokerAllowed.some((p) => location.pathname.startsWith(p));
+      ] as const;
+      const isBrokerAllowed = BROKER_ALLOWED_PATHS.some((p) =>
+        location.pathname.startsWith(p),
+      );
       if (user?.role === "BROKER" && !isBrokerAllowed) {
         throw redirect({ to: "/broker" });
       }
@@ -135,6 +140,14 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const navigate = useNavigate();
+
+  // Register the router's navigate function so ApiClient can use it for
+  // session-expiry redirects instead of window.location.href, which would
+  // bypass the router and destroy React state.
+  useEffect(() => {
+    registerNavigate((to) => navigate({ to: to as any }));
+  }, [navigate]);
 
   return (
     <QueryClientProvider client={queryClient}>
