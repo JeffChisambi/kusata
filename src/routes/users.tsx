@@ -200,26 +200,23 @@ function UserStats({ users }: { users: UserRow[] }) {
 
   return (
     <div className="flex gap-4 pt-6">
-      <div className="flex-1 min-w-0 rounded-[3px] bg-card border border-border p-4 flex gap-4 items-start">
-        <div className="w-9 h-9 flex items-center justify-center text-muted-foreground shrink-0">
-          <Users className="w-4 h-4" />
-        </div>
-        {combined.map((it, i) => (
-          <Fragment key={it.label}>
-            {i > 0 && <div className="w-px self-stretch bg-border shrink-0" />}
-            <div className="flex-1 min-w-0 flex flex-col gap-2">
-              <span className="self-end inline-flex items-center gap-1 text-[11px] font-medium text-pine">
-                <TrendingUp className="w-3 h-3" /> {it.trend}
-              </span>
-              <div>
-                <div className="text-xs text-muted-foreground">{it.label}</div>
-                <div className="text-xl font-bold mt-0.5">{it.value}</div>
-                <div className="text-[11px] text-muted-foreground mt-1">{it.sub}</div>
-              </div>
+      {combined.map((it) => (
+        <div key={it.label} className="flex-1 min-w-0 rounded-[3px] bg-card border border-border p-4">
+          <div className="flex items-center justify-between">
+            <div className="w-9 h-9 flex items-center justify-center text-muted-foreground">
+              <TrendingUp className="w-4 h-4" />
             </div>
-          </Fragment>
-        ))}
-      </div>
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-pine">
+              <TrendingUp className="w-3 h-3" /> {it.trend}
+            </span>
+          </div>
+          <div className="mt-3">
+            <div className="text-xs text-muted-foreground">{it.label}</div>
+            <div className="text-xl font-bold mt-0.5">{it.value}</div>
+            <div className="text-[11px] text-muted-foreground mt-1">{it.sub}</div>
+          </div>
+        </div>
+      ))}
       {items.map((it) => {
         const Icon = it.icon;
         const toneMap = { pine: "text-pine bg-pine/10", amber: "text-amber bg-amber/10", rose: "text-rose bg-rose/10" }[it.tone];
