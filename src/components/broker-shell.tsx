@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { getCurrentUser, logout } from "@/lib/auth";
 import {
   LayoutDashboard, Users, ShieldCheck, FileCheck2,
-  ChevronDown, ChevronRight, ChevronLeft,
+  ChevronDown, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight,
   CircleUser, Clock, Sun, Moon, Bell, Check, LogOut,
   ClipboardList, Settings2, Search,
 } from "lucide-react";
@@ -130,26 +130,28 @@ function BrokerSidebar({
       className="relative shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border transition-all duration-300 ease-in-out overflow-visible"
       style={{ width: collapsed ? "4.5rem" : "17rem" }}
     >
-      {/* Header — contains logo + collapse toggle */}
-      <div className="relative z-10 flex items-center h-16 px-4 shrink-0 border-b border-sidebar-border gap-3">
-        <div className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg bg-muted">
-          <ChevronLeft className="w-3 h-3 text-muted-foreground" />
-          <ChevronRight className="w-3 h-3 text-muted-foreground" />
-        </div>
+      {/* Header */}
+      <div className="relative z-10 flex items-center h-16 px-3 shrink-0">
         {!collapsed && (
-          <div className="flex-1 min-w-0">
-            <div className="text-[15px] font-bold text-foreground leading-none">Pine</div>
-            <div className="text-[9px] tracking-[0.18em] text-muted-foreground mt-0.5">BROKER PORTAL</div>
-          </div>
+          <>
+            <div className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg bg-muted">
+              <ChevronLeft className="w-3 h-3 text-muted-foreground" />
+              <ChevronRight className="w-3 h-3 text-muted-foreground" />
+            </div>
+            <div className="ml-3 flex-1 min-w-0">
+              <div className="text-[15px] font-bold text-foreground leading-none">Pine</div>
+              <div className="text-[9px] tracking-[0.18em] text-muted-foreground mt-0.5">BROKER PORTAL</div>
+            </div>
+          </>
         )}
         <button
           onClick={onToggleCollapse}
-          className="shrink-0 w-7 h-7 rounded-md border border-sidebar-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+          className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors ${collapsed ? "mx-auto" : "ml-auto"}`}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed
-            ? <ChevronRight className="w-3.5 h-3.5" />
-            : <ChevronLeft className="w-3.5 h-3.5" />}
+            ? <ChevronsRight className="w-4 h-4" />
+            : <ChevronsLeft className="w-4 h-4" />}
         </button>
       </div>
 

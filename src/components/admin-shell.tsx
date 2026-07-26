@@ -6,8 +6,8 @@ import {
   Wallet, BookOpen, CreditCard, Building2, LineChart as LineChartIcon, Newspaper,
   Bell, Star, BarChart3, Headphones, AlertTriangle, Scale, KeyRound, UserCog,
   Activity, ListChecks, History, Settings, Plug, DatabaseBackup,
-  ChevronDown, ChevronRight, ChevronLeft, Search, CircleUser, Clock, Sun, Moon, Check,
-  LogOut,
+  ChevronDown, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight,
+  Search, CircleUser, Clock, Sun, Moon, Check, LogOut,
 } from "lucide-react";
 import { getCurrentUser, logout } from "@/lib/auth";
 
@@ -279,29 +279,29 @@ function Sidebar({
       className="relative shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border rounded-tr-[22px] transition-all duration-300 ease-in-out overflow-visible"
       style={{ width: collapsed ? "4.5rem" : "17rem" }}
     >
-      {/* Floating collapse toggle — overlaps the top-right corner */}
-      <button
-        onClick={onToggleCollapse}
-        className="absolute top-3 -right-4 z-20 w-8 h-8 rounded-full bg-muted border border-border shadow-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-        title={collapsed ? "Expand" : "Collapse"}
-      >
-        {collapsed
-          ? <ChevronRight className="w-3.5 h-3.5" />
-          : <ChevronLeft className="w-3.5 h-3.5" />}
-      </button>
-
       {/* Header */}
-      <div className="relative z-10 flex items-center h-16 px-4 shrink-0 border-b border-sidebar-border">
-        <div className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg bg-muted">
-          <ChevronLeft className="w-3 h-3 text-muted-foreground" />
-          <ChevronRight className="w-3 h-3 text-muted-foreground" />
-        </div>
+      <div className="relative z-10 flex items-center h-16 px-3 shrink-0">
         {!collapsed && (
-          <div className="ml-3 flex-1 min-w-0">
-            <div className="text-[15px] font-bold text-foreground leading-none">Pine</div>
-            <div className="text-[9px] tracking-[0.18em] text-muted-foreground mt-0.5">BROKER ADMIN</div>
-          </div>
+          <>
+            <div className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg bg-muted">
+              <ChevronLeft className="w-3 h-3 text-muted-foreground" />
+              <ChevronRight className="w-3 h-3 text-muted-foreground" />
+            </div>
+            <div className="ml-3 flex-1 min-w-0">
+              <div className="text-[15px] font-bold text-foreground leading-none">Pine</div>
+              <div className="text-[9px] tracking-[0.18em] text-muted-foreground mt-0.5">BROKER ADMIN</div>
+            </div>
+          </>
         )}
+        <button
+          onClick={onToggleCollapse}
+          className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors ${collapsed ? "mx-auto" : "ml-auto"}`}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed
+            ? <ChevronsRight className="w-4 h-4" />
+            : <ChevronsLeft className="w-4 h-4" />}
+        </button>
       </div>
 
       {/* Nav */}
