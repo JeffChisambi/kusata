@@ -200,15 +200,17 @@ function SummaryCard({
   label: string; value: number; sub: string; accent?: boolean;
 }) {
   return (
-    <div className="rounded-xl bg-card border border-border p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${accent ? "bg-rose/10" : "bg-muted"}`}>
-          <Icon className={`w-4 h-4 ${accent ? "text-rose" : "text-muted-foreground"}`} />
+    <div className="flex-1 rounded-[3px] bg-card border border-border p-4 flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <div className="w-9 h-9 flex items-center justify-center text-muted-foreground">
+          <Icon className={`w-4.5 h-4.5 ${accent ? "text-rose" : "text-muted-foreground"}`} />
         </div>
-        <span className="text-xs text-muted-foreground">{sub}</span>
+        <span className="text-[11px] font-medium text-muted-foreground">{sub}</span>
       </div>
-      <div className="text-2xl font-bold">{value}</div>
-      <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
+      <div>
+        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className="text-xl font-bold leading-tight mt-0.5">{value}</div>
+      </div>
     </div>
   );
 }
