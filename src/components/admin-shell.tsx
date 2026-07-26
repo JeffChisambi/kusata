@@ -2,12 +2,9 @@ import { useState, useRef, useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Users, ShieldCheck, FileCheck2, CandlestickChart, Briefcase,
-  Wallet, BookOpen, CreditCard, Building2, LineChart as LineChartIcon, Newspaper,
-  Bell, Star, BarChart3, Headphones, AlertTriangle, Scale, KeyRound, UserCog,
-  Activity, ListChecks, History, Settings, Plug, DatabaseBackup,
-  ChevronDown, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight,
-  Search, CircleUser, Clock, Sun, Moon, Check, LogOut,
+  LayoutDashboard, Users, FileCheck2, Bell,
+  ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight,
+  Search, Clock, Sun, Moon, Check, LogOut,
 } from "lucide-react";
 import { getCurrentUser, logout } from "@/lib/auth";
 
@@ -33,189 +30,12 @@ export type NavGroup = {
 
 export const nav: NavGroup[] = [
   { section: "OVERVIEW", icon: LayoutDashboard, label: "Overview", href: "/" },
-  { section: "CLIENTS", icon: Users, label: "Users", href: "/users", badge: 12 },
-  {
-    section: "CLIENTS", icon: ShieldCheck, label: "Auth & Security",
-    children: [
-      { label: "Active Sessions" }, { label: "Force Logout" }, { label: "Password Resets" },
-      { label: "PIN Resets" }, { label: "Biometric Status" }, { label: "MFA" },
-      { label: "Failed Logins", badge: 38 }, { label: "Lockouts", badge: 6 },
-      { label: "IP Blacklist" }, { label: "Device Blacklist" },
-    ],
-  },
-  {
-    section: "CLIENTS", icon: FileCheck2, label: "KYC Management", href: "/kyc", badge: 27,
-  },
-  {
-    section: "MARKETS", icon: CandlestickChart, label: "Trading Operations",
-    children: [
-      { label: "All Orders" }, { label: "Open" }, { label: "Completed" }, { label: "Cancelled" },
-      { label: "Rejected" }, { label: "Pending Settlements", badge: 14 }, { label: "Trade History" },
-      { label: "Execution Logs" }, { label: "Suspend Trading" },
-    ],
-  },
-  {
-    section: "MARKETS", icon: Briefcase, label: "Portfolio Management",
-    children: [
-      { label: "User Portfolios" }, { label: "Holdings" }, { label: "Allocation" },
-      { label: "Performance" }, { label: "Historical Snapshots" }, { label: "Unrealized Gains" },
-      { label: "Realized Gains" }, { label: "Dividends Received" }, { label: "Export" },
-    ],
-  },
-  {
-    section: "MARKETS", icon: LineChartIcon, label: "Market Data",
-    children: [
-      { label: "Listed Companies" }, { label: "Listed Securities" }, { label: "Import Prices" },
-      { label: "Sync Status" }, { label: "Market Holidays" }, { label: "Trading Sessions" },
-      { label: "Price History" }, { label: "Sync Logs" }, { label: "Retry Failed Imports" },
-    ],
-  },
-  {
-    section: "MARKETS", icon: Building2, label: "Corporate Actions",
-    children: [
-      { label: "Dividend Announcements" }, { label: "Import Actions" }, { label: "Dividend Schedules" },
-      { label: "Stock Splits" }, { label: "Bonus Issues" }, { label: "Rights Issues" },
-      { label: "Mergers" }, { label: "Payment Schedules" }, { label: "Distribution History" },
-    ],
-  },
-  {
-    section: "FINANCE", icon: Wallet, label: "Wallet Management",
-    children: [
-      { label: "Balances" }, { label: "Available" }, { label: "Reserved" }, { label: "Pending" },
-      { label: "Wallet History" }, { label: "Reservations" }, { label: "Deposits" },
-      { label: "Withdrawals" }, { label: "Manual Adjustments", badge: 3 }, { label: "Statements" },
-    ],
-  },
-  {
-    section: "FINANCE", icon: BookOpen, label: "Ledger & Accounting",
-    children: [
-      { label: "Ledger Entries" }, { label: "Journal Entries" }, { label: "Account Balances" },
-      { label: "Reconciliation" }, { label: "Settlement Records" }, { label: "Financial Reports" },
-      { label: "Export" }, { label: "Audit Financial" },
-    ],
-  },
-  {
-    section: "FINANCE", icon: CreditCard, label: "Payments",
-    children: [
-      { label: "Deposits" }, { label: "Withdrawals" }, { label: "Failed", badge: 9 },
-      { label: "Retry Payments" }, { label: "Gateways" }, { label: "Bank Reconciliation" },
-      { label: "Mobile Money Reconciliation" }, { label: "Disputes", badge: 2 },
-      { label: "Refunds" }, { label: "Manual Verification" },
-    ],
-  },
-  {
-    section: "ENGAGEMENT", icon: Newspaper, label: "News & Announcements",
-    children: [
-      { label: "Market News" }, { label: "Company News" }, { label: "Announcements" },
-      { label: "Scheduled" }, { label: "Pinned" }, { label: "Archive" },
-    ],
-  },
-  { section: "ENGAGEMENT", icon: Bell, label: "Notifications", href: "/notifications" },
-  {
-    section: "ENGAGEMENT", icon: Star, label: "Watchlists & Alerts",
-    children: [
-      { label: "User Watchlists" }, { label: "Global Alerts" }, { label: "Price Alerts" },
-      { label: "Market Alerts" }, { label: "Delete Alerts" }, { label: "Delivery Monitor" },
-    ],
-  },
-  {
-    section: "INSIGHTS", icon: BarChart3, label: "Reports & Analytics",
-    children: [
-      { label: "User Growth" }, { label: "Revenue" }, { label: "Trading" }, { label: "Settlement" },
-      { label: "Dividend" }, { label: "Portfolio" }, { label: "Wallet" }, { label: "Compliance" },
-      { label: "Audit" }, { label: "Daily / Monthly / Annual" }, { label: "Export CSV / XLS / PDF" },
-    ],
-  },
-  {
-    section: "INSIGHTS", icon: Headphones, label: "Customer Support", badge: 18,
-    children: [
-      { label: "Search Customer" }, { label: "Timeline" }, { label: "Support History" },
-      { label: "Create Case" }, { label: "Assign Tickets" }, { label: "Escalate", badge: 3 },
-      { label: "Internal Notes" }, { label: "Resolve" }, { label: "Communications" },
-    ],
-  },
-  {
-    section: "RISK", icon: AlertTriangle, label: "Risk & Fraud", badge: 7,
-    children: [
-      { label: "Suspicious Accounts", badge: 7 }, { label: "Suspicious Trades" }, { label: "AML Alerts" },
-      { label: "Velocity Alerts" }, { label: "Large Transactions" }, { label: "Device Risk" },
-      { label: "IP Risk" }, { label: "Country Risk" }, { label: "Fraud Dashboard" },
-      { label: "Risk Scoring" }, { label: "Manual Review" },
-    ],
-  },
-  {
-    section: "RISK", icon: Scale, label: "Compliance",
-    children: [
-      { label: "AML Monitoring" }, { label: "Sanctions Screening" }, { label: "PEP Screening" },
-      { label: "Regulatory Reports" }, { label: "Audit Logs" }, { label: "Case Management" },
-      { label: "Suspicious Activity Reports" }, { label: "Regulatory Export" },
-    ],
-  },
-  {
-    section: "ACCESS", icon: KeyRound, label: "Roles & Permissions",
-    children: [
-      { label: "Roles" }, { label: "Assign Permissions" }, { label: "Revoke" },
-      { label: "Role Assignments" }, { label: "Permission Audit" }, { label: "Access History" },
-    ],
-  },
-  {
-    section: "ACCESS", icon: UserCog, label: "Staff Management",
-    children: [
-      { label: "Administrators" }, { label: "Invite Staff" }, { label: "Disable Accounts" },
-      { label: "Reset MFA" }, { label: "Staff Activity" }, { label: "Audit Logs" },
-      { label: "Sessions" },
-    ],
-  },
-  {
-    section: "SYSTEM", icon: Activity, label: "System Monitoring",
-    children: [
-      { label: "API Health" }, { label: "Database" }, { label: "Redis" }, { label: "Queues" },
-      { label: "Storage" }, { label: "CPU" }, { label: "Memory" }, { label: "Network" },
-      { label: "Error Logs", badge: 24 }, { label: "Uptime" }, { label: "Incidents" },
-    ],
-  },
-  {
-    section: "SYSTEM", icon: ListChecks, label: "Queue Monitoring",
-    children: [
-      { label: "Job Queues" }, { label: "Failed Jobs", badge: 11 }, { label: "Retry Jobs" },
-      { label: "Metrics" }, { label: "Throughput" }, { label: "Delays" },
-    ],
-  },
-  {
-    section: "SYSTEM", icon: History, label: "Audit Center",
-    children: [
-      { label: "User Audit" }, { label: "Financial Audit" }, { label: "Trading Audit" },
-      { label: "Admin Audit" }, { label: "Auth Audit" }, { label: "API Audit" },
-      { label: "Export Reports" }, { label: "Immutable History" },
-    ],
-  },
-  {
-    section: "SYSTEM", icon: Settings, label: "System Configuration",
-    children: [
-      { label: "Feature Flags" }, { label: "Trading Limits" }, { label: "Deposit Limits" },
-      { label: "Withdrawal Limits" }, { label: "KYC Settings" }, { label: "Password Policy" },
-      { label: "Session Policy" }, { label: "Notifications" }, { label: "Market Settings" },
-      { label: "Maintenance Mode" },
-    ],
-  },
-  {
-    section: "SYSTEM", icon: Plug, label: "APIs & Integrations",
-    children: [
-      { label: "Broker Integration" }, { label: "Market Data" }, { label: "Payment Gateways" },
-      { label: "SMS Providers" }, { label: "Email Providers" }, { label: "Push Providers" },
-      { label: "API Keys" }, { label: "Webhooks" },
-    ],
-  },
-  {
-    section: "SYSTEM", icon: DatabaseBackup, label: "Backup & Recovery",
-    children: [
-      { label: "Backup History" }, { label: "Manual Backup" }, { label: "Restore Points" },
-      { label: "DR Status" }, { label: "Backup Verification" },
-    ],
-  },
+  { section: "CLIENTS",  icon: Users,           label: "Users",           href: "/users",         badge: 12 },
+  { section: "CLIENTS",  icon: FileCheck2,      label: "KYC Management",  href: "/kyc",           badge: 27 },
+  { section: "ENGAGEMENT", icon: Bell,          label: "Notifications",   href: "/notifications" },
 ];
 
-export const sectionOrder = ["OVERVIEW", "CLIENTS", "MARKETS", "FINANCE", "ENGAGEMENT", "INSIGHTS", "RISK", "ACCESS", "SYSTEM"];
+export const sectionOrder = ["OVERVIEW", "CLIENTS", "ENGAGEMENT"];
 
 // Unread notification count — scheduled + failed items that need attention
 export const NOTIF_UNREAD_COUNT = 12;
