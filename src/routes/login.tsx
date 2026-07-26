@@ -117,59 +117,25 @@ function LoginPage() {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen">
 
-      {/* ── Left: brand panel ── */}
-      <div className="hidden lg:flex lg:w-[46%] flex-col bg-[#45B369] relative overflow-hidden">
-        <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-white/5" />
-        <div className="absolute bottom-[-80px] right-[-80px] w-[380px] h-[380px] rounded-full bg-white/5" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-white/[0.03]" />
-
-        <div className="relative z-10 flex flex-col h-full px-14 py-12">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center">
-              <img src="/logo.png" alt="Pine" className="w-6 h-6 object-contain brightness-0 invert" />
-            </div>
-            <div>
-              <div className="text-white font-bold text-lg leading-none">Pine</div>
-              <div className="text-white/60 text-[9px] tracking-[0.2em] mt-0.5">BROKER ADMIN</div>
-            </div>
-          </div>
-
-          <div className="flex-1 flex flex-col justify-center">
-            <h1 className="text-white text-[2.4rem] font-bold leading-tight tracking-tight">
-              The control tower<br />for your brokerage.
-            </h1>
-            <p className="text-white/70 text-[15px] mt-4 leading-relaxed max-w-xs">
-              Manage users, trades, compliance, and operations — all from one secure platform.
-            </p>
-
-            <div className="flex flex-wrap gap-2 mt-8">
-              {["KYC Verification", "Trade Monitoring", "AML Alerts", "Ledger & Reporting"].map((f) => (
-                <span
-                  key={f}
-                  className="text-[12px] font-medium text-white/90 bg-white/10 border border-white/15 px-3 py-1.5 rounded-full"
-                >
-                  {f}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 text-white/50 text-xs">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            Secured with TOTP MFA · Admin access only
-          </div>
-        </div>
+      {/* ── Left: logo panel — white background, oversized mark, nothing else ── */}
+      <div className="hidden lg:flex lg:w-[46%] items-center justify-center bg-white">
+        <img
+          src="/logo.png"
+          alt="Pine"
+          className="w-[78%] max-w-[480px] object-contain select-none"
+          draggable={false}
+        />
       </div>
 
-      {/* ── Right: form panel ── */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-[380px]">
+      {/* ── Right: form panel — green background, white card ── */}
+      <div className="flex-1 flex items-center justify-center bg-[#45B369] px-6 py-12">
+        <div className="w-full max-w-[400px] bg-white rounded-2xl shadow-2xl px-8 py-10">
 
-          {/* Mobile logo */}
-          <div className="flex items-center gap-2.5 mb-10 lg:hidden">
-            <img src="/logo.png" alt="Pine" className="w-8 h-8 object-contain" />
+          {/* Mobile logo (shown only when left panel is hidden) */}
+          <div className="flex items-center gap-2.5 mb-8 lg:hidden">
+            <img src="/logo.png" alt="Pine" className="w-9 h-9 object-contain" />
             <div>
               <div className="font-bold text-[15px] leading-none">Pine</div>
               <div className="text-[9px] tracking-[0.18em] text-muted-foreground mt-0.5">BROKER ADMIN</div>
