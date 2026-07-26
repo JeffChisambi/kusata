@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  Users, FileCheck2, CandlestickChart, Wallet,
+  Users, FileCheck2, Wallet,
   CreditCard, Headphones, TrendingUp, TrendingDown,
   Clock, ArrowUpRight, ArrowDownRight, CheckCircle2,
   XCircle, AlertTriangle, MoreHorizontal,
@@ -70,6 +70,22 @@ const supportTickets = [
   { id: "TKT-907", client: "S. Tembo",     issue: "Wrong trade executed",     priority: "HIGH",   time: "3 hr ago"   },
 ];
 
+// ─── Custom icons ─────────────────────────────────────────────────────────────
+
+function TradeVolumeIcon({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+      {/* Axes */}
+      <path d="M4 2H2v19a1 1 0 0 0 1 1h19v-2H4V2z" />
+      {/* Bars — thinner widths, rounded tops */}
+      <rect x="6.5"  y="12" width="2" height="6" rx="1" />
+      <rect x="9.5"  y="7"  width="2" height="11" rx="1" />
+      <rect x="13"   y="4"  width="2" height="14" rx="1" />
+      <rect x="16.5" y="9"  width="2" height="9"  rx="1" />
+    </svg>
+  );
+}
+
 // ─── KPI cards ────────────────────────────────────────────────────────────────
 
 const KPIS = [
@@ -90,7 +106,7 @@ const KPIS = [
     sub: "avg. 4h to resolve",
   },
   {
-    icon: CandlestickChart,
+    icon: TradeVolumeIcon,
     label: "Trade Volume (today)",
     value: fmtMoney(3_900_000),
     delta: "+18% vs yesterday",
