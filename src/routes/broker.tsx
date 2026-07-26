@@ -191,15 +191,15 @@ function TradeVolumeChart() {
 }
 
 function KycQueue() {
-  const badge = (status: string) => {
-    if (status === "PENDING")  return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
-    if (status === "APPROVED") return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
-    return "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400";
+  const iconColor = (status: string) => {
+    if (status === "PENDING")  return "text-amber-500";
+    if (status === "APPROVED") return "text-green-500";
+    return "text-rose-500";
   };
   const Icon = (status: string) => {
-    if (status === "PENDING")  return <Clock className="w-3.5 h-3.5" />;
-    if (status === "APPROVED") return <CheckCircle2 className="w-3.5 h-3.5" />;
-    return <XCircle className="w-3.5 h-3.5" />;
+    if (status === "PENDING")  return <Clock className={`w-3.5 h-3.5 ${iconColor(status)}`} />;
+    if (status === "APPROVED") return <CheckCircle2 className={`w-3.5 h-3.5 ${iconColor(status)}`} />;
+    return <XCircle className={`w-3.5 h-3.5 ${iconColor(status)}`} />;
   };
 
   return (
@@ -224,7 +224,7 @@ function KycQueue() {
               <div className="text-[13px] font-medium text-foreground truncate">{row.name}</div>
               <div className="text-[11px] text-muted-foreground">{row.id} · {row.submitted}</div>
             </div>
-            <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${badge(row.status)}`}>
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
               {Icon(row.status)} {row.status}
             </span>
           </div>
