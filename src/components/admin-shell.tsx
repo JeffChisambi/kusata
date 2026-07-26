@@ -292,8 +292,9 @@ function Sidebar({
 
       {/* Header */}
       <div className="relative z-10 flex items-center h-16 px-4 shrink-0 border-b border-sidebar-border">
-        <div className="w-8 h-8 shrink-0 flex items-center justify-center">
-          <img src="/logo.png" alt="Pine" className="w-8 h-8 object-contain" />
+        <div className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg bg-muted">
+          <ChevronLeft className="w-3 h-3 text-muted-foreground" />
+          <ChevronRight className="w-3 h-3 text-muted-foreground" />
         </div>
         {!collapsed && (
           <div className="ml-3 flex-1 min-w-0">
