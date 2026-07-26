@@ -199,8 +199,8 @@ function UserStats({ users }: { users: UserRow[] }) {
   ] as const;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 pt-6">
-      <div className="col-span-2 md:col-span-3 rounded-[3px] bg-card border border-border p-4 flex gap-4 items-start">
+    <div className="flex gap-4 pt-6">
+      <div className="flex-1 min-w-0 rounded-[3px] bg-card border border-border p-4 flex gap-4 items-start">
         <div className="w-9 h-9 flex items-center justify-center text-muted-foreground shrink-0">
           <Users className="w-4 h-4" />
         </div>
@@ -311,11 +311,11 @@ function Toolbar({
   riskFilter: "all" | Risk; setRiskFilter: (v: "all" | Risk) => void;
   selectedCount: number;
 }) {
+  if (selectedCount === 0) return null;
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-2">
-
+    <div className="mt-3 flex flex-wrap items-center gap-2">
       <div className="ml-auto flex items-center gap-2">
-        {selectedCount > 0 && <BulkActions count={selectedCount} />}
+        <BulkActions count={selectedCount} />
       </div>
     </div>
   );
