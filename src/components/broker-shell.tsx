@@ -27,11 +27,11 @@ export const brokerNav: NavGroup[] = [
 
   // ── CLIENTS ──
   { section: "CLIENTS", icon: Users, label: "Users", href: "/users", badge: 12 },
-  { section: "CLIENTS", icon: ShieldCheck, label: "Auth & Security", href: "/coming-soon" },
   { section: "CLIENTS", icon: FileCheck2, label: "KYC Management", href: "/kyc", badge: 2 },
 
   // ── TRADING ──
   { section: "TRADING", icon: ClipboardList, label: "Orders", href: "/orders" },
+  { section: "TRADING", icon: ShieldCheck, label: "Auth & Security", href: "/coming-soon" },
 
   // ── ACCOUNT ──
   { section: "ACCOUNT", icon: Settings2, label: "Settings", href: "/settings" },
