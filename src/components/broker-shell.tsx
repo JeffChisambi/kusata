@@ -249,18 +249,6 @@ function UserFooter({ collapsed }: { collapsed: boolean }) {
 
       {menuOpen && (
         <div className={`absolute ${collapsed ? 'left-full ml-2 bottom-0' : 'bottom-full mb-2 left-0 right-0'} z-50 bg-card border border-border rounded-[4px] shadow-xl overflow-hidden`}>
-          <div className="px-3.5 py-3 border-b border-border">
-            <div className="text-[13px] font-medium text-foreground">{displayName}</div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">{user?.email ?? ''}</div>
-          </div>
-          <Link
-            to="/settings"
-            onClick={() => setMenuOpen(false)}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-foreground hover:bg-muted/60 transition-colors text-left"
-          >
-            <Settings2 className="w-4 h-4 text-muted-foreground" />
-            Settings
-          </Link>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-rose hover:bg-rose/5 transition-colors text-left"
