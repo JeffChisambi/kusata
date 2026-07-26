@@ -241,10 +241,9 @@ export function AdminShell({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>({ [activeLabel]: true });
-  const [collapsed, setCollapsed] = useState(false);
-  useEffect(() => {
-    setCollapsed(window.localStorage.getItem("pine-sidebar-collapsed") === "1");
-  }, []);
+  const [collapsed, setCollapsed] = useState<boolean>(() =>
+    typeof window !== "undefined" && window.localStorage.getItem("pine-sidebar-collapsed") === "1"
+  );
   const toggleCollapse = () => {
     setCollapsed((c) => {
       const next = !c;

@@ -81,11 +81,9 @@ export function BrokerShell({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>({ [activeLabel]: true });
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    setCollapsed(window.localStorage.getItem("pine-broker-sidebar-collapsed") === "1");
-  }, []);
+  const [collapsed, setCollapsed] = useState<boolean>(() =>
+    typeof window !== "undefined" && window.localStorage.getItem("pine-broker-sidebar-collapsed") === "1"
+  );
 
   const toggleCollapse = () => {
     setCollapsed((c) => {
