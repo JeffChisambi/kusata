@@ -747,9 +747,6 @@ function BrokerDashboard() {
         <KycQueue />
       </div>
 
-      {/* Orders row */}
-      <RecentOrders />
-
       {/* Support row */}
       <SupportTickets />
     </BrokerShell>
