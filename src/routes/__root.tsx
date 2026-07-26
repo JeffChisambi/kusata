@@ -106,6 +106,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         "/orders",
         "/notifications",
         "/coming-soon",
+        "/settings",
       ];
       const isBrokerAllowed = brokerAllowed.some((p) => location.pathname.startsWith(p));
       if (user?.role === "BROKER" && !isBrokerAllowed) {
