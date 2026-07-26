@@ -227,16 +227,8 @@ function statusLabel(status: DisplayStatus) {
             : "Cancelled";
 }
 
-function statusClass(status: DisplayStatus) {
-  const classes: Record<DisplayStatus, string> = {
-    READY: "bg-pine/10 text-pine",
-    PARTIAL: "bg-sky/10 text-sky",
-    EXECUTED: "bg-muted text-muted-foreground",
-    REVIEW: "bg-amber/15 text-amber-700 dark:text-amber-300",
-    REJECTED: "bg-rose/10 text-rose-500",
-    CANCELLED: "bg-muted text-muted-foreground",
-  };
-  return classes[status];
+function statusClass(_status: DisplayStatus) {
+  return "bg-muted text-muted-foreground";
 }
 
 function StatusPill({ status }: { status: DisplayStatus }) {
@@ -263,7 +255,7 @@ function StatusPill({ status }: { status: DisplayStatus }) {
 function SideBadge({ side }: { side: OrderSide }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 text-xs font-semibold ${side === "BUY" ? "text-pine" : "text-rose-500"}`}
+      className={`inline-flex items-center gap-1 text-xs font-semibold text-foreground`}
     >
       {side === "BUY" ? (
         <ArrowUpRight className="h-3.5 w-3.5" />
@@ -347,12 +339,10 @@ function OrderTable({
         <thead>
           <tr className="border-b border-border">
             {[
-              "Order",
               "Client",
               "Side / security",
               "Quantity",
               "Limit",
-              "Received",
               "Status",
               "",
             ].map((heading) => (
@@ -368,7 +358,7 @@ function OrderTable({
         <tbody>
           {orders.length === 0 ? (
             <tr>
-              <td colSpan={8} className="px-4 py-14 text-center text-sm text-muted-foreground">
+              <td colSpan={6} className="px-4 py-14 text-center text-sm text-muted-foreground">
                 No orders match this view.
               </td>
             </tr>
@@ -380,15 +370,9 @@ function OrderTable({
                 <tr
                   key={order.id}
                   onClick={() => onSelect(order.id)}
-                  className={`cursor-pointer border-b border-border last:border-0 transition-colors ${selected ? "bg-pine/5" : "hover:bg-muted/30"}`}
+                  className={`cursor-pointer border-b border-border last:border-0 transition-colors ${selected ? "bg-muted/50" : "hover:bg-muted/30"}`}
                 >
-                  <td className="px-3 py-3.5 first:pl-4">
-                    <div className="font-mono text-[11px] font-semibold">{order.id}</div>
-                    <div className="mt-1 text-[10px] text-muted-foreground">
-                      {order.tif} · {order.exchange}
-                    </div>
-                  </td>
-                  <td className="max-w-[150px] px-3 py-3.5">
+                  <td className="max-w-[150px] px-3 py-3.5 first:pl-4">
                     <div className="truncate font-medium">{order.client}</div>
                     <div className="mt-1 truncate text-[11px] text-muted-foreground">
                       {order.account}
@@ -404,7 +388,7 @@ function OrderTable({
                   <td className="px-3 py-3.5">
                     <div className="font-medium">{fmtShares(order.quantity)}</div>
                     {order.filled > 0 && order.filled < order.quantity && (
-                      <div className="mt-1 text-[11px] text-sky">
+                      <div className="mt-1 text-[11px] text-muted-foreground">
                         {fmtShares(order.filled)} filled
                       </div>
                     )}
@@ -415,15 +399,12 @@ function OrderTable({
                       {fmtMoney(order.value)} est.
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-3.5 text-muted-foreground">
-                    {order.received}
-                  </td>
                   <td className="px-3 py-3.5">
                     <StatusPill status={displayStatus} />
                   </td>
                   <td className="px-3 py-3.5 pr-4">
                     <ChevronRight
-                      className={`h-4 w-4 text-muted-foreground transition-transform ${selected ? "rotate-90 text-pine" : ""}`}
+                      className={`h-4 w-4 text-muted-foreground transition-transform ${selected ? "rotate-90 text-foreground" : ""}`}
                     />
                   </td>
                 </tr>
