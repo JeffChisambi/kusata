@@ -5,10 +5,11 @@ import {
   useRouter,
   useLocation,
   useNavigate,
+  redirect,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { isAuthenticated, getCurrentUser } from "@/lib/auth";
 
 import appCss from "../styles.css?url";
@@ -79,6 +80,32 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),
+  // Block route loading BEFORE any component renders — no flash possible
+  beforeLoad: ({ location }) => {
+    // Server-side: no localStorage, skip auth check (SSR renders the spinner shell)
+    if (typeof window === 'undefined') return;
+
+    const authed = isAuthenticated();
+    const onLogin = location.pathname === '/login';
+
+    if (!authed && !onLogin) {
+      throw redirect({ to: '/login' });
+    }
+
+    if (authed && onLogin) {
+      const user = getCurrentUser();
+      throw redirect({ to: user?.role === 'BROKER' ? '/broker' : '/' });
+    }
+
+    if (authed && !onLogin) {
+      const user = getCurrentUser();
+      const brokerAllowed = ['/broker', '/users', '/kyc', '/notifications', '/coming-soon'];
+      const isBrokerAllowed = brokerAllowed.some((p) => location.pathname.startsWith(p));
+      if (user?.role === 'BROKER' && !isBrokerAllowed) {
+        throw redirect({ to: '/broker' });
+      }
+    }
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -101,54 +128,6 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [ready, setReady] = useState(false);
-
-  // Auth + role guard — runs before first paint
-  useEffect(() => {
-    const authed = isAuthenticated();
-    const onLogin = location.pathname === '/login';
-
-    if (!authed && !onLogin) {
-      navigate({ to: '/login' });
-      return;
-    }
-
-    if (authed && onLogin) {
-      // Already logged in, skip login page
-      const user = getCurrentUser();
-      navigate({ to: user?.role === 'BROKER' ? '/broker' : '/' });
-      return;
-    }
-
-    if (authed && !onLogin) {
-      const user = getCurrentUser();
-      const brokerAllowed = ['/broker', '/users', '/kyc', '/notifications', '/coming-soon'];
-      const isBrokerAllowed = brokerAllowed.some((p) => location.pathname.startsWith(p));
-      if (user?.role === 'BROKER' && !isBrokerAllowed) {
-        navigate({ to: '/broker' });
-        return;
-      }
-    }
-
-    setReady(true);
-  }, [location.pathname, navigate]);
-
-  // Block rendering until auth check completes — prevents flash of protected content
-  if (!ready) {
-    return (
-      <html lang="en">
-        <head><HeadContent /></head>
-        <body>
-          <div className="flex h-screen items-center justify-center bg-background">
-            <div className="w-8 h-8 border-2 border-pine border-t-transparent rounded-full animate-spin" />
-          </div>
-          <Scripts />
-        </body>
-      </html>
-    );
-  }
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -156,3 +135,4 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
+
