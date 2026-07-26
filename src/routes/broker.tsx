@@ -105,14 +105,6 @@ const KPIS = [
     trend: "up" as const,
     sub: "across all wallets",
   },
-  {
-    icon: CreditCard,
-    label: "Failed Payments",
-    value: "9",
-    delta: "2 new",
-    trend: "down" as const,
-    sub: "MK 340K at risk",
-  },
 ];
 
 // ─── Components ───────────────────────────────────────────────────────────────
