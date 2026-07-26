@@ -220,6 +220,11 @@ export const sectionOrder = ["OVERVIEW", "CLIENTS", "MARKETS", "FINANCE", "ENGAG
 // Unread notification count — scheduled + failed items that need attention
 export const NOTIF_UNREAD_COUNT = 12;
 
+// ─── Module-level collapsed cache ─────────────────────────────────────────────
+// Persists across client-side navigations (remounts) so the sidebar never
+// flashes open: after the first mount the correct value is already known.
+let _adminCollapsedCache: boolean | null = null;
+
 export function AdminShell({
   activeLabel,
   eyebrow,
@@ -232,21 +237,31 @@ export function AdminShell({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>({ [activeLabel]: true });
-  const [collapsed, setCollapsed] = useState<boolean>(() =>
-    typeof window !== "undefined" && window.localStorage.getItem("pine-sidebar-collapsed") === "1"
-  );
+  // Start hidden (null) on SSR; on the client the cache may already be populated.
+  const [collapsed, setCollapsed] = useState<boolean | null>(null);
+  const [transitionReady, setTransitionReady] = useState(false);
+
+  useEffect(() => {
+    // If we've navigated before, the cache is already set — use it immediately.
+    if (_adminCollapsedCache === null) {
+      _adminCollapsedCache = window.localStorage.getItem("pine-sidebar-collapsed") === "1";
+    }
+    setCollapsed(_adminCollapsedCache);
+    // Enable CSS transition only after the sidebar has painted at its real size.
+    requestAnimationFrame(() => requestAnimationFrame(() => setTransitionReady(true)));
+  }, []);
+
   const toggleCollapse = () => {
     setCollapsed((c) => {
-      const next = !c;
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("pine-sidebar-collapsed", next ? "1" : "0");
-      }
+      const next = !(c ?? false);
+      _adminCollapsedCache = next;
+      window.localStorage.setItem("pine-sidebar-collapsed", next ? "1" : "0");
       return next;
     });
   };
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
-      <Sidebar open={open} setOpen={setOpen} activeLabel={activeLabel} collapsed={collapsed} onToggleCollapse={toggleCollapse} />
+      <Sidebar open={open} setOpen={setOpen} activeLabel={activeLabel} collapsed={collapsed} transitionReady={transitionReady} onToggleCollapse={toggleCollapse} />
       <main className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
         <Topbar eyebrow={eyebrow} title={title} />
         <div className="flex-1 min-h-0 overflow-y-auto px-8 pb-10 space-y-6 scrollbar-thin-gray">{children}</div>
@@ -256,17 +271,23 @@ export function AdminShell({
 }
 
 function Sidebar({
-  open, setOpen, activeLabel, collapsed, onToggleCollapse,
+  open, setOpen, activeLabel, collapsed, transitionReady, onToggleCollapse,
 }: {
   open: Record<string, boolean>;
   setOpen: (v: Record<string, boolean>) => void;
   activeLabel: string;
-  collapsed: boolean;
+  collapsed: boolean | null;
+  transitionReady: boolean;
   onToggleCollapse: () => void;
 }) {
+  // While collapsed is null (SSR / first paint), render nothing to prevent flash
+  if (collapsed === null) {
+    return <aside className="shrink-0" style={{ width: "17rem" }} />;
+  }
+
   return (
     <aside
-      className="relative shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border rounded-tr-[22px] transition-all duration-300 ease-in-out overflow-visible"
+      className={`relative shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border rounded-tr-[22px] overflow-visible ${transitionReady ? "transition-all duration-300 ease-in-out" : ""}`}
       style={{ width: collapsed ? "4.5rem" : "17rem" }}
     >
       {/* Header */}
