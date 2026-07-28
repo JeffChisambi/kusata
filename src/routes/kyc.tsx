@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { AdminShell, Card } from "@/components/admin-shell";
 import { RoleShell } from "@/components/role-shell";
-import { useKycQueue, type KycApplicationRow } from "@/hooks/useKyc";
+import { useKycQueue, useKycApplication, useApproveKyc, useRejectKyc, type KycApplicationRow } from "@/hooks/useKyc";
 
 export const Route = createFileRoute("/kyc")({
   head: () => ({
@@ -489,6 +489,8 @@ function RowMenu({ onReview }: { onReview: () => void }) {
 
 /* ─────────────────────────── review modal ─────────────────────────── */
 
+type ReviewDoc = { id: string; type: string; imageUrl: string | null; mimeType: string };
+
 function ReviewPanel({
   app, onClose, onApprove, onReject,
 }: {
@@ -496,6 +498,31 @@ function ReviewPanel({
 }) {
   const [docTab, setDocTab] = useState<"front" | "back" | "selfie">("front");
   const [infoTab, setInfoTab] = useState<"checklist" | "ocr" | "notes">("checklist");
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [reviewNotes, setReviewNotes] = useState("");
+
+  // Fetch full review data with document image URLs
+  const { data: reviewData } = useKycApplication(app.id);
+  const approveMutation = useApproveKyc();
+  const rejectMutation = useRejectKyc();
+
+  // Extract document URLs from review data
+  const docs: ReviewDoc[] = useMemo(() => {
+    const raw = (reviewData as any)?.documents ?? [];
+    return raw.map((d: any) => ({
+      id: d.id,
+      type: d.type,
+      imageUrl: d.imageUrl ?? null,
+      mimeType: d.mimeType ?? 'image/jpeg',
+    }));
+  }, [reviewData]);
+
+  const idDoc = docs.find((d: ReviewDoc) => d.type === 'ID_FRONT' || d.type === 'NATIONAL_ID');
+  const selfieDoc = docs.find((d: ReviewDoc) => d.type === 'SELFIE');
+
+  const currentDocUrl = docTab === "selfie" ? selfieDoc?.imageUrl : idDoc?.imageUrl;
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -503,30 +530,45 @@ function ReviewPanel({
     return () => document.removeEventListener("keydown", h);
   }, [onClose]);
 
+  const handleApprove = () => {
+    approveMutation.mutate(
+      { applicationId: app.id, notes: reviewNotes || undefined },
+      { onSuccess: () => { setShowApproveConfirm(false); onApprove(); } },
+    );
+  };
+
+  const handleReject = () => {
+    if (!rejectReason.trim()) return;
+    rejectMutation.mutate(
+      { applicationId: app.id, reason: rejectReason, notes: reviewNotes || undefined },
+      { onSuccess: () => { setShowRejectDialog(false); onReject(); } },
+    );
+  };
+
   const steps = [
     { label: "Email verified", ok: true },
     { label: "Phone verified", ok: true },
-    { label: "ID document uploaded", ok: true },
+    { label: "ID document uploaded", ok: !!idDoc },
+    { label: "Selfie uploaded", ok: !!selfieDoc },
     { label: "OCR read successful", ok: app.ocrConfidence >= 70 },
     { label: "Face match passed", ok: app.faceMatchScore >= 75 },
-    { label: "Liveness check passed", ok: app.livenessScore >= 75 },
     { label: "No flagged issues", ok: app.flags.length === 0 },
-    ...(app.tierRequested === "tier2" ? [
-      { label: "Proof of address uploaded", ok: app.tierRequested === "tier2" },
-      { label: "Source of funds declared", ok: false },
-    ] : []),
   ];
 
+  // Extract OCR data from review response
+  const ocrData = (reviewData as any)?.application?.ocrExtractedData ?? {};
   const ocrFields = [
-    { label: "Full name", value: app.name, match: true },
+    { label: "Full name", value: ocrData.fullName ?? app.name, match: true },
     { label: "Document type", value: docTypeLabel[app.docType], match: true },
+    ...(ocrData.nationalId ? [{ label: "National ID", value: ocrData.nationalId, match: true }] : []),
+    ...(ocrData.dateOfBirth ? [{ label: "Date of birth", value: ocrData.dateOfBirth, match: true }] : []),
   ];
 
   const passCount = steps.filter((s) => s.ok).length;
   const allPass = passCount === steps.length;
-  const hasIssues = app.flags.length > 0 || app.livenessScore < 75;
+  const hasIssues = app.flags.length > 0;
+  const isAlreadyReviewed = app.status === "approved" || app.status === "rejected";
 
-  // Score colour helpers
   const scoreColor = (v: number) => v >= 85 ? "text-pine" : v >= 70 ? "text-amber" : "text-rose";
   const scoreBarColor = (v: number) => v >= 85 ? "bg-pine" : v >= 70 ? "bg-amber" : "bg-rose";
 
@@ -565,7 +607,6 @@ function ReviewPanel({
       <div className={`flex items-center gap-5 px-5 py-2 border-b shrink-0 ${hasIssues ? "bg-amber/5 border-amber/20" : "border-border bg-muted/10"}`}>
         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">Signals</span>
 
-        {/* OCR */}
         <div className="flex items-center gap-1.5">
           <ScanLine className="w-3 h-3 text-muted-foreground shrink-0" />
           <span className="text-xs text-muted-foreground">OCR</span>
@@ -577,7 +618,6 @@ function ReviewPanel({
 
         <span className="text-border text-xs">·</span>
 
-        {/* Face match */}
         <div className="flex items-center gap-1.5">
           <Camera className="w-3 h-3 text-muted-foreground shrink-0" />
           <span className="text-xs text-muted-foreground">Face</span>
@@ -587,19 +627,6 @@ function ReviewPanel({
           <span className={`text-xs font-semibold tabular-nums ${scoreColor(app.faceMatchScore)}`}>{app.faceMatchScore}%</span>
         </div>
 
-        <span className="text-border text-xs">·</span>
-
-        {/* Liveness */}
-        <div className="flex items-center gap-1.5">
-          <Fingerprint className="w-3 h-3 text-muted-foreground shrink-0" />
-          <span className="text-xs text-muted-foreground">Liveness</span>
-          <div className="w-14 h-1 bg-muted rounded-full overflow-hidden mx-0.5">
-            <div className={`h-full ${scoreBarColor(app.livenessScore)} rounded-full`} style={{ width: `${app.livenessScore}%` }} />
-          </div>
-          <span className={`text-xs font-semibold tabular-nums ${scoreColor(app.livenessScore)}`}>{app.livenessScore}%</span>
-        </div>
-
-        {/* Flags */}
         {app.flags.length > 0 && (
           <>
             <span className="text-border text-xs">·</span>
@@ -611,7 +638,6 @@ function ReviewPanel({
           </>
         )}
 
-        {/* Pass count summary */}
         <div className={`ml-auto text-[11px] font-medium shrink-0 ${allPass ? "text-pine" : "text-muted-foreground"}`}>
           {passCount}/{steps.length} checks
         </div>
@@ -622,10 +648,8 @@ function ReviewPanel({
 
         {/* Left: Document viewer */}
         <div className="w-72 shrink-0 border-r border-border flex flex-col">
-
-          {/* Document view tabs */}
           <div className="flex border-b border-border px-3 pt-0.5 shrink-0">
-            {(["front", "back", "selfie"] as const).map((t) => (
+            {(["front", "selfie"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setDocTab(t)}
@@ -633,57 +657,59 @@ function ReviewPanel({
                   docTab === t ? "text-pine" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {t === "front" ? "Front" : t === "back" ? "Back" : "Selfie"}
+                {t === "front" ? "ID Document" : "Selfie"}
                 {docTab === t && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-pine rounded-full" />}
               </button>
             ))}
           </div>
 
-          {/* Document image area */}
           <div className="flex-1 bg-muted/20 flex flex-col gap-3 p-4 min-h-0 overflow-hidden">
             <div className="w-full aspect-[3/2] rounded-md border border-border bg-card flex flex-col items-center justify-center gap-2 relative overflow-hidden shrink-0">
-              {docTab === "selfie" ? (
-                <>
-                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                    <User className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <span className="text-xs text-muted-foreground">Selfie photo</span>
-                </>
+              {currentDocUrl ? (
+                <img
+                  src={currentDocUrl}
+                  alt={docTab === "selfie" ? "Selfie" : "ID Document"}
+                  className="w-full h-full object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
               ) : (
-                <div className="w-full h-full absolute inset-0 flex flex-col items-center justify-center gap-2">
-                  <div className="w-14 h-9 rounded border-2 border-muted-foreground/20 flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-muted-foreground/40" />
-                  </div>
-                  <span className="text-xs text-muted-foreground">{docTypeLabel[app.docType]} · {docTab}</span>
-                </div>
-              )}
-              {/* Corner scan markers */}
-              {docTab !== "selfie" && (
-                <div className="absolute inset-2.5 pointer-events-none">
-                  <div className="absolute top-0 left-0 w-3.5 h-3.5 border-t-2 border-l-2 border-pine/40 rounded-tl" />
-                  <div className="absolute top-0 right-0 w-3.5 h-3.5 border-t-2 border-r-2 border-pine/40 rounded-tr" />
-                  <div className="absolute bottom-0 left-0 w-3.5 h-3.5 border-b-2 border-l-2 border-pine/40 rounded-bl" />
-                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 border-b-2 border-r-2 border-pine/40 rounded-br" />
+                <div className="flex flex-col items-center justify-center gap-2">
+                  {docTab === "selfie" ? (
+                    <>
+                      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                        <User className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                      <span className="text-xs text-muted-foreground">Selfie not available</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-14 h-9 rounded border-2 border-muted-foreground/20 flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-muted-foreground/40" />
+                      </div>
+                      <span className="text-xs text-muted-foreground">ID not available</span>
+                    </>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Document controls */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button className="h-7 px-2.5 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1 transition-colors">
-                <ZoomIn className="w-3 h-3" /> Zoom
-              </button>
-              <button className="h-7 px-2.5 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1 transition-colors">
-                <ExternalLink className="w-3 h-3" /> Open
-              </button>
-            </div>
+            {currentDocUrl && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <a
+                  href={currentDocUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-7 px-2.5 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1 transition-colors"
+                >
+                  <ExternalLink className="w-3 h-3" /> Open full size
+                </a>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Right: Checklist / OCR / Notes */}
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-
-          {/* Info tabs */}
           <div className="flex border-b border-border px-5 shrink-0">
             {(["checklist", "ocr", "notes"] as const).map((t) => (
               <button
@@ -703,9 +729,7 @@ function ReviewPanel({
             ))}
           </div>
 
-          {/* Tab content */}
           <div className="flex-1 min-h-0 overflow-y-auto">
-            {/* Checklist */}
             {infoTab === "checklist" && (
               <ul className="divide-y divide-border px-5">
                 {steps.map((s, i) => (
@@ -722,7 +746,6 @@ function ReviewPanel({
               </ul>
             )}
 
-            {/* OCR Data */}
             {infoTab === "ocr" && (
               <div className="px-5">
                 {ocrFields.map((f) => (
@@ -739,7 +762,6 @@ function ReviewPanel({
               </div>
             )}
 
-            {/* Notes */}
             {infoTab === "notes" && (
               <div className="p-5 space-y-3">
                 {app.notes && (
@@ -750,10 +772,9 @@ function ReviewPanel({
                 <textarea
                   className="w-full h-28 rounded-[3px] border border-border bg-transparent p-3 text-sm resize-none focus:outline-none focus:border-pine/50 placeholder:text-muted-foreground/50"
                   placeholder="Add internal review notes…"
+                  value={reviewNotes}
+                  onChange={(e) => setReviewNotes(e.target.value)}
                 />
-                <button className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 transition-colors">
-                  Save note
-                </button>
               </div>
             )}
           </div>
@@ -761,24 +782,102 @@ function ReviewPanel({
       </div>
 
       {/* ── Section 4: Decision footer ── */}
-      <div className="flex items-center gap-2 px-5 py-3 border-t border-border bg-background shrink-0">
-        <button className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5 transition-colors">
-          <FilePlus className="w-3.5 h-3.5" /> Request docs
-        </button>
-        <div className="flex-1" />
-        <button
-          onClick={onReject}
-          className="h-8 px-4 rounded-[3px] border border-rose/30 text-rose text-xs font-medium hover:bg-rose/8 flex items-center gap-1.5 transition-colors"
-        >
-          <XCircle className="w-3.5 h-3.5" /> Reject
-        </button>
-        <button
-          onClick={onApprove}
-          className="h-8 px-4 rounded-[3px] bg-pine text-primary-foreground text-xs font-medium hover:bg-pine/90 flex items-center gap-1.5 transition-colors"
-        >
-          <ShieldCheck className="w-3.5 h-3.5" /> Approve
-        </button>
-      </div>
+      {!isAlreadyReviewed ? (
+        <div className="flex items-center gap-2 px-5 py-3 border-t border-border bg-background shrink-0">
+          <div className="flex-1" />
+          <button
+            onClick={() => setShowRejectDialog(true)}
+            disabled={rejectMutation.isPending}
+            className="h-8 px-4 rounded-[3px] border border-rose/30 text-rose text-xs font-medium hover:bg-rose/8 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+          >
+            <XCircle className="w-3.5 h-3.5" /> Reject
+          </button>
+          <button
+            onClick={() => setShowApproveConfirm(true)}
+            disabled={approveMutation.isPending}
+            className="h-8 px-4 rounded-[3px] bg-pine text-primary-foreground text-xs font-medium hover:bg-pine/90 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" /> Approve
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center justify-center gap-2 px-5 py-3 border-t border-border bg-muted/20 shrink-0">
+          <span className="text-xs text-muted-foreground">
+            This application has been {app.status === "approved" ? "approved" : "rejected"}.
+          </span>
+        </div>
+      )}
+
+      {/* ── Approve confirmation dialog ── */}
+      {showApproveConfirm && (
+        <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowApproveConfirm(false)}>
+          <div className="bg-card border border-border rounded-lg p-6 w-96 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-sm mb-1">Approve KYC Application</h3>
+            <p className="text-xs text-muted-foreground mb-4">
+              Approve <strong>{app.name}</strong>'s identity verification? This will allow them to trade on the platform.
+            </p>
+            {approveMutation.isError && (
+              <div className="mb-3 text-xs text-rose bg-rose/10 rounded px-3 py-2">
+                Failed to approve: {(approveMutation.error as Error)?.message ?? 'Unknown error'}
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowApproveConfirm(false)}
+                className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleApprove}
+                disabled={approveMutation.isPending}
+                className="h-8 px-4 rounded-[3px] bg-pine text-primary-foreground text-xs font-medium hover:bg-pine/90 flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {approveMutation.isPending ? "Approving…" : "Confirm Approve"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reject dialog with reason ── */}
+      {showRejectDialog && (
+        <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowRejectDialog(false)}>
+          <div className="bg-card border border-border rounded-lg p-6 w-96 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-sm mb-1">Reject KYC Application</h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              Reject <strong>{app.name}</strong>'s identity verification. A reason is required.
+            </p>
+            <textarea
+              className="w-full h-20 rounded-[3px] border border-border bg-transparent p-3 text-sm resize-none focus:outline-none focus:border-rose/50 placeholder:text-muted-foreground/50 mb-3"
+              placeholder="Reason for rejection (required)…"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              autoFocus
+            />
+            {rejectMutation.isError && (
+              <div className="mb-3 text-xs text-rose bg-rose/10 rounded px-3 py-2">
+                Failed to reject: {(rejectMutation.error as Error)?.message ?? 'Unknown error'}
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowRejectDialog(false)}
+                className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReject}
+                disabled={rejectMutation.isPending || !rejectReason.trim()}
+                className="h-8 px-4 rounded-[3px] bg-rose text-white text-xs font-medium hover:bg-rose/90 flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {rejectMutation.isPending ? "Rejecting…" : "Confirm Reject"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
