@@ -934,11 +934,14 @@ function ReviewPanel({
   const idDoc      = docs.find((d) => ID_FRONT_TYPES.has(d.type));
   const backDoc    = docs.find((d) => ID_BACK_TYPES.has(d.type));
   const selfieDoc  = docs.find((d) => SELFIE_TYPES.has(d.type));
+  const addressDoc = docs.find((d) => ADDRESS_TYPES.has(d.type));
   const hasBack    = !!backDoc;
+  const hasAddress = !!addressDoc;
 
   const currentDocUrl =
-    docTab === "selfie"  ? selfieDoc?.imageUrl :
-    docTab === "back"    ? backDoc?.imageUrl    :
+    docTab === "selfie"   ? selfieDoc?.imageUrl :
+    docTab === "back"     ? backDoc?.imageUrl    :
+    docTab === "address"  ? addressDoc?.imageUrl :
     idDoc?.imageUrl;
 
   // OCR data — from detail endpoint; fall back gracefully
@@ -961,14 +964,16 @@ function ReviewPanel({
 
   // Checklist — uses real email/phone verified flags from the API
   const steps = [
-    { label: "Email verified",      ok: app.emailVerified === true },
-    { label: "Phone verified",      ok: app.phoneVerified === true },
-    { label: "ID document uploaded",ok: !!idDoc },
-    { label: "Selfie uploaded",     ok: !!selfieDoc },
-    { label: "OCR read successful", ok: app.ocrConfidence >= 70 },
-    { label: "Face match passed",   ok: app.faceMatchScore >= 75 },
-    { label: "Liveness passed",     ok: app.livenessScore >= 70 },
-    { label: "No flagged issues",   ok: app.flags.length === 0 },
+    { label: "Email verified",             ok: app.emailVerified === true },
+    { label: "Phone verified",             ok: app.phoneVerified === true },
+    { label: "ID front uploaded",          ok: !!idDoc },
+    { label: "ID back uploaded",           ok: !!backDoc },
+    { label: "Selfie uploaded",            ok: !!selfieDoc },
+    { label: "Proof of address uploaded",  ok: !!addressDoc },
+    { label: "OCR read successful",        ok: app.ocrConfidence >= 70 },
+    { label: "Face match passed",          ok: app.faceMatchScore >= 75 },
+    { label: "Liveness passed",            ok: app.livenessScore >= 70 },
+    { label: "No flagged issues",          ok: app.flags.length === 0 },
   ];
 
   const passCount    = steps.filter((s) => s.ok).length;
@@ -1086,15 +1091,15 @@ function ReviewPanel({
         {/* Left: Document viewer */}
         <div className="w-72 shrink-0 border-r border-border flex flex-col">
           <div className="flex border-b border-border px-3 pt-0.5 shrink-0">
-            {(["front", ...(hasBack ? ["back" as const] : []), "selfie"] as const).map((t) => (
+            {(["front", ...(hasBack ? ["back" as const] : []), "selfie", ...(hasAddress ? ["address" as const] : [])] as const).map((t) => (
               <button
                 key={t}
-                onClick={() => setDocTab(t)}
+                onClick={() => setDocTab(t as any)}
                 className={`relative py-2.5 px-3 text-xs font-medium transition-colors ${
                   docTab === t ? "text-pine" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {t === "front" ? "ID Front" : t === "back" ? "ID Back" : "Selfie"}
+                {t === "front" ? "ID Front" : t === "back" ? "ID Back" : t === "selfie" ? "Selfie" : "Address Doc"}
                 {docTab === t && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-pine rounded-full" />}
               </button>
             ))}
@@ -1202,24 +1207,30 @@ function ReviewPanel({
               <div className="px-5">
                 {isDetailLoading ? (
                   <div className="space-y-3 pt-3">
-                    {Array.from({ length: 4 }).map((_, i) => (
+                    {Array.from({ length: 5 }).map((_, i) => (
                       <div key={i} className="h-8 rounded bg-muted animate-pulse" />
                     ))}
                   </div>
                 ) : ocrFields.length === 0 ? (
-                  <p className="py-6 text-center text-xs text-muted-foreground">No OCR data available.</p>
+                  <div className="py-8 flex flex-col items-center gap-2 text-center">
+                    <ScanLine className="w-8 h-8 text-muted-foreground/30" />
+                    <p className="text-xs text-muted-foreground">No OCR data extracted yet.</p>
+                    <p className="text-[11px] text-muted-foreground/60">OCR runs automatically during KYC processing.</p>
+                  </div>
                 ) : (
-                  ocrFields.map((f) => (
-                    <div key={f.label} className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
-                      <span className="text-xs text-muted-foreground">{f.label}</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-medium">{f.value}</span>
-                        {f.match
-                          ? <CheckCircle2 className="w-3.5 h-3.5 text-pine" />
-                          : <AlertTriangle className="w-3.5 h-3.5 text-amber" title="Mismatch" />}
+                  <div className="divide-y divide-border">
+                    {ocrFields.map((f) => (
+                      <div key={f.label} className="flex items-start justify-between gap-4 py-2.5">
+                        <span className="text-xs text-muted-foreground shrink-0 pt-0.5">{f.label}</span>
+                        <div className="flex items-center gap-1.5 text-right">
+                          <span className="text-sm font-medium break-words max-w-[200px]">{f.value}</span>
+                          {f.match
+                            ? <CheckCircle2 className="w-3.5 h-3.5 text-pine shrink-0" />
+                            : <AlertTriangle className="w-3.5 h-3.5 text-amber shrink-0" title="Mismatch with registered name" />}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
             )}
