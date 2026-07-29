@@ -47,7 +47,8 @@ function relativeTime(iso: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function fmtNum(n: number) {
+function fmtNum(n: number | undefined | null) {
+  if (n == null) return "0";
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return n.toLocaleString();
@@ -71,20 +72,52 @@ const channelConfig: Record<Channel, { icon: React.ComponentType<{ className?: s
 
 const segments = ["All Users", "Active Traders", "Tier 1 Users", "Tier 2 Users", "Inactive 30d", "New Signups", "KYC Pending"];
 
+/* ─────────────────────────── API → UI mappers ─────────────────────────── */
+
+function mapNotifType(raw: string): NotifType {
+  const lower = raw.toLowerCase();
+  if (lower.includes("alert") || lower.includes("critical") || lower.includes("security")) return "alert";
+  if (lower.includes("warn")) return "warning";
+  if (lower.includes("success") || lower.includes("approved")) return "success";
+  return "info";
+}
+
+function mapChannel(raw: string): Channel {
+  const lower = raw.toLowerCase();
+  if (lower.includes("push")) return "push";
+  if (lower.includes("email")) return "email";
+  if (lower.includes("sms")) return "sms";
+  if (lower.includes("broadcast")) return "broadcast";
+  return "push";
+}
+
 /* ─────────────────────────── page ─────────────────────────── */
 
 function NotificationsPage() {
   const { data: rawData, isLoading } = useNotificationsList();
   const { data: stats } = useNotificationStats();
 
-  // The API may return { notifications: Notif[] } or Notif[] directly — handle both
+  // The API returns { notifications: [...] } where each item has backend field names.
+  // Map them to the component's Notif shape.
   const serverItems: Notif[] = (() => {
     if (!rawData) return [];
-    if (Array.isArray(rawData)) return rawData as Notif[];
-    const d = rawData as Record<string, unknown>;
-    if (Array.isArray(d.notifications)) return d.notifications as Notif[];
-    if (Array.isArray(d.data)) return d.data as Notif[];
-    return [];
+    let raw: any[] = [];
+    if (Array.isArray(rawData)) raw = rawData;
+    else {
+      const d = rawData as Record<string, unknown>;
+      if (Array.isArray(d.notifications)) raw = d.notifications;
+      else if (Array.isArray(d.data)) raw = d.data;
+    }
+    return raw.map((n: any) => ({
+      id: n.id ?? crypto.randomUUID(),
+      type: mapNotifType(n.type ?? n.category ?? "INFORMATIONAL"),
+      channel: mapChannel(n.channel ?? "IN_APP"),
+      title: n.title ?? "Notification",
+      message: n.body ?? n.message ?? "",
+      sentAt: n.sentAt ?? n.createdAt ?? new Date().toISOString(),
+      read: n.status === "READ" || n.status === "DELIVERED" || !!n.readAt,
+      recipients: n.recipients ?? 1,
+    }));
   })();
 
   const [items, setItems] = useState<Notif[]>([]);
