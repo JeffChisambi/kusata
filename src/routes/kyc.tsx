@@ -4,12 +4,16 @@ import {
   ShieldCheck, Clock, CheckCircle2, XCircle, FileText,
   Eye, MoreHorizontal, ChevronDown, AlertTriangle, User,
   Camera, ScanLine, ClipboardList, FilePlus,
-  TrendingUp, TrendingDown, Copy, Phone, MapPin, Calendar,
-  Download, Fingerprint, ZoomIn, RotateCw, ExternalLink,
+  TrendingUp, TrendingDown, Download, Fingerprint, ExternalLink,
+  RefreshCw, Loader2,
 } from "lucide-react";
 import { AdminShell, Card } from "@/components/admin-shell";
 import { RoleShell } from "@/components/role-shell";
-import { useKycQueue, useKycApplication, useApproveKyc, useRejectKyc, type KycApplicationRow } from "@/hooks/useKyc";
+import {
+  useKycQueue, useKycApplication, useApproveKyc, useRejectKyc,
+  useRequestAdditionalDocs, useKycCounts,
+  type KycApplicationRow, type KycDocument,
+} from "@/hooks/useKyc";
 
 export const Route = createFileRoute("/kyc")({
   head: () => ({
@@ -45,39 +49,58 @@ type KycApplication = {
   livenessScore: number;
   flags: string[];
   notes?: string;
+  emailVerified: boolean | null;
+  phoneVerified: boolean | null;
 };
 
 /* ─────────────────────────── map API → local type ─────────────────────────── */
 
-function mapApiToLocal(app: KycApplicationRow): KycApplication {
-  const statusMap: Record<string, KycStatus> = {
-    PENDING: "pending",
-    APPROVED: "approved",
-    REJECTED: "rejected",
-    NOT_SUBMITTED: "pending",
-  };
-  const docMap: Record<string, DocType> = {
-    NATIONAL_ID: "national_id",
-    PASSPORT: "passport",
-    DRIVERS_LICENSE: "drivers_license",
-  };
+const STATUS_MAP: Record<string, KycStatus> = {
+  PENDING:          "pending",
+  NOT_SUBMITTED:    "pending",
+  APPROVED:         "approved",
+  REJECTED:         "rejected",
+  ADDITIONAL_DOCS:  "additional_docs",
+  AWAITING_DOCS:    "additional_docs",
+  DOCS_REQUESTED:   "additional_docs",
+  MANUAL_REVIEW:    "manual",
+  MANUAL:           "manual",
+  FLAGGED:          "manual",
+};
 
+const DOC_MAP: Record<string, DocType> = {
+  NATIONAL_ID:      "national_id",
+  PASSPORT:         "passport",
+  DRIVERS_LICENSE:  "drivers_license",
+};
+
+function normaliseTier(tier: string | null | undefined): TierRequested {
+  const t = (tier ?? "").toUpperCase().replace(/[^0-9A-Z]/g, "");
+  if (t === "TIER2" || t === "2") return "tier2";
+  return "tier1";
+}
+
+function mapApiToLocal(app: KycApplicationRow): KycApplication {
   return {
-    id: app.id,
-    userId: app.userId,
-    name: app.userName || "Unknown",
-    email: app.userEmail,
-    phone: app.userPhone || "",
-    city: app.city || "",
-    docType: docMap[app.documentType ?? ""] ?? "national_id",
-    tierRequested: "tier1",
-    status: statusMap[app.status] ?? "pending",
-    submittedAt: app.submittedAt,
-    reviewedAt: app.reviewedAt ?? undefined,
-    ocrConfidence: app.ocrConfidence ?? 0,
+    id:             app.id,
+    userId:         app.userId,
+    name:           app.userName || "Unknown",
+    email:          app.userEmail,
+    phone:          app.userPhone || "",
+    city:           app.city || "",
+    docType:        DOC_MAP[app.documentType ?? ""] ?? "national_id",
+    tierRequested:  normaliseTier(app.tier),
+    status:         STATUS_MAP[app.status] ?? "pending",
+    submittedAt:    app.submittedAt,
+    reviewedAt:     app.reviewedAt ?? undefined,
+    reviewer:       app.reviewerName ?? undefined,
+    ocrConfidence:  app.ocrConfidence ?? 0,
     faceMatchScore: app.facialMatchScore ?? 0,
-    livenessScore: 0,
-    flags: [],
+    livenessScore:  app.livenessScore ?? 0,
+    flags:          app.riskFlags ?? [],
+    notes:          app.reviewNotes ?? undefined,
+    emailVerified:  app.emailVerified ?? null,
+    phoneVerified:  app.phoneVerified ?? null,
   };
 }
 
@@ -96,78 +119,193 @@ function fmtDate(iso: string) {
 }
 
 const docTypeLabel: Record<DocType, string> = {
-  national_id: "National ID",
-  passport: "Passport",
-  drivers_license: "Driver's License",
+  national_id:      "National ID",
+  passport:         "Passport",
+  drivers_license:  "Driver's License",
 };
 
-/* ─────────────────────────── tabs ─────────────────────────── */
+/* ─────────────────────────── tab configuration ─────────────────────────── */
 
-type Tab = { key: string; label: string; icon: React.ComponentType<{ className?: string }>; filter: (a: KycApplication) => boolean };
+type Tab = {
+  key: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  /** API status string to pass as ?status= filter. undefined = all. */
+  apiStatus?: string;
+  /** Client-side filter applied after the API call (for computed tabs like OCR). */
+  clientFilter?: (a: KycApplication) => boolean;
+};
 
-const tabs: Tab[] = [
-  { key: "all", label: "All", icon: ClipboardList, filter: () => true },
+const TABS: Tab[] = [
+  { key: "all",        label: "All",              icon: ClipboardList },
+  { key: "pending",    label: "Pending Review",   icon: Clock,         apiStatus: "PENDING" },
+  { key: "manual",     label: "Manual Review",    icon: Eye,           apiStatus: "MANUAL_REVIEW" },
+  { key: "additional", label: "Additional Docs",  icon: FilePlus,      apiStatus: "ADDITIONAL_DOCS" },
+  { key: "approved",   label: "Approved",         icon: CheckCircle2,  apiStatus: "APPROVED" },
+  { key: "rejected",   label: "Rejected",         icon: XCircle,       apiStatus: "REJECTED" },
+  { key: "ocr",        label: "OCR Results",      icon: ScanLine,      clientFilter: (a) => a.ocrConfidence < 85 },
 ];
 
-const filterTabs: Tab[] = [
-  { key: "manual", label: "Manual Review", icon: Eye, filter: (a) => a.status === "manual" },
-  { key: "approved", label: "Approved", icon: CheckCircle2, filter: (a) => a.status === "approved" },
-  { key: "rejected", label: "Rejected", icon: XCircle, filter: (a) => a.status === "rejected" },
-  { key: "additional", label: "Additional Docs", icon: FilePlus, filter: (a) => a.status === "additional_docs" },
-  { key: "pending", label: "Pending Review", icon: Clock, filter: (a) => a.status === "pending" },
-  { key: "ocr", label: "OCR Results", icon: ScanLine, filter: (a) => a.ocrConfidence < 85 },
-];
+const LIMIT = 50;
 
-const allTabs: Tab[] = [...tabs, ...filterTabs];
+/* ─────────────────────────── CSV export ─────────────────────────── */
+
+function exportToCsv(rows: KycApplication[], label: string) {
+  const headers = ["ID", "Name", "Email", "Phone", "City", "Document", "Tier", "Status",
+    "OCR%", "Face%", "Liveness%", "Flags", "Submitted", "Reviewed At", "Reviewer"];
+  const escape = (v: string | number | null | undefined) =>
+    `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const csvRows = rows.map((r) => [
+    r.id, r.name, r.email, r.phone, r.city,
+    docTypeLabel[r.docType], r.tierRequested, r.status,
+    r.ocrConfidence, r.faceMatchScore, r.livenessScore,
+    r.flags.join("; "), fmtDate(r.submittedAt),
+    r.reviewedAt ? fmtDate(r.reviewedAt) : "",
+    r.reviewer ?? "",
+  ].map(escape).join(","));
+
+  const csv = [headers.join(","), ...csvRows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `kyc-${label}-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 /* ─────────────────────────── page ─────────────────────────── */
 
 function KycPage() {
   const [activeTab, setActiveTab] = useState("pending");
+  const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<KycApplication | null>(null);
+  const [requestDocsFor, setRequestDocsFor] = useState<KycApplication | null>(null);
 
-  // Fetch real data from API
-  const { data: apiData, isLoading } = useKycQueue({ limit: 100 });
+  const tab = TABS.find((t) => t.key === activeTab) ?? TABS[0];
+  const { data: counts } = useKycCounts();
+
+  const {
+    data: apiData,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useKycQueue({
+    limit: LIMIT,
+    page,
+    status: tab.apiStatus,
+  });
+
   const applications: KycApplication[] = useMemo(
     () => (apiData?.applications ?? []).map(mapApiToLocal),
     [apiData],
   );
 
-  const tab = allTabs.find((t) => t.key === activeTab)!;
-
   const rows = useMemo(() => {
-    const base = applications.filter(tab.filter);
-    return [...base].sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-  }, [activeTab, applications]);
+    const base = tab.clientFilter ? applications.filter(tab.clientFilter) : applications;
+    return [...base].sort(
+      (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
+    );
+  }, [applications, tab]);
+
+  const totalPages = apiData?.totalPages ?? (Math.ceil((apiData?.total ?? 0) / LIMIT) || 1);
+  const totalCount = apiData?.total ?? rows.length;
+  const startRow = (page - 1) * LIMIT + 1;
+  const endRow = Math.min(page * LIMIT, totalCount);
+
+  const handleTabChange = (key: string) => {
+    setActiveTab(key);
+    setPage(1);
+    setSelected(null);
+  };
+
+  const handleApproveFromMenu = (app: KycApplication) => setSelected(app);
+  const handleRejectFromMenu  = (app: KycApplication) => setSelected(app);
 
   return (
     <RoleShell activeLabel="KYC" eyebrow="Clients" title="KYC">
-      <KycStats applications={applications} />
+      <KycStats counts={counts} />
 
       {/* Tab bar */}
       <div className="flex items-center gap-0.5 border-b border-border -mx-8 px-8">
-        <FilterTabsDropdown activeTab={activeTab} setActiveTab={setActiveTab} applications={applications} />
+        <FilterTabsDropdown
+          activeTab={activeTab}
+          setActiveTab={handleTabChange}
+          tabs={TABS}
+          counts={counts}
+        />
         <div className="ml-auto flex items-center gap-2 py-2">
-          <button className="flex items-center gap-1.5 h-9 px-3 rounded-[3px] border border-border text-sm text-muted-foreground hover:bg-muted/40">
+          {isFetching && !isLoading && (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+          )}
+          <button
+            onClick={() => refetch()}
+            className="flex items-center gap-1.5 h-9 px-3 rounded-[3px] border border-border text-sm text-muted-foreground hover:bg-muted/40"
+            title="Refresh"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => exportToCsv(rows, activeTab)}
+            disabled={rows.length === 0}
+            className="flex items-center gap-1.5 h-9 px-3 rounded-[3px] border border-border text-sm text-muted-foreground hover:bg-muted/40 disabled:opacity-40"
+          >
             <Download className="w-3.5 h-3.5" /> Export
           </button>
         </div>
       </div>
 
-      <div className="flex gap-4 items-start">
+      {/* Error banner */}
+      {isError && (
+        <div className="mt-4 flex items-center gap-3 rounded-[3px] border border-rose/30 bg-rose/5 px-4 py-3 text-sm text-rose">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span>
+            Failed to load KYC queue: {(error as Error)?.message ?? "Unknown error"}.{" "}
+          </span>
+          <button onClick={() => refetch()} className="ml-auto underline underline-offset-2 hover:no-underline shrink-0">
+            Retry
+          </button>
+        </div>
+      )}
+
+      <div className="flex gap-4 items-start mt-0">
         {/* List */}
         <div className="flex-1 min-w-0">
           <Card className="!p-0 overflow-hidden">
-            <KycTable rows={rows} onSelect={setSelected} showDetailColumns={activeTab === "all"} />
+            {isLoading ? (
+              <KycTableSkeleton />
+            ) : (
+              <KycTable
+                rows={rows}
+                onSelect={setSelected}
+                onApprove={handleApproveFromMenu}
+                onReject={handleRejectFromMenu}
+                onRequestDocs={setRequestDocsFor}
+                showDetailColumns={activeTab === "all"}
+              />
+            )}
 
+            {/* Pagination footer */}
             <div className="flex items-center justify-between px-5 py-3 border-t border-border text-xs text-muted-foreground">
-              <div>Showing <span className="text-foreground font-medium">{Math.min(rows.length, 25)}</span> of {rows.length}</div>
-              <div className="flex items-center gap-1">
-                <button className="h-8 px-3 rounded-[3px] border border-border hover:bg-muted/40">Previous</button>
-                <button className="h-8 w-8 rounded-[3px] bg-pine text-primary-foreground text-xs font-medium">1</button>
-                <button className="h-8 w-8 rounded-[3px] hover:bg-muted/40">2</button>
-                <button className="h-8 px-3 rounded-[3px] border border-border hover:bg-muted/40">Next</button>
+              <div>
+                {isLoading ? (
+                  <span className="animate-pulse">Loading…</span>
+                ) : totalCount === 0 ? (
+                  "No results"
+                ) : (
+                  <>
+                    Showing <span className="text-foreground font-medium">{startRow}–{endRow}</span>{" "}
+                    of <span className="text-foreground font-medium">{totalCount}</span>
+                  </>
+                )}
               </div>
+              {totalPages > 1 && (
+                <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+              )}
             </div>
           </Card>
         </div>
@@ -183,32 +321,121 @@ function KycPage() {
               onClose={() => setSelected(null)}
               onApprove={() => setSelected(null)}
               onReject={() => setSelected(null)}
+              onRequestDocs={() => {
+                setRequestDocsFor(selected);
+                setSelected(null);
+              }}
             />
           </div>
         )}
       </div>
+
+      {/* Request additional docs modal (opened from either row menu or review panel) */}
+      {requestDocsFor && (
+        <RequestDocsDialog
+          app={requestDocsFor}
+          onClose={() => setRequestDocsFor(null)}
+        />
+      )}
     </RoleShell>
+  );
+}
+
+/* ─────────────────────────── pagination ─────────────────────────── */
+
+function Pagination({ page, totalPages, onPageChange }: {
+  page: number; totalPages: number; onPageChange: (p: number) => void;
+}) {
+  const pages: (number | "…")[] = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (page > 3) pages.push("…");
+    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
+    if (page < totalPages - 2) pages.push("…");
+    pages.push(totalPages);
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        disabled={page === 1}
+        onClick={() => onPageChange(page - 1)}
+        className="h-8 px-3 rounded-[3px] border border-border hover:bg-muted/40 disabled:opacity-40"
+      >
+        Previous
+      </button>
+      {pages.map((p, i) =>
+        p === "…" ? (
+          <span key={`ellipsis-${i}`} className="px-1 text-muted-foreground">…</span>
+        ) : (
+          <button
+            key={p}
+            onClick={() => onPageChange(p)}
+            className={`h-8 w-8 rounded-[3px] text-xs font-medium ${
+              p === page ? "bg-pine text-primary-foreground" : "hover:bg-muted/40"
+            }`}
+          >
+            {p}
+          </button>
+        )
+      )}
+      <button
+        disabled={page === totalPages}
+        onClick={() => onPageChange(page + 1)}
+        className="h-8 px-3 rounded-[3px] border border-border hover:bg-muted/40 disabled:opacity-40"
+      >
+        Next
+      </button>
+    </div>
   );
 }
 
 /* ─────────────────────────── stats ─────────────────────────── */
 
-function KycStats({ applications }: { applications: KycApplication[] }) {
-  const total = applications.length;
-  const pending = applications.filter((a) => a.status === "pending").length;
-  const approved = applications.filter((a) => a.status === "approved").length;
-  const rejected = applications.filter((a) => a.status === "rejected").length;
-  const manual = applications.filter((a) => a.status === "manual").length;
-  const additional = applications.filter((a) => a.status === "additional_docs").length;
-  const avgScore = total > 0
-    ? Math.round(applications.reduce((s, a) => s + a.ocrConfidence, 0) / total)
-    : 0;
+function KycStats({ counts }: { counts?: Record<string, number> }) {
+  const pending    = counts?.PENDING ?? 0;
+  const approved   = counts?.APPROVED ?? 0;
+  const rejected   = counts?.REJECTED ?? 0;
+  const manual     = counts?.MANUAL_REVIEW ?? 0;
+  const total      = pending + approved + rejected + manual
+    + (counts?.ADDITIONAL_DOCS ?? 0)
+    + (counts?.NOT_SUBMITTED ?? 0);
 
   const stats = [
-    { label: "Pending Review", value: pending, icon: Clock, tone: pending > 0 ? "amber" : "pine", trend: pending > 0 ? "queue" : "clear", up: false },
-    { label: "Approved", value: approved, icon: CheckCircle2, tone: "pine", trend: total > 0 ? `${Math.round((approved / total) * 100)}%` : "—", up: true },
-    { label: "Rejected", value: rejected, icon: XCircle, tone: rejected > 0 ? "rose" : "pine", trend: total > 0 ? `${Math.round((rejected / total) * 100)}%` : "—", up: false },
-    { label: "Manual Review", value: manual, icon: Eye, tone: manual > 0 ? "amber" : "pine", trend: manual > 0 ? "flagged" : "clear", up: false },
+    {
+      label: "Pending Review",
+      value: pending,
+      icon: Clock,
+      tone: pending > 0 ? "amber" : "pine",
+      trend: pending > 0 ? "queue" : "clear",
+      up: false,
+    },
+    {
+      label: "Approved",
+      value: approved,
+      icon: CheckCircle2,
+      tone: "pine",
+      trend: total > 0 ? `${Math.round((approved / total) * 100)}%` : "—",
+      up: true,
+    },
+    {
+      label: "Rejected",
+      value: rejected,
+      icon: XCircle,
+      tone: rejected > 0 ? "rose" : "pine",
+      trend: total > 0 ? `${Math.round((rejected / total) * 100)}%` : "—",
+      up: false,
+    },
+    {
+      label: "Manual Review",
+      value: manual,
+      icon: Eye,
+      tone: manual > 0 ? "amber" : "pine",
+      trend: manual > 0 ? "flagged" : "clear",
+      up: false,
+    },
   ] as const;
 
   return (
@@ -240,25 +467,38 @@ function KycStats({ applications }: { applications: KycApplication[] }) {
 /* ─────────────────────────── filter tabs dropdown ─────────────────────────── */
 
 function FilterTabsDropdown({
-  activeTab,
-  setActiveTab,
-  applications,
+  activeTab, setActiveTab, tabs, counts,
 }: {
   activeTab: string;
   setActiveTab: (v: string) => void;
-  applications: KycApplication[];
+  tabs: Tab[];
+  counts?: Record<string, number>;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, [open]);
 
-  const activeFilterTab = allTabs.find((t) => t.key === activeTab);
+  const activeFilterTab = tabs.find((t) => t.key === activeTab);
   const ButtonIcon = activeFilterTab?.icon ?? FileText;
+
+  /** Map tab key → API status count */
+  const statusCountMap: Record<string, string> = {
+    all:        String((counts ? Object.values(counts).reduce((a, b) => a + b, 0) : undefined) ?? "—"),
+    pending:    String(counts?.PENDING    ?? "—"),
+    manual:     String(counts?.MANUAL_REVIEW ?? "—"),
+    additional: String(counts?.ADDITIONAL_DOCS ?? "—"),
+    approved:   String(counts?.APPROVED   ?? "—"),
+    rejected:   String(counts?.REJECTED   ?? "—"),
+    ocr:        "—",
+  };
 
   return (
     <div ref={ref} className="relative ml-0.5 shrink-0">
@@ -273,11 +513,12 @@ function FilterTabsDropdown({
         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
         {activeFilterTab && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-pine rounded-full" />}
       </button>
+
       {open && (
         <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[13rem] rounded-[3px] border border-border bg-card shadow-lg py-1 overflow-hidden">
-          {allTabs.map((t) => {
+          {tabs.map((t) => {
             const Icon = t.icon;
-            const count = applications.filter(t.filter).length;
+            const count = statusCountMap[t.key] ?? "—";
             const isActive = t.key === activeTab;
             return (
               <button
@@ -289,7 +530,9 @@ function FilterTabsDropdown({
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
                 <span className="flex-1 text-left">{t.label}</span>
-                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${isActive ? "bg-pine/10 text-pine" : "bg-muted text-muted-foreground"}`}>
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                  isActive ? "bg-pine/10 text-pine" : "bg-muted text-muted-foreground"
+                }`}>
                   {count}
                 </span>
               </button>
@@ -301,9 +544,40 @@ function FilterTabsDropdown({
   );
 }
 
+/* ─────────────────────────── table skeleton ─────────────────────────── */
+
+function KycTableSkeleton() {
+  return (
+    <div className="divide-y divide-border">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse">
+          <div className="w-6 h-3 rounded bg-muted" />
+          <div className="flex items-center gap-2.5 flex-1">
+            <div className="w-8 h-8 rounded-full bg-muted shrink-0" />
+            <div className="w-32 h-3 rounded bg-muted" />
+          </div>
+          <div className="w-20 h-3 rounded bg-muted" />
+          <div className="w-12 h-5 rounded bg-muted" />
+          <div className="w-16 h-5 rounded-full bg-muted" />
+          <div className="ml-auto w-6 h-6 rounded bg-muted" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ─────────────────────────── table ─────────────────────────── */
 
-function KycTable({ rows, onSelect, showDetailColumns }: { rows: KycApplication[]; onSelect: (a: KycApplication) => void; showDetailColumns: boolean }) {
+function KycTable({
+  rows, onSelect, onApprove, onReject, onRequestDocs, showDetailColumns,
+}: {
+  rows: KycApplication[];
+  onSelect: (a: KycApplication) => void;
+  onApprove: (a: KycApplication) => void;
+  onReject: (a: KycApplication) => void;
+  onRequestDocs: (a: KycApplication) => void;
+  showDetailColumns: boolean;
+}) {
   const colCount = showDetailColumns ? 10 : 6;
   return (
     <div className="overflow-x-auto">
@@ -328,7 +602,16 @@ function KycTable({ rows, onSelect, showDetailColumns }: { rows: KycApplication[
         </thead>
         <tbody>
           {rows.map((r, idx) => (
-            <KycRow key={r.id} app={r} idx={idx + 1} onSelect={onSelect} showDetailColumns={showDetailColumns} />
+            <KycRow
+              key={r.id}
+              app={r}
+              idx={idx + 1}
+              onSelect={onSelect}
+              onApprove={onApprove}
+              onReject={onReject}
+              onRequestDocs={onRequestDocs}
+              showDetailColumns={showDetailColumns}
+            />
           ))}
           {rows.length === 0 && (
             <tr>
@@ -343,7 +626,17 @@ function KycTable({ rows, onSelect, showDetailColumns }: { rows: KycApplication[
   );
 }
 
-function KycRow({ app, idx, onSelect, showDetailColumns }: { app: KycApplication; idx: number; onSelect: (a: KycApplication) => void; showDetailColumns: boolean }) {
+function KycRow({
+  app, idx, onSelect, onApprove, onReject, onRequestDocs, showDetailColumns,
+}: {
+  app: KycApplication;
+  idx: number;
+  onSelect: (a: KycApplication) => void;
+  onApprove: (a: KycApplication) => void;
+  onReject: (a: KycApplication) => void;
+  onRequestDocs: (a: KycApplication) => void;
+  showDetailColumns: boolean;
+}) {
   return (
     <tr
       className="border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
@@ -365,12 +658,8 @@ function KycRow({ app, idx, onSelect, showDetailColumns }: { app: KycApplication
       </td>
       {showDetailColumns && (
         <>
-          <td className="py-3">
-            <ScoreBar value={app.ocrConfidence} />
-          </td>
-          <td className="py-3">
-            <ScoreBar value={app.faceMatchScore} />
-          </td>
+          <td className="py-3"><ScoreBar value={app.ocrConfidence} /></td>
+          <td className="py-3"><ScoreBar value={app.faceMatchScore} /></td>
           <td className="py-3 text-[12px] text-muted-foreground whitespace-nowrap">{relativeTime(app.submittedAt)}</td>
           <td className="py-3">
             {app.flags.length > 0 ? (
@@ -384,7 +673,13 @@ function KycRow({ app, idx, onSelect, showDetailColumns }: { app: KycApplication
         </>
       )}
       <td className="pr-5 py-3" onClick={(e) => e.stopPropagation()}>
-        <RowMenu onReview={() => onSelect(app)} />
+        <RowMenu
+          app={app}
+          onReview={() => onSelect(app)}
+          onApprove={() => onApprove(app)}
+          onReject={() => onReject(app)}
+          onRequestDocs={() => onRequestDocs(app)}
+        />
       </td>
     </tr>
   );
@@ -409,13 +704,13 @@ function TierBadge({ tier }: { tier: TierRequested }) {
 
 function KycStatusBadge({ status }: { status: KycStatus }) {
   const map: Record<KycStatus, { cls: string; dot: string; label: string }> = {
-    pending: { cls: "bg-amber/10 text-amber", dot: "bg-amber", label: "Pending" },
-    approved: { cls: "bg-pine/10 text-pine", dot: "bg-pine", label: "Approved" },
-    rejected: { cls: "bg-rose/10 text-rose", dot: "bg-rose", label: "Rejected" },
-    additional_docs: { cls: "bg-amber/10 text-amber", dot: "bg-amber", label: "Awaiting Docs" },
-    manual: { cls: "bg-muted text-foreground", dot: "bg-muted-foreground", label: "Manual Review" },
+    pending:         { cls: "bg-amber/10 text-amber",   dot: "bg-amber",             label: "Pending" },
+    approved:        { cls: "bg-pine/10 text-pine",     dot: "bg-pine",              label: "Approved" },
+    rejected:        { cls: "bg-rose/10 text-rose",     dot: "bg-rose",              label: "Rejected" },
+    additional_docs: { cls: "bg-amber/10 text-amber",   dot: "bg-amber",             label: "Awaiting Docs" },
+    manual:          { cls: "bg-muted text-foreground", dot: "bg-muted-foreground",  label: "Manual Review" },
   };
-  const m = map[status];
+  const m = map[status] ?? map.pending;
   return (
     <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full ${m.cls}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} /> {m.label}
@@ -424,7 +719,7 @@ function KycStatusBadge({ status }: { status: KycStatus }) {
 }
 
 function ScoreBar({ value }: { value: number }) {
-  const color = value >= 85 ? "bg-pine" : value >= 70 ? "bg-amber" : "bg-rose";
+  const color     = value >= 85 ? "bg-pine"  : value >= 70 ? "bg-amber"  : "bg-rose";
   const textColor = value >= 85 ? "text-pine" : value >= 70 ? "text-amber" : "text-rose";
   return (
     <div className="flex items-center gap-2">
@@ -438,22 +733,35 @@ function ScoreBar({ value }: { value: number }) {
 
 /* ─────────────────────────── row menu ─────────────────────────── */
 
-function RowMenu({ onReview }: { onReview: () => void }) {
+function RowMenu({
+  app, onReview, onApprove, onReject, onRequestDocs,
+}: {
+  app: KycApplication;
+  onReview: () => void;
+  onApprove: () => void;
+  onReject: () => void;
+  onRequestDocs: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, [open]);
 
+  const isReviewed = app.status === "approved" || app.status === "rejected";
+
   const items = [
-    { label: "Review", icon: Eye, action: onReview },
-    { label: "Approve", icon: CheckCircle2, action: () => {} },
-    { label: "Request docs", icon: FilePlus, action: () => {} },
-    { label: "Reject", icon: XCircle, tone: "rose" as const, action: () => {} },
-  ];
+    { label: "Review",        icon: Eye,          action: onReview,      show: true },
+    { label: "Approve",       icon: CheckCircle2, action: onApprove,     show: !isReviewed },
+    { label: "Request docs",  icon: FilePlus,     action: onRequestDocs, show: !isReviewed },
+    { label: "Reject",        icon: XCircle,      tone: "rose" as const, action: onReject, show: !isReviewed },
+  ].filter((it) => it.show);
 
   return (
     <div ref={ref} className="relative inline-block">
@@ -487,52 +795,193 @@ function RowMenu({ onReview }: { onReview: () => void }) {
   );
 }
 
-/* ─────────────────────────── review modal ─────────────────────────── */
+/* ─────────────────────────── request docs dialog ─────────────────────────── */
 
-type ReviewDoc = { id: string; type: string; imageUrl: string | null; mimeType: string };
+const DOC_REQUEST_OPTIONS = [
+  { value: "ID_FRONT",         label: "ID / Passport front" },
+  { value: "ID_BACK",          label: "ID / Passport back" },
+  { value: "SELFIE",           label: "Selfie / Liveness video" },
+  { value: "PROOF_OF_ADDRESS", label: "Proof of address" },
+];
+
+function RequestDocsDialog({ app, onClose }: { app: KycApplication; onClose: () => void }) {
+  const [selected, setSelected] = useState<string[]>([]);
+  const [message,  setMessage]  = useState("");
+  const requestDocsMutation = useRequestAdditionalDocs();
+
+  const toggle = (val: string) =>
+    setSelected((s) => s.includes(val) ? s.filter((v) => v !== val) : [...s, val]);
+
+  const handleSubmit = () => {
+    if (selected.length === 0) return;
+    requestDocsMutation.mutate(
+      { applicationId: app.id, requiredDocuments: selected, message: message.trim() || undefined },
+      { onSuccess: onClose },
+    );
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-card border border-border rounded-lg p-6 w-[420px] shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="font-semibold text-sm mb-1">Request Additional Documents</h3>
+        <p className="text-xs text-muted-foreground mb-4">
+          Select the documents <strong>{app.name}</strong> must resubmit to continue verification.
+        </p>
+
+        <div className="space-y-2 mb-4">
+          {DOC_REQUEST_OPTIONS.map((opt) => (
+            <label key={opt.value} className="flex items-center gap-2.5 py-1.5 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={selected.includes(opt.value)}
+                onChange={() => toggle(opt.value)}
+                className="w-4 h-4 rounded accent-pine"
+              />
+              <span className="text-sm group-hover:text-foreground transition-colors">{opt.label}</span>
+            </label>
+          ))}
+        </div>
+
+        <textarea
+          className="w-full h-20 rounded-[3px] border border-border bg-transparent p-3 text-sm resize-none focus:outline-none focus:border-pine/50 placeholder:text-muted-foreground/50 mb-3"
+          placeholder="Optional message to the applicant…"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+        />
+
+        {requestDocsMutation.isError && (
+          <div className="mb-3 text-xs text-rose bg-rose/10 rounded px-3 py-2">
+            Failed: {(requestDocsMutation.error as Error)?.message ?? "Unknown error"}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={requestDocsMutation.isPending || selected.length === 0}
+            className="h-8 px-4 rounded-[3px] bg-pine text-primary-foreground text-xs font-medium hover:bg-pine/90 flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {requestDocsMutation.isPending ? (
+              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
+            ) : (
+              <><FilePlus className="w-3.5 h-3.5" /> Send Request</>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────── review panel ─────────────────────────── */
+
+/** Document slot types that represent the front-facing ID document. */
+const ID_FRONT_TYPES  = new Set(["ID_FRONT", "NATIONAL_ID", "PASSPORT", "PASSPORT_FRONT", "DRIVERS_LICENSE_FRONT"]);
+const ID_BACK_TYPES   = new Set(["ID_BACK", "NATIONAL_ID_BACK", "PASSPORT_BACK", "DRIVERS_LICENSE_BACK"]);
+const SELFIE_TYPES    = new Set(["SELFIE", "LIVENESS"]);
 
 function ReviewPanel({
-  app, onClose, onApprove, onReject,
+  app, onClose, onApprove, onReject, onRequestDocs,
 }: {
-  app: KycApplication; onClose: () => void; onApprove: () => void; onReject: () => void;
+  app: KycApplication;
+  onClose: () => void;
+  onApprove: () => void;
+  onReject: () => void;
+  onRequestDocs: () => void;
 }) {
-  const [docTab, setDocTab] = useState<"front" | "back" | "selfie">("front");
-  const [infoTab, setInfoTab] = useState<"checklist" | "ocr" | "notes">("checklist");
-  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [docTab,             setDocTab]             = useState<"front" | "back" | "selfie">("front");
+  const [infoTab,            setInfoTab]            = useState<"checklist" | "ocr" | "notes">("checklist");
+  const [showRejectDialog,   setShowRejectDialog]   = useState(false);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-  const [reviewNotes, setReviewNotes] = useState("");
+  const [rejectReason,       setRejectReason]       = useState("");
+  const [reviewNotes,        setReviewNotes]        = useState(app.notes ?? "");
 
-  // Fetch full review data with document image URLs
-  const { data: reviewData } = useKycApplication(app.id);
+  // Fetch full detail including document image URLs + OCR data
+  const {
+    data: reviewData,
+    isLoading: isDetailLoading,
+    isError: isDetailError,
+  } = useKycApplication(app.id);
+
   const approveMutation = useApproveKyc();
-  const rejectMutation = useRejectKyc();
+  const rejectMutation  = useRejectKyc();
 
-  // Extract document URLs from review data
-  const docs: ReviewDoc[] = useMemo(() => {
-    const raw = (reviewData as any)?.documents ?? [];
-    return raw.map((d: any) => ({
-      id: d.id,
-      type: d.type,
-      imageUrl: d.imageUrl ?? null,
-      mimeType: d.mimeType ?? 'image/jpeg',
-    }));
-  }, [reviewData]);
-
-  const idDoc = docs.find((d: ReviewDoc) => d.type === 'ID_FRONT' || d.type === 'NATIONAL_ID');
-  const selfieDoc = docs.find((d: ReviewDoc) => d.type === 'SELFIE');
-
-  const currentDocUrl = docTab === "selfie" ? selfieDoc?.imageUrl : idDoc?.imageUrl;
-
+  // Close on Escape
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", h);
     return () => document.removeEventListener("keydown", h);
   }, [onClose]);
 
+  // Extract and type documents from review data
+  const docs: KycDocument[] = useMemo(
+    () => reviewData?.documents ?? [],
+    [reviewData],
+  );
+
+  const idDoc      = docs.find((d) => ID_FRONT_TYPES.has(d.type));
+  const backDoc    = docs.find((d) => ID_BACK_TYPES.has(d.type));
+  const selfieDoc  = docs.find((d) => SELFIE_TYPES.has(d.type));
+  const hasBack    = !!backDoc;
+
+  const currentDocUrl =
+    docTab === "selfie"  ? selfieDoc?.imageUrl :
+    docTab === "back"    ? backDoc?.imageUrl    :
+    idDoc?.imageUrl;
+
+  // OCR data — from detail endpoint; fall back gracefully
+  const ocrData = reviewData?.application?.ocrExtractedData ?? {};
+
+  /** Compare name from OCR with the user's registered name (case-insensitive). */
+  const nameMatch = !ocrData.fullName ||
+    ocrData.fullName.trim().toLowerCase() === app.name.trim().toLowerCase();
+
+  const ocrFields = [
+    { label: "Full name",       value: ocrData.fullName       ?? app.name,          match: nameMatch },
+    { label: "Document type",   value: docTypeLabel[app.docType],                   match: true },
+    ...(ocrData.nationalId      ? [{ label: "National ID",      value: ocrData.nationalId,      match: true }] : []),
+    ...(ocrData.documentNumber  ? [{ label: "Document no.",     value: ocrData.documentNumber,  match: true }] : []),
+    ...(ocrData.dateOfBirth     ? [{ label: "Date of birth",    value: ocrData.dateOfBirth,     match: true }] : []),
+    ...(ocrData.expiryDate      ? [{ label: "Expiry date",      value: ocrData.expiryDate,      match: true }] : []),
+    ...(ocrData.nationality     ? [{ label: "Nationality",      value: ocrData.nationality,     match: true }] : []),
+    ...(ocrData.address         ? [{ label: "Address",          value: ocrData.address,         match: true }] : []),
+  ];
+
+  // Checklist — uses real email/phone verified flags from the API
+  const steps = [
+    { label: "Email verified",      ok: app.emailVerified === true },
+    { label: "Phone verified",      ok: app.phoneVerified === true },
+    { label: "ID document uploaded",ok: !!idDoc },
+    { label: "Selfie uploaded",     ok: !!selfieDoc },
+    { label: "OCR read successful", ok: app.ocrConfidence >= 70 },
+    { label: "Face match passed",   ok: app.faceMatchScore >= 75 },
+    { label: "Liveness passed",     ok: app.livenessScore >= 70 },
+    { label: "No flagged issues",   ok: app.flags.length === 0 },
+  ];
+
+  const passCount    = steps.filter((s) => s.ok).length;
+  const allPass      = passCount === steps.length;
+  const hasIssues    = app.flags.length > 0;
+  const isReviewed   = app.status === "approved" || app.status === "rejected" || app.status === "additional_docs";
+
+  const scoreColor    = (v: number) => v >= 85 ? "text-pine"  : v >= 70 ? "text-amber"  : "text-rose";
+  const scoreBarColor = (v: number) => v >= 85 ? "bg-pine"    : v >= 70 ? "bg-amber"    : "bg-rose";
+
   const handleApprove = () => {
     approveMutation.mutate(
-      { applicationId: app.id, notes: reviewNotes || undefined },
+      { applicationId: app.id, notes: reviewNotes.trim() || undefined },
       { onSuccess: () => { setShowApproveConfirm(false); onApprove(); } },
     );
   };
@@ -540,42 +989,15 @@ function ReviewPanel({
   const handleReject = () => {
     if (!rejectReason.trim()) return;
     rejectMutation.mutate(
-      { applicationId: app.id, reason: rejectReason, notes: reviewNotes || undefined },
+      { applicationId: app.id, reason: rejectReason.trim(), notes: reviewNotes.trim() || undefined },
       { onSuccess: () => { setShowRejectDialog(false); onReject(); } },
     );
   };
 
-  const steps = [
-    { label: "Email verified", ok: true },
-    { label: "Phone verified", ok: true },
-    { label: "ID document uploaded", ok: !!idDoc },
-    { label: "Selfie uploaded", ok: !!selfieDoc },
-    { label: "OCR read successful", ok: app.ocrConfidence >= 70 },
-    { label: "Face match passed", ok: app.faceMatchScore >= 75 },
-    { label: "No flagged issues", ok: app.flags.length === 0 },
-  ];
-
-  // Extract OCR data from review response
-  const ocrData = (reviewData as any)?.application?.ocrExtractedData ?? {};
-  const ocrFields = [
-    { label: "Full name", value: ocrData.fullName ?? app.name, match: true },
-    { label: "Document type", value: docTypeLabel[app.docType], match: true },
-    ...(ocrData.nationalId ? [{ label: "National ID", value: ocrData.nationalId, match: true }] : []),
-    ...(ocrData.dateOfBirth ? [{ label: "Date of birth", value: ocrData.dateOfBirth, match: true }] : []),
-  ];
-
-  const passCount = steps.filter((s) => s.ok).length;
-  const allPass = passCount === steps.length;
-  const hasIssues = app.flags.length > 0;
-  const isAlreadyReviewed = app.status === "approved" || app.status === "rejected";
-
-  const scoreColor = (v: number) => v >= 85 ? "text-pine" : v >= 70 ? "text-amber" : "text-rose";
-  const scoreBarColor = (v: number) => v >= 85 ? "bg-pine" : v >= 70 ? "bg-amber" : "bg-rose";
-
   return (
     <div className="flex flex-col h-full overflow-hidden">
 
-      {/* ── Section 1: Identity ── */}
+      {/* ── Section 1: Identity header ── */}
       <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border shrink-0">
         <Initials name={app.name} />
         <div className="flex-1 min-w-0">
@@ -584,14 +1006,15 @@ function ReviewPanel({
             <KycStatusBadge status={app.status} />
             <TierBadge tier={app.tierRequested} />
           </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            {docTypeLabel[app.docType]}
-            {app.phone && <span className="mx-1.5 opacity-40">·</span>}
-            {app.phone && <span>{app.phone}</span>}
-            {app.city && <span className="mx-1.5 opacity-40">·</span>}
-            {app.city && <span>{app.city}</span>}
-            <span className="mx-1.5 opacity-40">·</span>
+          <div className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-1">
+            <span>{docTypeLabel[app.docType]}</span>
+            {app.phone && <><span className="opacity-30">·</span><span>{app.phone}</span></>}
+            {app.city  && <><span className="opacity-30">·</span><span>{app.city}</span></>}
+            <span className="opacity-30">·</span>
             <span>Submitted {relativeTime(app.submittedAt)}</span>
+            {app.reviewer && (
+              <><span className="opacity-30">·</span><span className="italic">Reviewed by {app.reviewer}</span></>
+            )}
           </div>
         </div>
         <button
@@ -627,12 +1050,26 @@ function ReviewPanel({
           <span className={`text-xs font-semibold tabular-nums ${scoreColor(app.faceMatchScore)}`}>{app.faceMatchScore}%</span>
         </div>
 
+        {app.livenessScore > 0 && (
+          <>
+            <span className="text-border text-xs">·</span>
+            <div className="flex items-center gap-1.5">
+              <Fingerprint className="w-3 h-3 text-muted-foreground shrink-0" />
+              <span className="text-xs text-muted-foreground">Live</span>
+              <div className="w-14 h-1 bg-muted rounded-full overflow-hidden mx-0.5">
+                <div className={`h-full ${scoreBarColor(app.livenessScore)} rounded-full`} style={{ width: `${app.livenessScore}%` }} />
+              </div>
+              <span className={`text-xs font-semibold tabular-nums ${scoreColor(app.livenessScore)}`}>{app.livenessScore}%</span>
+            </div>
+          </>
+        )}
+
         {app.flags.length > 0 && (
           <>
             <span className="text-border text-xs">·</span>
             {app.flags.map((f) => (
               <span key={f} className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber/10 text-amber">
-                <AlertTriangle className="w-3 h-3" /> {f}
+                <AlertTriangle className="w-3 h-3" /> {f.replace(/_/g, " ")}
               </span>
             ))}
           </>
@@ -643,13 +1080,13 @@ function ReviewPanel({
         </div>
       </div>
 
-      {/* ── Section 3: Document + Info ── */}
+      {/* ── Section 3: Document viewer + Info panel ── */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* Left: Document viewer */}
         <div className="w-72 shrink-0 border-r border-border flex flex-col">
           <div className="flex border-b border-border px-3 pt-0.5 shrink-0">
-            {(["front", "selfie"] as const).map((t) => (
+            {(["front", ...(hasBack ? ["back" as const] : []), "selfie"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setDocTab(t)}
@@ -657,7 +1094,7 @@ function ReviewPanel({
                   docTab === t ? "text-pine" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {t === "front" ? "ID Document" : "Selfie"}
+                {t === "front" ? "ID Front" : t === "back" ? "ID Back" : "Selfie"}
                 {docTab === t && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-pine rounded-full" />}
               </button>
             ))}
@@ -665,12 +1102,25 @@ function ReviewPanel({
 
           <div className="flex-1 bg-muted/20 flex flex-col gap-3 p-4 min-h-0 overflow-hidden">
             <div className="w-full aspect-[3/2] rounded-md border border-border bg-card flex flex-col items-center justify-center gap-2 relative overflow-hidden shrink-0">
-              {currentDocUrl ? (
+              {isDetailLoading ? (
+                <div className="w-full h-full bg-muted/40 animate-pulse flex items-center justify-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" />
+                </div>
+              ) : isDetailError ? (
+                <div className="flex flex-col items-center justify-center gap-2 p-4 text-center">
+                  <AlertTriangle className="w-6 h-6 text-amber" />
+                  <span className="text-xs text-muted-foreground">Failed to load document</span>
+                </div>
+              ) : currentDocUrl ? (
                 <img
                   src={currentDocUrl}
-                  alt={docTab === "selfie" ? "Selfie" : "ID Document"}
+                  alt={docTab === "selfie" ? "Selfie" : docTab === "back" ? "ID Back" : "ID Front"}
                   className="w-full h-full object-contain"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  onError={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    img.style.display = "none";
+                    img.nextElementSibling?.classList.remove("hidden");
+                  }}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center gap-2">
@@ -679,21 +1129,21 @@ function ReviewPanel({
                       <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
                         <User className="w-8 h-8 text-muted-foreground" />
                       </div>
-                      <span className="text-xs text-muted-foreground">Selfie not available</span>
+                      <span className="text-xs text-muted-foreground">Selfie not uploaded</span>
                     </>
                   ) : (
                     <>
                       <div className="w-14 h-9 rounded border-2 border-muted-foreground/20 flex items-center justify-center">
                         <FileText className="w-5 h-5 text-muted-foreground/40" />
                       </div>
-                      <span className="text-xs text-muted-foreground">ID not available</span>
+                      <span className="text-xs text-muted-foreground">Document not uploaded</span>
                     </>
                   )}
                 </div>
               )}
             </div>
 
-            {currentDocUrl && (
+            {currentDocUrl && !isDetailLoading && (
               <div className="flex items-center gap-1.5 shrink-0">
                 <a
                   href={currentDocUrl}
@@ -737,7 +1187,9 @@ function ReviewPanel({
                     {s.ok
                       ? <CheckCircle2 className="w-4 h-4 text-pine shrink-0" />
                       : <XCircle className="w-4 h-4 text-muted-foreground/50 shrink-0" />}
-                    <span className={`text-sm flex-1 ${s.ok ? "text-foreground" : "text-muted-foreground"}`}>{s.label}</span>
+                    <span className={`text-sm flex-1 ${s.ok ? "text-foreground" : "text-muted-foreground"}`}>
+                      {s.label}
+                    </span>
                     <span className={`text-[11px] font-medium shrink-0 ${s.ok ? "text-pine" : "text-muted-foreground"}`}>
                       {s.ok ? "Pass" : "–"}
                     </span>
@@ -748,17 +1200,27 @@ function ReviewPanel({
 
             {infoTab === "ocr" && (
               <div className="px-5">
-                {ocrFields.map((f) => (
-                  <div key={f.label} className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
-                    <span className="text-xs text-muted-foreground">{f.label}</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium">{f.value}</span>
-                      {f.match
-                        ? <CheckCircle2 className="w-3.5 h-3.5 text-pine" />
-                        : <AlertTriangle className="w-3.5 h-3.5 text-amber" />}
-                    </div>
+                {isDetailLoading ? (
+                  <div className="space-y-3 pt-3">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="h-8 rounded bg-muted animate-pulse" />
+                    ))}
                   </div>
-                ))}
+                ) : ocrFields.length === 0 ? (
+                  <p className="py-6 text-center text-xs text-muted-foreground">No OCR data available.</p>
+                ) : (
+                  ocrFields.map((f) => (
+                    <div key={f.label} className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
+                      <span className="text-xs text-muted-foreground">{f.label}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-medium">{f.value}</span>
+                        {f.match
+                          ? <CheckCircle2 className="w-3.5 h-3.5 text-pine" />
+                          : <AlertTriangle className="w-3.5 h-3.5 text-amber" title="Mismatch" />}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
 
@@ -766,6 +1228,7 @@ function ReviewPanel({
               <div className="p-5 space-y-3">
                 {app.notes && (
                   <div className="rounded-[3px] bg-muted/30 border border-border p-3 text-sm text-muted-foreground">
+                    <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1">Previous notes</span>
                     {app.notes}
                   </div>
                 )}
@@ -782,8 +1245,14 @@ function ReviewPanel({
       </div>
 
       {/* ── Section 4: Decision footer ── */}
-      {!isAlreadyReviewed ? (
+      {!isReviewed ? (
         <div className="flex items-center gap-2 px-5 py-3 border-t border-border bg-background shrink-0">
+          <button
+            onClick={onRequestDocs}
+            className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5 transition-colors"
+          >
+            <FilePlus className="w-3.5 h-3.5" /> Request docs
+          </button>
           <div className="flex-1" />
           <button
             onClick={() => setShowRejectDialog(true)}
@@ -800,10 +1269,20 @@ function ReviewPanel({
             <ShieldCheck className="w-3.5 h-3.5" /> Approve
           </button>
         </div>
+      ) : app.status === "additional_docs" ? (
+        <div className="flex items-center justify-center gap-2 px-5 py-3 border-t border-border bg-amber/5 shrink-0">
+          <FilePlus className="w-3.5 h-3.5 text-amber" />
+          <span className="text-xs text-muted-foreground">
+            Additional documents requested.
+            {app.reviewer && <> · Requested by <strong>{app.reviewer}</strong></>}
+          </span>
+        </div>
       ) : (
         <div className="flex items-center justify-center gap-2 px-5 py-3 border-t border-border bg-muted/20 shrink-0">
           <span className="text-xs text-muted-foreground">
-            This application has been {app.status === "approved" ? "approved" : "rejected"}.
+            Application {app.status === "approved" ? "approved" : "rejected"}.
+            {app.reviewer && <> · Reviewed by <strong>{app.reviewer}</strong></>}
+            {app.reviewedAt && <> · {fmtDate(app.reviewedAt)}</>}
           </span>
         </div>
       )}
@@ -818,7 +1297,7 @@ function ReviewPanel({
             </p>
             {approveMutation.isError && (
               <div className="mb-3 text-xs text-rose bg-rose/10 rounded px-3 py-2">
-                Failed to approve: {(approveMutation.error as Error)?.message ?? 'Unknown error'}
+                Failed to approve: {(approveMutation.error as Error)?.message ?? "Unknown error"}
               </div>
             )}
             <div className="flex justify-end gap-2">
@@ -833,14 +1312,18 @@ function ReviewPanel({
                 disabled={approveMutation.isPending}
                 className="h-8 px-4 rounded-[3px] bg-pine text-primary-foreground text-xs font-medium hover:bg-pine/90 flex items-center gap-1.5 disabled:opacity-50"
               >
-                {approveMutation.isPending ? "Approving…" : "Confirm Approve"}
+                {approveMutation.isPending ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Approving…</>
+                ) : (
+                  <><ShieldCheck className="w-3.5 h-3.5" /> Confirm Approve</>
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Reject dialog with reason ── */}
+      {/* ── Reject dialog ── */}
       {showRejectDialog && (
         <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowRejectDialog(false)}>
           <div className="bg-card border border-border rounded-lg p-6 w-96 shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -857,7 +1340,7 @@ function ReviewPanel({
             />
             {rejectMutation.isError && (
               <div className="mb-3 text-xs text-rose bg-rose/10 rounded px-3 py-2">
-                Failed to reject: {(rejectMutation.error as Error)?.message ?? 'Unknown error'}
+                Failed to reject: {(rejectMutation.error as Error)?.message ?? "Unknown error"}
               </div>
             )}
             <div className="flex justify-end gap-2">
@@ -872,39 +1355,16 @@ function ReviewPanel({
                 disabled={rejectMutation.isPending || !rejectReason.trim()}
                 className="h-8 px-4 rounded-[3px] bg-rose text-white text-xs font-medium hover:bg-rose/90 flex items-center gap-1.5 disabled:opacity-50"
               >
-                {rejectMutation.isPending ? "Rejecting…" : "Confirm Reject"}
+                {rejectMutation.isPending ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Rejecting…</>
+                ) : (
+                  "Confirm Reject"
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }
-
-function ScoreRow({ label, value, icon: Icon }: { label: string; value: number; icon: React.ComponentType<{ className?: string }> }) {
-  const color = value >= 85 ? "bg-pine" : value >= 70 ? "bg-amber" : "bg-rose";
-  const textColor = value >= 85 ? "text-pine" : value >= 70 ? "text-amber" : "text-rose";
-  return (
-    <div className="flex items-center gap-2">
-      <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-      <span className="text-xs text-muted-foreground flex-1">{label}</span>
-      <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full`} style={{ width: `${value}%` }} />
-      </div>
-      <span className={`text-[11px] font-semibold tabular-nums w-8 text-right ${textColor}`}>{value}%</span>
-    </div>
-  );
-}
-
-function MetaRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-2 text-sm">
-      <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-      <span className="text-muted-foreground text-xs w-20 shrink-0">{label}</span>
-      <span className="font-medium text-xs truncate">{value}</span>
-    </div>
-  );
-}
-
