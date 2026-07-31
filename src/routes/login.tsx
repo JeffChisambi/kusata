@@ -223,8 +223,10 @@ function LoginPage() {
               {setupData.qrDataUrl && (
                 <div className="mt-6 flex justify-center">
                   <div className="bg-white p-4 rounded-[2px] shadow-sm border border-border">
+                    {/* Use the server-generated QR data URL directly — never send
+                        the OTP secret or otpauth URI to a third-party QR service. */}
                     <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(setupData.qrDataUrl)}`}
+                      src={setupData.qrDataUrl}
                       alt="MFA QR Code"
                       width={200}
                       height={200}

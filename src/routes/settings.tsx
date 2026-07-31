@@ -408,8 +408,10 @@ function MfaSection() {
               <div className="flex gap-6 items-start flex-wrap">
                 {/* QR image */}
                 <div className="w-36 h-36 bg-white rounded-[3px] border border-border flex items-center justify-center shrink-0 overflow-hidden p-1.5">
+                  {/* Use the server-generated QR data URL directly — never send
+                      the OTP secret or otpauth URI to a third-party QR service. */}
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData.otpauthUri)}`}
+                    src={qrData.qrDataUrl}
                     alt="QR code"
                     className="w-full h-full object-contain"
                   />

@@ -12,8 +12,11 @@
 
 import { navigateTo } from './nav-registry';
 
-const BASE_URL = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL)
-  || 'http://localhost:3000';
+const _configuredUrl = typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL;
+if (!_configuredUrl) {
+  console.error('[Pine API] VITE_API_URL is not set. All API requests will fail. Add it to your .env file.');
+}
+const BASE_URL: string = _configuredUrl || '';
 
 class ApiClient {
   /** In-flight refresh promise — shared across all concurrent requests. */
