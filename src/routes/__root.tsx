@@ -125,11 +125,44 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+/**
+ * Inline auth-guard script injected into <head>.
+ *
+ * Runs synchronously before the browser paints a single pixel of body content.
+ * Checks localStorage for a valid token and either:
+ *   - redirects to /login (unauthenticated access to a protected route), or
+ *   - redirects to /broker (BROKER role accessing an admin-only route), or
+ *   - adds .pine-auth-ready to <html>, which lifts the visibility:hidden set in
+ *     styles.css and allows the body to paint.
+ *
+ * This script must stay in sync with the BROKER_ALLOWED_PATHS list in beforeLoad.
+ */
+const AUTH_GUARD_SCRIPT = `(function(){
+  try{
+    var token=localStorage.getItem('pine_admin_access_token');
+    var path=location.pathname;
+    var onLogin=path==='/login';
+    if(!token&&!onLogin){location.replace('/login');return;}
+    if(token&&!onLogin){
+      var BROKER_PATHS=['/broker','/users','/kyc','/orders','/notifications','/coming-soon','/settings'];
+      var isBrokerPath=BROKER_PATHS.some(function(p){return path===p||path.startsWith(p+'/');});
+      try{
+        var u=JSON.parse(localStorage.getItem('pine_admin_user')||'null');
+        if(u&&u.role==='BROKER'&&!isBrokerPath){location.replace('/broker');return;}
+      }catch(e){}
+    }
+  }catch(e){}
+  document.documentElement.classList.add('pine-auth-ready');
+})();`;
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
         <HeadContent />
+        {/* Auth guard: runs before body paints — see AUTH_GUARD_SCRIPT comment above */}
+        {/* eslint-disable-next-line react/no-danger */}
+        <script dangerouslySetInnerHTML={{ __html: AUTH_GUARD_SCRIPT }} />
       </head>
       <body>
         {children}

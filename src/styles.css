@@ -1,4 +1,13 @@
 @import "tailwindcss" source(none);
+
+/*
+ * Auth guard: body is invisible until the inline <head> script confirms auth.
+ * The script adds .pine-auth-ready to <html> after checking localStorage.
+ * This eliminates any flash of protected content before the JS auth check runs.
+ */
+html:not(.pine-auth-ready) body {
+  visibility: hidden;
+}
 @source "../src";
 @import "tw-animate-css";
 
