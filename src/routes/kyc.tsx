@@ -7,8 +7,7 @@ import {
   TrendingUp, TrendingDown, Download, Fingerprint, ExternalLink,
   RefreshCw, Loader2,
 } from "lucide-react";
-import { AdminShell, Card } from "@/components/admin-shell";
-import { RoleShell } from "@/components/role-shell";
+import { BrokerShell, Card } from "@/components/broker-shell";
 import {
   useKycQueue, useKycApplication, useApproveKyc, useRejectKyc,
   useRequestAdditionalDocs, useKycCounts,
@@ -227,7 +226,7 @@ function KycPage() {
   const handleRejectFromMenu  = (app: KycApplication) => setSelected(app);
 
   return (
-    <RoleShell activeLabel="KYC" eyebrow="Clients" title="KYC">
+    <BrokerShell activeLabel="KYC" title="KYC">
       <KycStats counts={counts} />
 
       {/* Tab bar */}
@@ -337,7 +336,7 @@ function KycPage() {
           onClose={() => setRequestDocsFor(null)}
         />
       )}
-    </RoleShell>
+    </BrokerShell>
   );
 }
 

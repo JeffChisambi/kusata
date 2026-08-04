@@ -41,7 +41,7 @@ export type NavGroup = {
 
 export const brokerNav: NavGroup[] = [
   // ── OVERVIEW ──
-  { section: "OVERVIEW", icon: NineDotsIcon, label: "Overview", href: "/broker" },
+  { section: "OVERVIEW", icon: NineDotsIcon, label: "Overview", href: "/" },
 
   // ── CLIENTS ──
   { section: "CLIENTS", icon: Users, label: "Users", href: "/users" },
@@ -549,7 +549,7 @@ function BrokerTopbar({ title }: { title: string }) {
 
 // ─── Shared Card ──────────────────────────────────────────────────────────────
 
-export function BrokerCard({
+export function Card({
   title, subtitle, children, className = "", action,
 }: {
   title?: string; subtitle?: string; children: ReactNode;

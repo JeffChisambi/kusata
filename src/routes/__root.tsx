@@ -94,29 +94,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     }
 
     if (authed && onLogin) {
-      const user = getCurrentUser();
-      throw redirect({ to: user?.role === "BROKER" ? "/broker" : "/" });
-    }
-
-    if (authed && !onLogin) {
-      const user = getCurrentUser();
-      // Keep this list in sync with any new routes that brokers should access.
-      // Using `as const` ensures TypeScript catches typos at the call sites.
-      const BROKER_ALLOWED_PATHS = [
-        "/broker",
-        "/users",
-        "/kyc",
-        "/orders",
-        "/notifications",
-        "/coming-soon",
-        "/settings",
-      ] as const;
-      const isBrokerAllowed = BROKER_ALLOWED_PATHS.some((p) =>
-        location.pathname.startsWith(p),
-      );
-      if (user?.role === "BROKER" && !isBrokerAllowed) {
-        throw redirect({ to: "/broker" });
-      }
+      throw redirect({ to: "/" });
     }
   },
   shellComponent: RootShell,
@@ -130,12 +108,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
  *
  * Runs synchronously before the browser paints a single pixel of body content.
  * Checks localStorage for a valid token and either:
- *   - redirects to /login (unauthenticated access to a protected route), or
- *   - redirects to /broker (BROKER role accessing an admin-only route), or
+ *   - redirects to /login (unauthenticated access to a protected route)
  *   - adds .pine-auth-ready to <html>, which lifts the visibility:hidden set in
  *     styles.css and allows the body to paint.
- *
- * This script must stay in sync with the BROKER_ALLOWED_PATHS list in beforeLoad.
  */
 const AUTH_GUARD_SCRIPT = `(function(){
   try{
@@ -143,14 +118,6 @@ const AUTH_GUARD_SCRIPT = `(function(){
     var path=location.pathname;
     var onLogin=path==='/login';
     if(!token&&!onLogin){location.replace('/login');return;}
-    if(token&&!onLogin){
-      var BROKER_PATHS=['/broker','/users','/kyc','/orders','/notifications','/coming-soon','/settings'];
-      var isBrokerPath=BROKER_PATHS.some(function(p){return path===p||path.startsWith(p+'/');});
-      try{
-        var u=JSON.parse(localStorage.getItem('pine_admin_user')||'null');
-        if(u&&u.role==='BROKER'&&!isBrokerPath){location.replace('/broker');return;}
-      }catch(e){}
-    }
   }catch(e){}
   document.documentElement.classList.add('pine-auth-ready');
 })();`;

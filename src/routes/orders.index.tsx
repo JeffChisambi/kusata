@@ -13,7 +13,7 @@ import {
   RefreshCw,
   XCircle,
 } from "lucide-react";
-import { BrokerCard, BrokerShell } from "@/components/broker-shell";
+import { Card, BrokerShell } from "@/components/broker-shell";
 import { useOrders, useRefreshOrders, type Order, type DisplayStatus, type OrderSide } from "@/hooks/useOrders";
 
 export const Route = createFileRoute("/orders/")({
@@ -232,7 +232,7 @@ function OrdersPage() {
         </div>
       </div>
 
-      <BrokerCard
+      <Card
         className="overflow-hidden"
         title={orderViewLabel}
         subtitle={
@@ -254,7 +254,7 @@ function OrdersPage() {
           <span>Showing <span className="font-medium text-foreground">{orders.length}</span> of {total} orders</span>
           <span className="hidden sm:inline">Auto-refreshes every 15s</span>
         </div>
-      </BrokerCard>
+      </Card>
 
     </BrokerShell>
   );

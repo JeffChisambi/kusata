@@ -9,8 +9,7 @@ import {
   FileText, ChevronRight, ChevronDown, Building2, CreditCard, Users, UserCheck, UserX,
   Eye, Copy, ExternalLink, TrendingUp, TrendingDown, Trash2,
 } from "lucide-react";
-import { AdminShell, Card } from "@/components/admin-shell";
-import { RoleShell } from "@/components/role-shell";
+import { BrokerShell, Card } from "@/components/broker-shell";
 import { useUsersList, useUpdateUserStatus, useRevokeUserSessions, useDeleteUser, useUpdateUserKycStatus } from "@/hooks/useUsers";
 
 const searchSchema = z.object({
@@ -137,7 +136,7 @@ function UsersPage() {
   };
 
   return (
-    <RoleShell activeLabel="User Management" eyebrow="Clients" title="User Management">
+    <BrokerShell activeLabel="Users" title="User Management">
       <UserStats users={users} />
 
       <div className="flex gap-4 items-start">
@@ -174,7 +173,7 @@ function UsersPage() {
           </div>
         )}
       </div>
-    </RoleShell>
+    </BrokerShell>
   );
 }
 
