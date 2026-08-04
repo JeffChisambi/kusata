@@ -43,7 +43,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { BrokerShell, Card } from "@/components/broker-shell";
+import { Card } from "@/components/broker-shell";
 import { useDashboardStats, useDashboardCharts } from "@/hooks/useDashboard";
 import { useKycQueue } from "@/hooks/useKyc";
 
@@ -424,7 +424,7 @@ function SupportTickets() {
 
 function BrokerDashboard() {
   return (
-    <BrokerShell activeLabel="Overview" title="Broker Overview">
+    <>
       <div className="pt-6" />
 
       {/* KPI row */}
@@ -441,6 +441,6 @@ function BrokerDashboard() {
         <KycQueue />
         <SupportTickets />
       </div>
-    </BrokerShell>
+    </>
   );
 }

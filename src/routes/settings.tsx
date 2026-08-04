@@ -5,7 +5,6 @@ import {
   AlertTriangle, Smartphone, LogOut, ChevronRight, Save,
   Loader2, KeyRound, Copy, Check, RefreshCw, Monitor,
 } from "lucide-react";
-import { BrokerShell } from "@/components/broker-shell";
 import { getCurrentUser } from "@/lib/auth";
 import {
   useProfile, useUpdateProfile,
@@ -696,7 +695,7 @@ function SettingsPage() {
   const [tab, setTab] = useState<TabKey>("profile");
 
   return (
-    <BrokerShell activeLabel="Settings" title="Settings">
+    <>
       <div className="pt-6" />
 
       <div className="flex gap-6 items-start">
@@ -738,6 +737,6 @@ function SettingsPage() {
           {tab === "sessions"      && <SessionsSection />}
         </div>
       </div>
-    </BrokerShell>
+    </>
   );
 }

@@ -9,7 +9,7 @@ import {
   FileText, ChevronRight, ChevronDown, Building2, CreditCard, Users, UserCheck, UserX,
   Eye, Copy, ExternalLink, TrendingUp, TrendingDown, Trash2,
 } from "lucide-react";
-import { BrokerShell, Card } from "@/components/broker-shell";
+import { Card } from "@/components/broker-shell";
 import { useUsersList, useUpdateUserStatus, useRevokeUserSessions, useDeleteUser, useUpdateUserKycStatus } from "@/hooks/useUsers";
 
 const searchSchema = z.object({
@@ -136,7 +136,7 @@ function UsersPage() {
   };
 
   return (
-    <BrokerShell activeLabel="Users" title="User Management">
+    <>
       <UserStats users={users} />
 
       <div className="flex gap-4 items-start">
@@ -173,7 +173,7 @@ function UsersPage() {
           </div>
         )}
       </div>
-    </BrokerShell>
+    </>
   );
 }
 

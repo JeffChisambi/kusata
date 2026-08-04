@@ -13,7 +13,7 @@ import {
   RefreshCw,
   XCircle,
 } from "lucide-react";
-import { Card, BrokerShell } from "@/components/broker-shell";
+import { Card } from "@/components/broker-shell";
 import { useOrders, useRefreshOrders, type Order, type DisplayStatus, type OrderSide } from "@/hooks/useOrders";
 
 export const Route = createFileRoute("/orders/")({
@@ -195,7 +195,7 @@ function OrdersPage() {
   const orderViewLabel = sideFilter === "ALL" ? "All orders" : `${sideFilter === "BUY" ? "Buy" : "Sell"} orders`;
 
   return (
-    <BrokerShell activeLabel="Orders" title="Orders">
+    <>
       {notice && (
         <div className="fixed bottom-5 right-5 z-[120] flex items-center gap-2 rounded-[4px] bg-foreground px-4 py-3 text-sm text-background shadow-xl">
           <CheckCircle2 className="h-4 w-4" /> {notice}
@@ -256,6 +256,6 @@ function OrdersPage() {
         </div>
       </Card>
 
-    </BrokerShell>
+    </>
   );
 }

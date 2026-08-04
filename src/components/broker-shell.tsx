@@ -1,6 +1,9 @@
-import { useState, useRef, useEffect, type ReactNode } from "react";
+import {
+  useState, useRef, useEffect, useContext, useCallback, createContext,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { getCurrentUser, logout } from "@/lib/auth";
 import { useKycQueue } from "@/hooks/useKyc";
 import { useUnreadNotificationCount } from "@/hooks/useNotifications";
@@ -68,24 +71,82 @@ const TIME_RANGES = [
 ];
 
 // ─── Module-level collapsed cache ─────────────────────────────────────────────
-// Persists across client-side navigations (remounts) so the sidebar never
-// flashes open: after the first mount the correct value is already known.
+// Persists across client-side navigations so the sidebar never flashes open.
 let _collapsedCache: boolean | null = null;
 
-// ─── BrokerShell ───────────────────────────────────────────────────────────────
+// ─── Title context ─────────────────────────────────────────────────────────────
+// The shell is now a single persistent layout (rendered once in __root), so
+// pages can no longer pass a `title` prop. Static titles are derived from the
+// path via defaultTitleFor(); pages that need a dynamic title (e.g. an order's
+// id) set it imperatively with useDashboardTitle(). `forPath` scopes the
+// override to the route that set it, so a stale title never bleeds across a
+// section switch.
+type TitleState = { title: string | null; forPath: string | null };
+const DashboardTitleContext = createContext<
+  TitleState & { setTitle: (title: string | null, forPath: string) => void }
+>({ title: null, forPath: null, setTitle: () => {} });
 
-export function BrokerShell({
-  activeLabel,
-  title,
-  children,
-}: {
-  activeLabel: string;
-  title: string;
-  children: ReactNode;
-}) {
-  const [open, setOpen] = useState<Record<string, boolean>>({ [activeLabel]: true });
-  // Start hidden (null) on SSR; on the client the cache may already be populated.
-  const [collapsed, setCollapsed] = useState<boolean | null>(null);
+export function DashboardTitleProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState<TitleState>({ title: null, forPath: null });
+  const setTitle = useCallback((title: string | null, forPath: string) => {
+    setState({ title, forPath });
+  }, []);
+  return (
+    <DashboardTitleContext.Provider value={{ ...state, setTitle }}>
+      {children}
+    </DashboardTitleContext.Provider>
+  );
+}
+
+/** Set the topbar title for the current route (for dynamic titles). */
+export function useDashboardTitle(title: string) {
+  const { setTitle } = useContext(DashboardTitleContext);
+  const { pathname } = useLocation();
+  useEffect(() => { setTitle(title, pathname); }, [title, pathname, setTitle]);
+}
+
+const STATIC_TITLES: Record<string, string> = {
+  "/": "Broker Overview",
+  "/users": "User Management",
+  "/kyc": "KYC",
+  "/orders": "Orders",
+  "/settings": "Settings",
+  "/notifications": "Notifications",
+};
+
+function defaultTitleFor(pathname: string): string {
+  if (STATIC_TITLES[pathname]) return STATIC_TITLES[pathname];
+  if (pathname.startsWith("/orders/")) return "Orders";
+  return "";
+}
+
+/** Derive the active sidebar item from the current path. */
+function activeLabelFor(pathname: string): string {
+  const exact = brokerNav.find((n) => n.href === pathname);
+  if (exact) return exact.label;
+  const nested = brokerNav.find(
+    (n) => n.href && n.href !== "/" && pathname.startsWith(n.href + "/"),
+  );
+  return nested?.label ?? "";
+}
+
+// ─── DashboardLayout ─────────────────────────────────────────────────────────
+// Persistent chrome: rendered once by __root around <Outlet/>. Only the content
+// swaps between sections, so the sidebar and topbar never remount (no glitch).
+
+export function DashboardLayout({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  const ctx = useContext(DashboardTitleContext);
+  const activeLabel = activeLabelFor(pathname);
+  const title = ctx.forPath === pathname && ctx.title ? ctx.title : defaultTitleFor(pathname);
+
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  // Seed from the module-level cache so that on client-side navigations — where
+  // this shell remounts — the sidebar renders at its correct width on the very
+  // first frame instead of flashing from 0 → full width (the section-switch
+  // "glitch"). On the initial SSR/first load the cache is still null, so we
+  // keep the hidden-until-measured behaviour that avoids a hydration mismatch.
+  const [collapsed, setCollapsed] = useState<boolean | null>(() => _collapsedCache);
   const [transitionReady, setTransitionReady] = useState(false);
 
   useEffect(() => {
@@ -119,8 +180,12 @@ export function BrokerShell({
       />
       <main className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
         <BrokerTopbar title={title} />
-        <div className="flex-1 min-h-0 overflow-y-auto px-8 pb-10 space-y-6 scrollbar-thin-gray">
-          {children}
+        <div className="flex-1 min-h-0 overflow-y-auto px-8 pb-10 scrollbar-thin-gray">
+          {/* Keyed by path so the content cross-fades on every section switch,
+              giving a smooth transition instead of an abrupt swap. */}
+          <div key={pathname} className="space-y-6 animate-in fade-in duration-300 ease-out">
+            {children}
+          </div>
         </div>
       </main>
     </div>

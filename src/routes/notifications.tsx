@@ -5,7 +5,7 @@ import {
   Smartphone, Mail, MessageSquare, Megaphone, Plus,
   XCircle, Circle,
 } from "lucide-react";
-import { BrokerShell, Card } from "@/components/broker-shell";
+import { Card } from "@/components/broker-shell";
 import { useNotificationsList, useNotificationStats } from "@/hooks/useNotifications";
 
 export const Route = createFileRoute("/notifications")({
@@ -150,7 +150,7 @@ function NotificationsPage() {
   const markRead = (id: string) => setItems((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
 
   return (
-    <BrokerShell activeLabel="Notifications" title="Notifications">
+    <>
       <div className="pt-6 space-y-5">
 
         {/* Summary strip */}
@@ -237,7 +237,7 @@ function NotificationsPage() {
       </div>
 
       {compose && <ComposeModal onClose={() => setCompose(false)} />}
-    </BrokerShell>
+    </>
   );
 }
 

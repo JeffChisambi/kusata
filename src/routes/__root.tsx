@@ -16,6 +16,17 @@ import { registerNavigate } from "@/lib/nav-registry";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ComingSoonView } from "../components/coming-soon-view";
+import { DashboardLayout, DashboardTitleProvider } from "../components/broker-shell";
+
+// Real dashboard sections get the persistent shell (sidebar + topbar). Login,
+// coming-soon and any not-found path render bare/full-screen.
+const SHELL_PREFIXES = ["/users", "/kyc", "/orders", "/settings", "/notifications"];
+function isShellRoute(pathname: string): boolean {
+  return (
+    pathname === "/" ||
+    SHELL_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"))
+  );
+}
 
 function NotFoundComponent() {
   return <ComingSoonView />;
@@ -141,6 +152,7 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   // Register the router's navigate function so ApiClient can use it for
   // session-expiry redirects instead of window.location.href, which would
@@ -149,9 +161,20 @@ function RootComponent() {
     registerNavigate((to) => navigate({ to: to as any }));
   }, [navigate]);
 
+  // The shell is mounted ONCE here and persists across section switches — only
+  // the <Outlet/> content changes — so the sidebar/topbar never remount and the
+  // transition is seamless.
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <DashboardTitleProvider>
+        {isShellRoute(pathname) ? (
+          <DashboardLayout>
+            <Outlet />
+          </DashboardLayout>
+        ) : (
+          <Outlet />
+        )}
+      </DashboardTitleProvider>
     </QueryClientProvider>
   );
 }

@@ -7,7 +7,7 @@ import {
   TrendingUp, TrendingDown, Download, Fingerprint, ExternalLink,
   RefreshCw, Loader2,
 } from "lucide-react";
-import { BrokerShell, Card } from "@/components/broker-shell";
+import { Card } from "@/components/broker-shell";
 import {
   useKycQueue, useKycApplication, useApproveKyc, useRejectKyc,
   useRequestAdditionalDocs, useKycCounts,
@@ -226,7 +226,7 @@ function KycPage() {
   const handleRejectFromMenu  = (app: KycApplication) => setSelected(app);
 
   return (
-    <BrokerShell activeLabel="KYC" title="KYC">
+    <>
       <KycStats counts={counts} />
 
       {/* Tab bar */}
@@ -336,7 +336,7 @@ function KycPage() {
           onClose={() => setRequestDocsFor(null)}
         />
       )}
-    </BrokerShell>
+    </>
   );
 }
 
@@ -890,6 +890,7 @@ function RequestDocsDialog({ app, onClose }: { app: KycApplication; onClose: () 
 const ID_FRONT_TYPES  = new Set(["ID_FRONT", "NATIONAL_ID", "PASSPORT", "PASSPORT_FRONT", "DRIVERS_LICENSE_FRONT"]);
 const ID_BACK_TYPES   = new Set(["ID_BACK", "NATIONAL_ID_BACK", "PASSPORT_BACK", "DRIVERS_LICENSE_BACK"]);
 const SELFIE_TYPES    = new Set(["SELFIE", "LIVENESS"]);
+const ADDRESS_TYPES   = new Set(["PROOF_OF_RESIDENCE", "UTILITY_BILL", "BANK_STATEMENT", "ADDRESS_PROOF"]);
 
 function ReviewPanel({
   app, onClose, onApprove, onReject, onRequestDocs,
@@ -900,7 +901,7 @@ function ReviewPanel({
   onReject: () => void;
   onRequestDocs: () => void;
 }) {
-  const [docTab,             setDocTab]             = useState<"front" | "back" | "selfie">("front");
+  const [docTab,             setDocTab]             = useState<"front" | "back" | "selfie" | "address">("front");
   const [infoTab,            setInfoTab]            = useState<"checklist" | "ocr" | "notes">("checklist");
   const [showRejectDialog,   setShowRejectDialog]   = useState(false);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);

@@ -10,7 +10,7 @@ import {
   RefreshCw,
   XCircle,
 } from "lucide-react";
-import { BrokerShell } from "@/components/broker-shell";
+import { useDashboardTitle } from "@/components/broker-shell";
 import { useOrder, type DisplayStatus, type OrderSide } from "@/hooks/useOrders";
 
 export const Route = createFileRoute("/orders/$orderId")({
@@ -79,20 +79,28 @@ function OrderDetailPage() {
   const navigate = useNavigate();
   const { data: order, isLoading, isError, error } = useOrder(orderId);
 
+  useDashboardTitle(
+    isLoading
+      ? "Loading…"
+      : isError || !order
+        ? "Order not found"
+        : `Order ${order.id.slice(0, 8)}…`,
+  );
+
   if (isLoading) {
     return (
-      <BrokerShell activeLabel="Orders" title="Loading…">
+      <>
         <div className="flex flex-col items-center gap-4 pt-24 text-center">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           <p className="text-sm text-muted-foreground">Loading order details…</p>
         </div>
-      </BrokerShell>
+      </>
     );
   }
 
   if (isError || !order) {
     return (
-      <BrokerShell activeLabel="Orders" title="Order not found">
+      <>
         <div className="flex flex-col items-center gap-4 pt-24 text-center">
           <p className="text-sm text-muted-foreground">
             {isError
@@ -107,14 +115,14 @@ function OrderDetailPage() {
             <ArrowLeft className="h-4 w-4" /> Back to Orders
           </button>
         </div>
-      </BrokerShell>
+      </>
     );
   }
 
   const remaining = order.quantity - order.filled;
 
   return (
-    <BrokerShell activeLabel="Orders" title={`Order ${order.id.slice(0, 8)}…`}>
+    <>
       {/* Header */}
       <div className="flex items-center gap-3 pt-2">
         <button
@@ -223,6 +231,6 @@ function OrderDetailPage() {
           </div>
         )}
       </div>
-    </BrokerShell>
+    </>
   );
 }
