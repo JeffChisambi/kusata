@@ -7,11 +7,11 @@ import {
   Smartphone, Wallet, Landmark, Activity, Ban, Snowflake, CheckCircle2,
   XCircle, Clock, ArrowUpRight, ArrowDownRight, KeyRound, LogOut, RefreshCw,
   FileText, ChevronRight, ChevronDown, Building2, CreditCard, Users, UserCheck, UserX,
-  Eye, Copy, ExternalLink, TrendingUp, TrendingDown,
+  Eye, Copy, ExternalLink, TrendingUp, TrendingDown, Trash2,
 } from "lucide-react";
 import { AdminShell, Card } from "@/components/admin-shell";
 import { RoleShell } from "@/components/role-shell";
-import { useUsersList } from "@/hooks/useUsers";
+import { useUsersList, useUpdateUserStatus, useRevokeUserSessions, useDeleteUser, useUpdateUserKycStatus } from "@/hooks/useUsers";
 
 const searchSchema = z.object({
   tab: z.string().optional(),
@@ -595,10 +595,69 @@ function UserModal({ user, onClose }: { user: UserRow; onClose: () => void }) {
 
 /* -------------------- user 360 panel -------------------- */
 
-function UserDetails({ user, onClose }: { user: UserRow; onClose?: () => void }) {
+function UserDetails({ user: initialUser, onClose }: { user: UserRow; onClose?: () => void }) {
   const [tab, setTab] = useState<"profile" | "kyc" | "devices" | "banks" | "activity">("profile");
+  const [user, setUser] = useState(initialUser);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; tone: "ok" | "err" } | null>(null);
+
+  const updateStatus   = useUpdateUserStatus();
+  const revokeSessions = useRevokeUserSessions();
+  const deleteUser     = useDeleteUser();
+
+  const showToast = (msg: string, tone: "ok" | "err" = "ok") => {
+    setToast({ msg, tone });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const act = async (key: string, fn: () => Promise<void>) => {
+    setBusy(key);
+    try { await fn(); }
+    catch (e: any) { showToast(e?.message ?? "Error", "err"); }
+    finally { setBusy(null); }
+  };
+
+  const handleFreeze = () => act("freeze", async () => {
+    const wasFrozen = user.status === "frozen";
+    await updateStatus.mutateAsync({ userId: user.id, status: wasFrozen ? "active" : "frozen" });
+    setUser(u => ({ ...u, status: wasFrozen ? "active" : "frozen" }));
+    showToast(wasFrozen ? "Wallet unfrozen" : "Wallet frozen");
+  });
+
+  const handleSuspend = () => {
+    if (!confirm(`Suspend ${user.name}? They will be unable to log in.`)) return;
+    act("suspend", async () => {
+      await updateStatus.mutateAsync({ userId: user.id, status: "deactivated" });
+      setUser(u => ({ ...u, status: "suspended" }));
+      showToast("User suspended");
+    });
+  };
+
+  const handleRevoke = () => act("revoke", async () => {
+    await revokeSessions.mutateAsync(user.id);
+    showToast("All sessions revoked — user will be logged out");
+  });
+
+  const handleDelete = () => {
+    if (!confirm(`PERMANENTLY DELETE ${user.name}?\n\nThis cannot be undone. All data will be erased.`)) return;
+    act("delete", async () => {
+      await deleteUser.mutateAsync(user.id);
+      showToast("User deleted");
+      onClose?.();
+    });
+  };
+
   return (
-    <div className="flex flex-col h-full overflow-y-auto scrollbar-thin-pine">
+    <div className="flex flex-col h-full overflow-y-auto scrollbar-thin-pine relative">
+      {/* Toast */}
+      {toast && (
+        <div className={`absolute top-3 left-3 right-3 z-50 rounded-[3px] px-3 py-2 text-xs font-medium border ${
+          toast.tone === "ok" ? "bg-pine/10 text-pine border-pine/30" : "bg-rose/10 text-rose border-rose/30"
+        }`}>
+          {toast.msg}
+        </div>
+      )}
+
       {/* Header */}
       <div className="p-5 border-b border-border shrink-0">
         <div className="flex items-start gap-3">
@@ -609,8 +668,10 @@ function UserDetails({ user, onClose }: { user: UserRow; onClose?: () => void })
               <StatusBadge status={user.status} />
             </div>
             <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
-              <span>{user.id}</span>
-              <button className="hover:text-foreground"><Copy className="w-3 h-3" /></button>
+              <span className="font-mono">{user.id.slice(0, 8)}…</span>
+              <button onClick={() => navigator.clipboard.writeText(user.id)} className="hover:text-foreground" title="Copy ID">
+                <Copy className="w-3 h-3" />
+              </button>
               <span>·</span>
               <span>Joined {user.joined}</span>
             </div>
@@ -622,20 +683,21 @@ function UserDetails({ user, onClose }: { user: UserRow; onClose?: () => void })
           )}
         </div>
 
+        {/* Action grid */}
         <div className="mt-4 grid grid-cols-3 gap-2">
-          <QuickAction icon={Eye} label="View" />
-          <QuickAction icon={Mail} label="Message" />
-          <QuickAction icon={KeyRound} label="Reset PW" />
-          <QuickAction icon={Fingerprint} label="Reset MFA" />
-          <QuickAction icon={Snowflake} label="Freeze" tone="amber" />
-          <QuickAction icon={Ban} label="Suspend" tone="rose" />
+          <QuickAction icon={Eye}       label="View"            />
+          <QuickAction icon={Mail}      label="Message"         />
+          <QuickAction icon={LogOut}    label="Revoke Sessions" tone="amber" busy={busy === "revoke"}  onClick={handleRevoke}  />
+          <QuickAction icon={Snowflake} label={user.status === "frozen" ? "Unfreeze" : "Freeze"} tone="amber" busy={busy === "freeze"}  onClick={handleFreeze}  />
+          <QuickAction icon={Ban}       label="Suspend"         tone="rose"  busy={busy === "suspend"} onClick={handleSuspend} />
+          <QuickAction icon={Trash2}    label="Delete User"     tone="rose"  busy={busy === "delete"}  onClick={handleDelete}  />
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-          <MiniStat icon={Wallet} label="Portfolio" value={`MWK ${MWK(user.aum)}`} />
-          <MiniStat icon={Landmark} label="Cash" value={`MWK ${MWK(user.cash)}`} />
+          <MiniStat icon={Wallet}   label="Portfolio"  value={`MWK ${MWK(user.aum)}`} />
+          <MiniStat icon={Landmark} label="Cash"       value={`MWK ${MWK(user.cash)}`} />
           <MiniStat icon={Activity} label="30d trades" value={String(user.trades30d)} />
-          <MiniStat icon={Shield} label="MFA" value={user.mfa ? "Enabled" : "Off"} tone={user.mfa ? "pine" : "amber"} />
+          <MiniStat icon={Shield}   label="MFA"        value={user.mfa ? "Enabled" : "Off"} tone={user.mfa ? "pine" : "amber"} />
         </div>
       </div>
 
@@ -657,26 +719,31 @@ function UserDetails({ user, onClose }: { user: UserRow; onClose?: () => void })
 
       {/* Tab content */}
       <div className="p-5 flex-1">
-        {tab === "profile" && <ProfileTab user={user} />}
-        {tab === "kyc" && <KycTab user={user} />}
-        {tab === "devices" && <DevicesTab user={user} />}
-        {tab === "banks" && <BanksTab user={user} />}
+        {tab === "profile"  && <ProfileTab user={user} />}
+        {tab === "kyc"      && <KycTab user={user} onStatusChange={(s) => setUser(u => ({ ...u, kyc: s as any }))} />}
+        {tab === "devices"  && <DevicesTab user={user} />}
+        {tab === "banks"    && <BanksTab user={user} />}
         {tab === "activity" && <ActivityTab user={user} />}
       </div>
     </div>
   );
 }
 
+
 function QuickAction({
-  icon: Icon, label, tone,
-}: { icon: React.ComponentType<{ className?: string }>; label: string; tone?: "amber" | "rose" }) {
+  icon: Icon, label, tone, onClick, busy,
+}: { icon: React.ComponentType<{ className?: string }>; label: string; tone?: "amber" | "rose"; onClick?: () => void; busy?: boolean }) {
   const cls =
     tone === "amber" ? "hover:bg-amber/10 hover:text-amber hover:border-amber/30" :
     tone === "rose" ? "hover:bg-rose/10 hover:text-rose hover:border-rose/30" :
     "hover:bg-muted/40";
   return (
-    <button className={`flex flex-col items-center gap-1 py-2.5 rounded-[3px] border border-border text-[11px] text-muted-foreground transition-colors ${cls}`}>
-      <Icon className="w-4 h-4" />
+    <button
+      onClick={onClick}
+      disabled={busy}
+      className={`flex flex-col items-center gap-1 py-2.5 rounded-[3px] border border-border text-[11px] text-muted-foreground transition-colors disabled:opacity-50 ${cls}`}
+    >
+      {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4" />}
       {label}
     </button>
   );
@@ -733,7 +800,25 @@ function ProfileTab({ user }: { user: UserRow }) {
   );
 }
 
-function KycTab({ user }: { user: UserRow }) {
+function KycTab({ user, onStatusChange }: { user: UserRow; onStatusChange?: (s: string) => void }) {
+  const updateKyc = useUpdateUserKycStatus();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const doKyc = async (status: string, label: string) => {
+    setBusy(status);
+    try {
+      await updateKyc.mutateAsync({ userId: user.id, status });
+      const mapped = status === "APPROVED" ? "verified" : status === "REJECTED" ? "rejected" : "pending";
+      onStatusChange?.(mapped);
+      setToast(`${label} ✓`);
+      setTimeout(() => setToast(null), 2500);
+    } catch (e: any) {
+      setToast(e?.message ?? "Error");
+      setTimeout(() => setToast(null), 3000);
+    } finally { setBusy(null); }
+  };
+
   const steps = [
     { label: "Email verified", ok: true },
     { label: "Phone verified", ok: true },
@@ -742,8 +827,12 @@ function KycTab({ user }: { user: UserRow }) {
     { label: "Proof of address", ok: user.kyc === "tier2" },
     { label: "Source of funds", ok: user.kyc === "tier2" },
   ];
+
   return (
     <div>
+      {toast && (
+        <div className="mb-3 rounded-[3px] px-3 py-2 text-xs font-medium bg-pine/10 text-pine border border-pine/20">{toast}</div>
+      )}
       <div className="flex items-center justify-between mb-3">
         <div>
           <div className="text-xs text-muted-foreground">Current tier</div>
@@ -756,8 +845,13 @@ function KycTab({ user }: { user: UserRow }) {
           <button className="text-xs h-8 px-3 rounded-md border border-border hover:bg-muted/40 flex items-center gap-1.5">
             <FileText className="w-3.5 h-3.5" /> Documents
           </button>
-          <button className="text-xs h-8 px-3 rounded-md bg-pine text-primary-foreground flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5" /> Approve
+          <button
+            onClick={() => doKyc("APPROVED", "KYC approved")}
+            disabled={!!busy || user.kyc === "verified"}
+            className="text-xs h-8 px-3 rounded-md bg-pine text-primary-foreground flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {busy === "APPROVED" ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+            Approve
           </button>
         </div>
       </div>
@@ -772,8 +866,22 @@ function KycTab({ user }: { user: UserRow }) {
         ))}
       </ul>
       <div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-2">
-        <button className="text-xs h-8 rounded-md border border-border hover:bg-muted/40">Request additional docs</button>
-        <button className="text-xs h-8 rounded-md border border-rose/30 text-rose hover:bg-rose/10">Reject</button>
+        <button
+          onClick={() => doKyc("PENDING", "Additional docs requested")}
+          disabled={!!busy}
+          className="text-xs h-8 rounded-md border border-border hover:bg-muted/40 disabled:opacity-50 flex items-center justify-center gap-1.5"
+        >
+          {busy === "PENDING" && <RefreshCw className="w-3 h-3 animate-spin" />}
+          Request additional docs
+        </button>
+        <button
+          onClick={() => { if (confirm("Reject this KYC application?")) doKyc("REJECTED", "KYC rejected"); }}
+          disabled={!!busy || user.kyc === "rejected"}
+          className="text-xs h-8 rounded-md border border-rose/30 text-rose hover:bg-rose/10 disabled:opacity-50 flex items-center justify-center gap-1.5"
+        >
+          {busy === "REJECTED" && <RefreshCw className="w-3 h-3 animate-spin" />}
+          Reject
+        </button>
       </div>
     </div>
   );
