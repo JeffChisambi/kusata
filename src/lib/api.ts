@@ -162,6 +162,30 @@ class ApiClient {
     return this.request<T>('GET', path);
   }
 
+  /**
+   * Authenticated binary download (e.g. generated PDFs). Mirrors request()'s
+   * auth + single-refresh-retry behaviour but returns the raw Blob.
+   */
+  async getBlob(path: string): Promise<Blob> {
+    const url = `${BASE_URL}/${path.replace(/^\//, '')}`;
+    const doFetch = () =>
+      fetch(url, {
+        headers: this.getToken()
+          ? { Authorization: `Bearer ${this.getToken()}` }
+          : {},
+      });
+
+    let res = await doFetch();
+    if (res.status === 401) {
+      const refreshed = await this.tryRefresh();
+      if (refreshed) res = await doFetch();
+    }
+    if (!res.ok) {
+      throw new ApiError(res.status, `Download failed: ${res.status}`);
+    }
+    return res.blob();
+  }
+
   async post<T>(path: string, body?: unknown, options?: { skipAuth?: boolean }): Promise<T> {
     return this.request<T>('POST', path, body, options);
   }

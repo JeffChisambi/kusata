@@ -5,13 +5,13 @@ import {
   Eye, MoreHorizontal, ChevronDown, AlertTriangle, User,
   Camera, ScanLine, ClipboardList, FilePlus,
   TrendingUp, TrendingDown, Download, Fingerprint, ExternalLink,
-  RefreshCw, Loader2,
+  RefreshCw, Loader2, MapPin, BadgeCheck,
 } from "lucide-react";
 import { Card } from "@/components/broker-shell";
 import {
   useKycQueue, useKycApplication, useApproveKyc, useRejectKyc,
-  useRequestAdditionalDocs, useKycCounts,
-  type KycApplicationRow, type KycDocument,
+  useRequestAdditionalDocs, useKycCounts, downloadCsdForm,
+  type KycApplicationRow, type KycDocument, type KycOcrData,
 } from "@/hooks/useKyc";
 
 export const Route = createFileRoute("/kyc")({
@@ -271,7 +271,7 @@ function KycPage() {
         </div>
       )}
 
-      <div className="flex gap-4 items-start mt-0">
+      <div className="flex flex-col xl:flex-row gap-4 items-stretch xl:items-start mt-0">
         {/* List */}
         <div className="flex-1 min-w-0">
           <Card className="!p-0 overflow-hidden">
@@ -309,10 +309,11 @@ function KycPage() {
           </Card>
         </div>
 
-        {/* Inline review panel */}
+        {/* Inline review panel — full-width below the list on narrow screens,
+            sticky sidebar on wide screens */}
         {selected && (
           <div
-            className="w-[560px] shrink-0 rounded-[3px] bg-card border border-border overflow-hidden flex flex-col sticky top-4"
+            className="w-full xl:w-[560px] shrink-0 rounded-[3px] bg-card border border-border overflow-hidden flex flex-col xl:sticky xl:top-4"
             style={{ maxHeight: "calc(100vh - 160px)" }}
           >
             <ReviewPanel
@@ -918,6 +919,19 @@ function ReviewPanel({
   const approveMutation = useApproveKyc();
   const rejectMutation  = useRejectKyc();
 
+  // CSD Securities Account Opening form (server-generated, pre-filled PDF)
+  const [csdDownloading, setCsdDownloading] = useState(false);
+  const handleCsdDownload = async () => {
+    setCsdDownloading(true);
+    try {
+      await downloadCsdForm(app.id);
+    } catch {
+      // Non-fatal — keep the panel usable; the button simply re-enables
+    } finally {
+      setCsdDownloading(false);
+    }
+  };
+
   // Close on Escape
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -945,22 +959,30 @@ function ReviewPanel({
     idDoc?.imageUrl;
 
   // OCR data — from detail endpoint; fall back gracefully
-  const ocrData = reviewData?.application?.ocrExtractedData ?? {};
+  const ocrData: Partial<KycOcrData> = reviewData?.application?.ocrExtractedData ?? {};
+  const fieldConf = reviewData?.application?.ocrFieldConfidences ?? {};
+  const mrz = reviewData?.application?.mrz ?? null;
+  const extractedAddress = reviewData?.application?.address ?? null;
 
   /** Compare name from OCR with the user's registered name (case-insensitive). */
   const nameMatch = !ocrData.fullName ||
     ocrData.fullName.trim().toLowerCase() === app.name.trim().toLowerCase();
 
+  const genderLabel =
+    ocrData.gender === "M" ? "Male" : ocrData.gender === "F" ? "Female" : ocrData.gender;
+
   const ocrFields = [
-    { label: "Full name",       value: ocrData.fullName       ?? app.name,          match: nameMatch },
+    { label: "Full name",       value: ocrData.fullName       ?? app.name,          match: nameMatch, conf: fieldConf.fullName },
     { label: "Document type",   value: docTypeLabel[app.docType],                   match: true },
-    ...(ocrData.nationalId      ? [{ label: "National ID",      value: ocrData.nationalId,      match: true }] : []),
-    ...(ocrData.documentNumber  ? [{ label: "Document no.",     value: ocrData.documentNumber,  match: true }] : []),
-    ...(ocrData.dateOfBirth     ? [{ label: "Date of birth",    value: ocrData.dateOfBirth,     match: true }] : []),
-    ...(ocrData.expiryDate      ? [{ label: "Expiry date",      value: ocrData.expiryDate,      match: true }] : []),
-    ...(ocrData.nationality     ? [{ label: "Nationality",      value: ocrData.nationality,     match: true }] : []),
-    ...(ocrData.address         ? [{ label: "Address",          value: ocrData.address,         match: true }] : []),
-  ];
+    ...(ocrData.nationalId      ? [{ label: "National ID",      value: ocrData.nationalId,      match: true, conf: fieldConf.nationalIdNumber }] : []),
+    ...(ocrData.documentNumber && ocrData.documentNumber !== ocrData.nationalId
+                                ? [{ label: "Document no.",     value: ocrData.documentNumber,  match: true, conf: fieldConf.documentNumber }] : []),
+    ...(ocrData.dateOfBirth     ? [{ label: "Date of birth",    value: ocrData.dateOfBirth,     match: true, conf: fieldConf.dateOfBirth }] : []),
+    ...(genderLabel             ? [{ label: "Gender",           value: genderLabel,             match: true, conf: fieldConf.gender }] : []),
+    ...(ocrData.expiryDate      ? [{ label: "Expiry date",      value: ocrData.expiryDate,      match: true, conf: fieldConf.expiryDate }] : []),
+    ...(ocrData.nationality     ? [{ label: "Nationality",      value: ocrData.nationality,     match: true, conf: fieldConf.nationality }] : []),
+    ...(ocrData.address         ? [{ label: "Place of origin",  value: ocrData.address,         match: true }] : []),
+  ] as Array<{ label: string; value: string; match: boolean; conf?: number }>;
 
   // Checklist — uses real email/phone verified flags from the API
   const steps = [
@@ -971,6 +993,12 @@ function ReviewPanel({
     { label: "Selfie uploaded",            ok: !!selfieDoc },
     { label: "Proof of address uploaded",  ok: !!addressDoc },
     { label: "OCR read successful",        ok: app.ocrConfidence >= 70 },
+    ...(mrz?.found
+      ? [{ label: "MRZ check digits valid",  ok: mrz.checkDigitScore === 100 }]
+      : []),
+    ...(extractedAddress?.formatted
+      ? [{ label: "Address extracted",       ok: true }]
+      : []),
     { label: "Face match passed",          ok: app.faceMatchScore >= 75 },
     { label: "Liveness passed",            ok: app.livenessScore >= 70 },
     { label: "No flagged issues",          ok: app.flags.length === 0 },
@@ -1032,7 +1060,7 @@ function ReviewPanel({
       </div>
 
       {/* ── Section 2: Risk signals strip ── */}
-      <div className={`flex items-center gap-5 px-5 py-2 border-b shrink-0 ${hasIssues ? "bg-amber/5 border-amber/20" : "border-border bg-muted/10"}`}>
+      <div className={`flex items-center flex-wrap gap-x-5 gap-y-1.5 px-5 py-2 border-b shrink-0 ${hasIssues ? "bg-amber/5 border-amber/20" : "border-border bg-muted/10"}`}>
         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">Signals</span>
 
         <div className="flex items-center gap-1.5">
@@ -1069,6 +1097,20 @@ function ReviewPanel({
           </>
         )}
 
+        {mrz?.found && (
+          <>
+            <span className="text-border text-xs">·</span>
+            <span
+              className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                mrz.checkDigitScore === 100 ? "bg-pine/10 text-pine" : "bg-amber/10 text-amber"
+              }`}
+              title={`Machine-readable zone parsed — ${mrz.checkDigitScore}% of check digits valid`}
+            >
+              <BadgeCheck className="w-3 h-3" /> MRZ {mrz.checkDigitScore === 100 ? "verified" : `${mrz.checkDigitScore}%`}
+            </span>
+          </>
+        )}
+
         {app.flags.length > 0 && (
           <>
             <span className="text-border text-xs">·</span>
@@ -1086,10 +1128,10 @@ function ReviewPanel({
       </div>
 
       {/* ── Section 3: Document viewer + Info panel ── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-col sm:flex-row flex-1 min-h-0 overflow-y-auto sm:overflow-hidden">
 
         {/* Left: Document viewer */}
-        <div className="w-72 shrink-0 border-r border-border flex flex-col">
+        <div className="w-full sm:w-64 xl:w-72 shrink-0 border-b sm:border-b-0 sm:border-r border-border flex flex-col">
           <div className="flex border-b border-border px-3 pt-0.5 shrink-0">
             {(["front", ...(hasBack ? ["back" as const] : []), "selfie", ...(hasAddress ? ["address" as const] : [])] as const).map((t) => (
               <button
@@ -1204,7 +1246,7 @@ function ReviewPanel({
             )}
 
             {infoTab === "ocr" && (
-              <div className="px-5">
+              <div className="px-5 pb-4">
                 {isDetailLoading ? (
                   <div className="space-y-3 pt-3">
                     {Array.from({ length: 5 }).map((_, i) => (
@@ -1218,19 +1260,71 @@ function ReviewPanel({
                     <p className="text-[11px] text-muted-foreground/60">OCR runs automatically during KYC processing.</p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-border">
-                    {ocrFields.map((f) => (
-                      <div key={f.label} className="flex items-start justify-between gap-4 py-2.5">
-                        <span className="text-xs text-muted-foreground shrink-0 pt-0.5">{f.label}</span>
-                        <div className="flex items-center gap-1.5 text-right">
-                          <span className="text-sm font-medium break-words max-w-[200px]">{f.value}</span>
-                          {f.match
-                            ? <CheckCircle2 className="w-3.5 h-3.5 text-pine shrink-0" />
-                            : <AlertTriangle className="w-3.5 h-3.5 text-amber shrink-0" title="Mismatch with registered name" />}
-                        </div>
+                  <>
+                    {mrz?.found && (
+                      <div className={`mt-3 flex items-center gap-2 rounded-[3px] border px-3 py-2 ${
+                        mrz.checkDigitScore === 100
+                          ? "border-pine/25 bg-pine/5"
+                          : "border-amber/25 bg-amber/5"
+                      }`}>
+                        <BadgeCheck className={`w-4 h-4 shrink-0 ${mrz.checkDigitScore === 100 ? "text-pine" : "text-amber"}`} />
+                        <span className="text-xs text-muted-foreground">
+                          {mrz.checkDigitScore === 100
+                            ? "Machine-readable zone parsed — all ICAO check digits valid."
+                            : `Machine-readable zone parsed — ${mrz.checkDigitScore}% of check digits valid.`}
+                        </span>
                       </div>
-                    ))}
-                  </div>
+                    )}
+
+                    <div className="divide-y divide-border">
+                      {ocrFields.map((f) => (
+                        <div key={f.label} className="flex items-start justify-between gap-4 py-2.5">
+                          <span className="text-xs text-muted-foreground shrink-0 pt-0.5">{f.label}</span>
+                          <div className="flex items-center gap-1.5 text-right min-w-0">
+                            <span className="text-sm font-medium break-words min-w-0">{f.value}</span>
+                            {typeof f.conf === "number" && (
+                              <span
+                                className={`text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full shrink-0 ${
+                                  f.conf >= 85 ? "bg-pine/10 text-pine" : f.conf >= 60 ? "bg-amber/10 text-amber" : "bg-rose/10 text-rose"
+                                }`}
+                                title="Extraction confidence"
+                              >
+                                {f.conf}%
+                              </span>
+                            )}
+                            {f.match
+                              ? <CheckCircle2 className="w-3.5 h-3.5 text-pine shrink-0" />
+                              : <span title="Mismatch with registered name"><AlertTriangle className="w-3.5 h-3.5 text-amber shrink-0" /></span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Residential address extracted from the proof-of-residency document */}
+                    {extractedAddress?.formatted && (
+                      <div className="mt-4 rounded-[3px] border border-border bg-muted/20 p-3">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Residential address
+                          </span>
+                          {typeof extractedAddress.confidence === "number" && (
+                            <span className="ml-auto text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground" title="Extraction confidence">
+                              {extractedAddress.confidence}%
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm font-medium leading-relaxed">{extractedAddress.formatted}</div>
+                        {(extractedAddress.city || extractedAddress.district) && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {[extractedAddress.city, extractedAddress.district]
+                              .filter((v, i, a) => v && a.indexOf(v) === i)
+                              .join(" · ")}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -1264,6 +1358,15 @@ function ReviewPanel({
           >
             <FilePlus className="w-3.5 h-3.5" /> Request docs
           </button>
+          <button
+            onClick={handleCsdDownload}
+            disabled={csdDownloading}
+            title="Download the pre-filled RBM CSD Securities Account Opening form"
+            className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+          >
+            {csdDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+            CSD form
+          </button>
           <div className="flex-1" />
           <button
             onClick={() => setShowRejectDialog(true)}
@@ -1289,12 +1392,23 @@ function ReviewPanel({
           </span>
         </div>
       ) : (
-        <div className="flex items-center justify-center gap-2 px-5 py-3 border-t border-border bg-muted/20 shrink-0">
-          <span className="text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 px-5 py-3 border-t border-border bg-muted/20 shrink-0">
+          <span className="text-xs text-muted-foreground flex-1">
             Application {app.status === "approved" ? "approved" : "rejected"}.
             {app.reviewer && <> · Reviewed by <strong>{app.reviewer}</strong></>}
             {app.reviewedAt && <> · {fmtDate(app.reviewedAt)}</>}
           </span>
+          {app.status === "approved" && (
+            <button
+              onClick={handleCsdDownload}
+              disabled={csdDownloading}
+              title="Download the pre-filled RBM CSD Securities Account Opening form"
+              className="h-8 px-3 rounded-[3px] bg-pine text-primary-foreground text-xs font-medium hover:bg-pine/90 flex items-center gap-1.5 transition-colors disabled:opacity-50 shrink-0"
+            >
+              {csdDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              CSD form
+            </button>
+          )}
         </div>
       )}
 

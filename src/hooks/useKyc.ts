@@ -74,8 +74,30 @@ export type KycOcrData = {
   expiryDate: string | null;
   address: string | null;
   nationality: string | null;
+  gender: string | null;
   /** Any additional raw OCR fields the backend chooses to surface. */
   [key: string]: string | null | undefined;
+};
+
+// ── MRZ verification summary (back-of-ID machine-readable zone) ───────────────
+
+export type KycMrzInfo = {
+  found: boolean;
+  /** % of ICAO check digits that validated (100 = fully verified). */
+  checkDigitScore: number;
+};
+
+// ── Extracted residential address (proof-of-residency pipeline) ───────────────
+
+export type KycAddress = {
+  addressLine1: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  district: string | null;
+  /** Single formatted display string. */
+  formatted: string | null;
+  /** Extraction confidence 0–100 (null when address came from profile). */
+  confidence: number | null;
 };
 
 // ── Full application detail (returned from single-application endpoint) ───────
@@ -83,6 +105,10 @@ export type KycOcrData = {
 export type KycApplicationDetail = {
   application: KycApplicationRow & {
     ocrExtractedData: KycOcrData | null;
+    /** Per-field OCR confidence, 0–100 (e.g. { fullName: 90 }). */
+    ocrFieldConfidences: Record<string, number> | null;
+    mrz: KycMrzInfo | null;
+    address: KycAddress | null;
   };
   documents: KycDocument[];
 };
@@ -169,6 +195,25 @@ export function useKycApplication(applicationId: string | null) {
     // Detail data only changes after a review action, which invalidates the cache.
     staleTime: 60_000,
   });
+}
+
+// ── CSD Account Opening form download ────────────────────────────────────────
+
+/**
+ * Download the pre-filled Reserve Bank of Malawi CSD Securities Account
+ * Opening form (PDF) for an application, generated server-side from the
+ * verified KYC data.
+ */
+export async function downloadCsdForm(applicationId: string): Promise<void> {
+  const blob = await api.getBlob(`/v1/admin/kyc/${applicationId}/csd-form`);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `CSD-Account-Opening-${applicationId.slice(0, 8)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 // ── Shared post-mutation cache invalidation ───────────────────────────────────
