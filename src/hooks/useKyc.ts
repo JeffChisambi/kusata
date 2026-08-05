@@ -100,6 +100,59 @@ export type KycAddress = {
   confidence: number | null;
 };
 
+// ── Reconciliation (OCR/MRZ ↔ registration) ───────────────────────────────────
+
+export type FieldSource =
+  | 'registration'
+  | 'mrz'
+  | 'ocr'
+  | 'reconciled'
+  | 'override'
+  | 'none';
+
+export type ReconciledField = {
+  value: string | null;
+  source: FieldSource;
+  confidence: number;
+  registrationValue?: string | null;
+  extractedValue?: string | null;
+  matchesRegistration?: boolean;
+};
+
+export type ReconciledIdentity = {
+  fullName: ReconciledField;
+  dateOfBirth: ReconciledField;
+  gender: ReconciledField;
+  nationalId: ReconciledField;
+  documentNumber: ReconciledField;
+  expiryDate: ReconciledField;
+  nationality: ReconciledField;
+  email: ReconciledField;
+  phone: ReconciledField;
+  address: {
+    addressLine1: string | null;
+    addressLine2: string | null;
+    city: string | null;
+    district: string | null;
+    formatted: string | null;
+    confidence: number | null;
+    source: FieldSource;
+  };
+  mismatchFlags: string[];
+};
+
+export type KycRegistration = {
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  email: string | null;
+  emailVerified: boolean;
+  phone: string;
+  phoneVerified: boolean;
+  dateOfBirth: string | null;
+  gender: string | null;
+};
+
 // ── Full application detail (returned from single-application endpoint) ───────
 
 export type KycApplicationDetail = {
@@ -109,8 +162,33 @@ export type KycApplicationDetail = {
     ocrFieldConfidences: Record<string, number> | null;
     mrz: KycMrzInfo | null;
     address: KycAddress | null;
+    /** OCR/MRZ reconciled against trusted registration data. */
+    reconciled: ReconciledIdentity | null;
+    /** The details the user entered at registration (trusted anchor). */
+    registration: KycRegistration | null;
   };
   documents: KycDocument[];
+};
+
+// ── CSD form field values (editable by the broker) ───────────────────────────
+
+export type CsdFieldValues = {
+  fullName: string;
+  gender: 'M' | 'F' | '';
+  idType: string;
+  idNumber: string;
+  dateOfBirth: string;
+  nationality: string;
+  investorType: string;
+  physicalAddress: string;
+  postalAddress: string;
+  telephone: string;
+  cellphone: string;
+  email: string;
+  bankName: string;
+  bankBranchCode: string;
+  accountNumber: string;
+  accountName: string;
 };
 
 // ── Counts per status (returned from counts endpoint) ────────────────────────
@@ -214,6 +292,30 @@ export async function downloadCsdForm(applicationId: string): Promise<void> {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+// ── CSD form data (editable field values) ─────────────────────────────────────
+
+/** Fetch the resolved CSD form field values (reconciled + saved overrides). */
+export function useCsdData(applicationId: string | null) {
+  return useQuery<{ fields: CsdFieldValues }>({
+    queryKey: queryKeys.kyc.csdData(applicationId ?? ''),
+    queryFn: () => api.get<{ fields: CsdFieldValues }>(`/v1/admin/kyc/${applicationId}/csd-data`),
+    enabled: !!applicationId,
+    staleTime: 30_000,
+  });
+}
+
+/** Persist broker overrides to the CSD form fields. */
+export function useSaveCsdData(applicationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (fields: Partial<CsdFieldValues>) =>
+      api.post<{ fields: CsdFieldValues }>(`/v1/admin/kyc/${applicationId}/csd-data`, { fields }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKeys.kyc.csdData(applicationId), data);
+    },
+  });
 }
 
 // ── Shared post-mutation cache invalidation ───────────────────────────────────

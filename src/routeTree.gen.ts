@@ -16,10 +16,10 @@ import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as KycRouteImport } from './routes/kyc'
 import { Route as ComingSoonRouteImport } from './routes/coming-soon'
-import { Route as BrokerRouteImport } from './routes/broker'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
 import { Route as OrdersOrderIdRouteImport } from './routes/orders.$orderId'
+import { Route as KycApplicationIdRouteImport } from './routes/kyc_.$applicationId'
 
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
@@ -56,11 +56,6 @@ const ComingSoonRoute = ComingSoonRouteImport.update({
   path: '/coming-soon',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BrokerRoute = BrokerRouteImport.update({
-  id: '/broker',
-  path: '/broker',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -76,10 +71,14 @@ const OrdersOrderIdRoute = OrdersOrderIdRouteImport.update({
   path: '/$orderId',
   getParentRoute: () => OrdersRoute,
 } as any)
+const KycApplicationIdRoute = KycApplicationIdRouteImport.update({
+  id: '/kyc_/$applicationId',
+  path: '/kyc/$applicationId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/broker': typeof BrokerRoute
   '/coming-soon': typeof ComingSoonRoute
   '/kyc': typeof KycRoute
   '/login': typeof LoginRoute
@@ -87,25 +86,25 @@ export interface FileRoutesByFullPath {
   '/orders': typeof OrdersRouteWithChildren
   '/settings': typeof SettingsRoute
   '/users': typeof UsersRoute
+  '/kyc/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/orders/': typeof OrdersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/broker': typeof BrokerRoute
   '/coming-soon': typeof ComingSoonRoute
   '/kyc': typeof KycRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/settings': typeof SettingsRoute
   '/users': typeof UsersRoute
+  '/kyc/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/orders': typeof OrdersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/broker': typeof BrokerRoute
   '/coming-soon': typeof ComingSoonRoute
   '/kyc': typeof KycRoute
   '/login': typeof LoginRoute
@@ -113,6 +112,7 @@ export interface FileRoutesById {
   '/orders': typeof OrdersRouteWithChildren
   '/settings': typeof SettingsRoute
   '/users': typeof UsersRoute
+  '/kyc_/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/orders/': typeof OrdersIndexRoute
 }
@@ -120,7 +120,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/broker'
     | '/coming-soon'
     | '/kyc'
     | '/login'
@@ -128,24 +127,24 @@ export interface FileRouteTypes {
     | '/orders'
     | '/settings'
     | '/users'
+    | '/kyc/$applicationId'
     | '/orders/$orderId'
     | '/orders/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/broker'
     | '/coming-soon'
     | '/kyc'
     | '/login'
     | '/notifications'
     | '/settings'
     | '/users'
+    | '/kyc/$applicationId'
     | '/orders/$orderId'
     | '/orders'
   id:
     | '__root__'
     | '/'
-    | '/broker'
     | '/coming-soon'
     | '/kyc'
     | '/login'
@@ -153,13 +152,13 @@ export interface FileRouteTypes {
     | '/orders'
     | '/settings'
     | '/users'
+    | '/kyc_/$applicationId'
     | '/orders/$orderId'
     | '/orders/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  BrokerRoute: typeof BrokerRoute
   ComingSoonRoute: typeof ComingSoonRoute
   KycRoute: typeof KycRoute
   LoginRoute: typeof LoginRoute
@@ -167,6 +166,7 @@ export interface RootRouteChildren {
   OrdersRoute: typeof OrdersRouteWithChildren
   SettingsRoute: typeof SettingsRoute
   UsersRoute: typeof UsersRoute
+  KycApplicationIdRoute: typeof KycApplicationIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -220,13 +220,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComingSoonRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/broker': {
-      id: '/broker'
-      path: '/broker'
-      fullPath: '/broker'
-      preLoaderRoute: typeof BrokerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -248,6 +241,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrdersOrderIdRouteImport
       parentRoute: typeof OrdersRoute
     }
+    '/kyc_/$applicationId': {
+      id: '/kyc_/$applicationId'
+      path: '/kyc/$applicationId'
+      fullPath: '/kyc/$applicationId'
+      preLoaderRoute: typeof KycApplicationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -266,7 +266,6 @@ const OrdersRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  BrokerRoute: BrokerRoute,
   ComingSoonRoute: ComingSoonRoute,
   KycRoute: KycRoute,
   LoginRoute: LoginRoute,
@@ -274,6 +273,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersRoute: OrdersRouteWithChildren,
   SettingsRoute: SettingsRoute,
   UsersRoute: UsersRoute,
+  KycApplicationIdRoute: KycApplicationIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

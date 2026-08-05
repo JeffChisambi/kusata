@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, useEffect, useRef } from "react";
 import {
   ShieldCheck, Clock, CheckCircle2, XCircle, FileText,
@@ -178,10 +178,15 @@ function exportToCsv(rows: KycApplication[], label: string) {
 /* ─────────────────────────── page ─────────────────────────── */
 
 function KycPage() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("pending");
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<KycApplication | null>(null);
   const [requestDocsFor, setRequestDocsFor] = useState<KycApplication | null>(null);
+
+  // Opening a review now navigates to a dedicated full-page review at
+  // /kyc/$applicationId (was an inline side panel).
+  const openReview = (app: KycApplication) =>
+    navigate({ to: "/kyc/$applicationId", params: { applicationId: app.id } });
 
   const tab = TABS.find((t) => t.key === activeTab) ?? TABS[0];
   const { data: counts } = useKycCounts();
@@ -219,11 +224,10 @@ function KycPage() {
   const handleTabChange = (key: string) => {
     setActiveTab(key);
     setPage(1);
-    setSelected(null);
   };
 
-  const handleApproveFromMenu = (app: KycApplication) => setSelected(app);
-  const handleRejectFromMenu  = (app: KycApplication) => setSelected(app);
+  const handleApproveFromMenu = (app: KycApplication) => openReview(app);
+  const handleRejectFromMenu  = (app: KycApplication) => openReview(app);
 
   return (
     <>
@@ -271,7 +275,7 @@ function KycPage() {
         </div>
       )}
 
-      <div className="flex flex-col xl:flex-row gap-4 items-stretch xl:items-start mt-0">
+      <div className="mt-4">
         {/* List */}
         <div className="flex-1 min-w-0">
           <Card className="!p-0 overflow-hidden">
@@ -280,7 +284,7 @@ function KycPage() {
             ) : (
               <KycTable
                 rows={rows}
-                onSelect={setSelected}
+                onSelect={openReview}
                 onApprove={handleApproveFromMenu}
                 onReject={handleRejectFromMenu}
                 onRequestDocs={setRequestDocsFor}
@@ -308,26 +312,6 @@ function KycPage() {
             </div>
           </Card>
         </div>
-
-        {/* Inline review panel — full-width below the list on narrow screens,
-            sticky sidebar on wide screens */}
-        {selected && (
-          <div
-            className="w-full xl:w-[560px] shrink-0 rounded-[3px] bg-card border border-border overflow-hidden flex flex-col xl:sticky xl:top-4"
-            style={{ maxHeight: "calc(100vh - 160px)" }}
-          >
-            <ReviewPanel
-              app={selected}
-              onClose={() => setSelected(null)}
-              onApprove={() => setSelected(null)}
-              onReject={() => setSelected(null)}
-              onRequestDocs={() => {
-                setRequestDocsFor(selected);
-                setSelected(null);
-              }}
-            />
-          </div>
-        )}
       </div>
 
       {/* Request additional docs modal (opened from either row menu or review panel) */}

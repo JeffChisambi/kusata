@@ -24,6 +24,8 @@ export const queryKeys = {
     all: ['kyc'] as const,
     queue: (filters?: Record<string, unknown>) => [...queryKeys.kyc.all, 'queue', filters] as const,
     application: (id: string) => [...queryKeys.kyc.all, 'application', id] as const,
+    /** Resolved CSD form field values (reconciled + broker overrides). */
+    csdData: (id: string) => [...queryKeys.kyc.all, 'csd-data', id] as const,
     /** Counts per status — drives tab badges and stats cards. Requires GET /v1/admin/kyc/counts */
     counts: () => [...queryKeys.kyc.all, 'counts'] as const,
   },
