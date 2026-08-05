@@ -10,6 +10,7 @@
  *                   confirmMfa(mfaToken, code) → { accessToken, refreshToken, recoveryCodes }
  *   3. If 'verify': verifyMfa(mfaToken, code) → { accessToken, refreshToken }
  */
+import { useEffect, useState } from 'react';
 import { api } from './api';
 
 const KEYS = {
@@ -142,4 +143,22 @@ export function getCurrentUser(): AdminUser | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Hydration-safe accessor for the current user.
+ *
+ * `getCurrentUser()` reads localStorage, so it returns null on the server but
+ * the real user on the client. Rendering that value directly makes the server
+ * HTML and the first client render disagree (React hydration error #418). This
+ * hook returns null on the server AND on the first client render (matching the
+ * SSR output), then swaps in the real user after mount — so user-specific text
+ * can be rendered without a hydration mismatch.
+ */
+export function useCurrentUser(): AdminUser | null {
+  const [user, setUser] = useState<AdminUser | null>(null);
+  useEffect(() => {
+    setUser(getCurrentUser());
+  }, []);
+  return user;
 }

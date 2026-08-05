@@ -20,6 +20,12 @@ export function useNotificationsList(filters: NotificationFilters = {}) {
   return useQuery({
     queryKey: queryKeys.notifications.list(filters as Record<string, unknown>),
     queryFn: () => api.get(`/v1/admin/notifications${qs ? `?${qs}` : ''}`),
+    // Keep the list live so the dashboard receives new notifications without a
+    // manual refresh, and refresh immediately when the tab regains focus.
+    refetchInterval: 20_000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    staleTime: 10_000,
   });
 }
 

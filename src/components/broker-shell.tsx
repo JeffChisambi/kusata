@@ -4,9 +4,10 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
-import { getCurrentUser, logout } from "@/lib/auth";
+import { useCurrentUser, logout } from "@/lib/auth";
 import { useKycQueue } from "@/hooks/useKyc";
 import { useUnreadNotificationCount } from "@/hooks/useNotifications";
+import { useNotificationDelivery } from "@/hooks/useNotificationDelivery";
 import {
   Users, ShieldCheck, FileCheck2,
   ChevronDown, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight,
@@ -139,6 +140,9 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
   const ctx = useContext(DashboardTitleContext);
   const activeLabel = activeLabelFor(pathname);
   const title = ctx.forPath === pathname && ctx.title ? ctx.title : defaultTitleFor(pathname);
+
+  // Deliver desktop notifications for new alerts, app-wide, from one place.
+  useNotificationDelivery();
 
   const [open, setOpen] = useState<Record<string, boolean>>({});
   // Seed from the module-level cache so that on client-side navigations — where
@@ -283,7 +287,7 @@ function BrokerSidebar({
 }
 
 function UserFooter({ collapsed }: { collapsed: boolean }) {
-  const user = getCurrentUser();
+  const user = useCurrentUser();
   const displayName = user ? `${user.firstName} ${user.lastName}` : 'Broker';
   const roleLabel = user?.role?.replace(/_/g, ' ') ?? 'BROKER';
   const initials = user ? `${user.firstName[0]}${user.lastName[0]}` : 'B';

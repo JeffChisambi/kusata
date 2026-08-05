@@ -5,7 +5,11 @@ import {
   AlertTriangle, Smartphone, LogOut, ChevronRight, Save,
   Loader2, KeyRound, Copy, Check, RefreshCw, Monitor,
 } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/auth";
+import {
+  getPermission, requestPermission, isEnabled, setEnabled,
+  type NotifPermission,
+} from "@/lib/browser-notifications";
 import {
   useProfile, useUpdateProfile,
   useChangePassword,
@@ -105,8 +109,10 @@ function Skeleton({ className = "" }: { className?: string }) {
 // ─── Profile section ──────────────────────────────────────────────────────────
 
 function ProfileSection() {
-  // Prefer live API data; fall back to localStorage user so fields aren't blank
-  const localUser = getCurrentUser();
+  // Prefer live API data; fall back to localStorage user so fields aren't blank.
+  // useCurrentUser (not getCurrentUser) keeps SSR/first-render output stable to
+  // avoid a hydration mismatch on the user-derived fields below.
+  const localUser = useCurrentUser();
   const { data: profile, isLoading } = useProfile();
   const updateProfile = useUpdateProfile();
 
@@ -507,6 +513,75 @@ const DEFAULT_PREFS: NotifPrefs = {
   order_filled: true, order_failed: true, kyc_update: true, login_alert: true, daily_summary: false,
 };
 
+function DesktopNotificationsRow() {
+  const [perm, setPerm] = useState<NotifPermission>("default");
+  const [enabled, setEnabledState] = useState(false);
+
+  useEffect(() => {
+    setPerm(getPermission());
+    setEnabledState(isEnabled());
+  }, []);
+
+  const enable = async () => {
+    let p = getPermission();
+    if (p === "default") p = await requestPermission();
+    setPerm(p);
+    if (p === "granted") {
+      setEnabled(true);
+      setEnabledState(true);
+    }
+  };
+
+  const toggleOff = () => {
+    setEnabled(false);
+    setEnabledState(false);
+  };
+
+  const on = perm === "granted" && enabled;
+
+  return (
+    <div className="flex items-center gap-4 py-3 border-b border-border">
+      <div className="w-8 h-8 rounded-[3px] bg-muted flex items-center justify-center shrink-0">
+        <Monitor className="w-3.5 h-3.5 text-muted-foreground" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium">Desktop notifications</div>
+        <div className="text-xs text-muted-foreground">
+          {perm === "unsupported"
+            ? "Not supported in this browser."
+            : perm === "denied"
+              ? "Blocked — allow notifications for this site in your browser settings."
+              : on
+                ? "On — you'll get a desktop alert for new notifications on this device."
+                : "Get a desktop alert for new notifications on this device."}
+        </div>
+      </div>
+      {perm === "unsupported" || perm === "denied" ? (
+        <span className="shrink-0 text-xs text-muted-foreground">{perm === "denied" ? "Blocked" : "Unavailable"}</span>
+      ) : on ? (
+        <button
+          type="button"
+          onClick={toggleOff}
+          className="relative shrink-0 w-10 h-5 rounded-full transition-colors bg-pine"
+          role="switch"
+          aria-checked={true}
+          aria-label="Disable desktop notifications"
+        >
+          <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform translate-x-5" />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={enable}
+          className="shrink-0 rounded-[3px] bg-pine px-3 py-1.5 text-xs font-medium text-white hover:bg-pine/90 transition-colors"
+        >
+          Enable
+        </button>
+      )}
+    </div>
+  );
+}
+
 function NotificationsSection() {
   const { data: serverPrefs, isLoading } = useNotifPrefs();
   const updatePrefs = useUpdateNotifPrefs();
@@ -531,6 +606,7 @@ function NotificationsSection() {
     <SettingsCard title="Notifications" description="Choose which events send you alerts.">
       <form onSubmit={handleSave}>
         <div className="space-y-0">
+          <DesktopNotificationsRow />
           {NOTIF_DEFS.map((n) => {
             const Icon = n.icon;
             return (
