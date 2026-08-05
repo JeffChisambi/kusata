@@ -13,6 +13,7 @@ import { Route as UsersRouteImport } from './routes/users'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as NewsRouteImport } from './routes/news'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as KycRouteImport } from './routes/kyc'
 import { Route as ComingSoonRouteImport } from './routes/coming-soon'
@@ -39,6 +40,11 @@ const OrdersRoute = OrdersRouteImport.update({
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewsRoute = NewsRouteImport.update({
+  id: '/news',
+  path: '/news',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/coming-soon': typeof ComingSoonRoute
   '/kyc': typeof KycRoute
   '/login': typeof LoginRoute
+  '/news': typeof NewsRoute
   '/notifications': typeof NotificationsRoute
   '/orders': typeof OrdersRouteWithChildren
   '/settings': typeof SettingsRoute
@@ -95,6 +102,7 @@ export interface FileRoutesByTo {
   '/coming-soon': typeof ComingSoonRoute
   '/kyc': typeof KycRoute
   '/login': typeof LoginRoute
+  '/news': typeof NewsRoute
   '/notifications': typeof NotificationsRoute
   '/settings': typeof SettingsRoute
   '/users': typeof UsersRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/coming-soon': typeof ComingSoonRoute
   '/kyc': typeof KycRoute
   '/login': typeof LoginRoute
+  '/news': typeof NewsRoute
   '/notifications': typeof NotificationsRoute
   '/orders': typeof OrdersRouteWithChildren
   '/settings': typeof SettingsRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/coming-soon'
     | '/kyc'
     | '/login'
+    | '/news'
     | '/notifications'
     | '/orders'
     | '/settings'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/coming-soon'
     | '/kyc'
     | '/login'
+    | '/news'
     | '/notifications'
     | '/settings'
     | '/users'
@@ -148,6 +159,7 @@ export interface FileRouteTypes {
     | '/coming-soon'
     | '/kyc'
     | '/login'
+    | '/news'
     | '/notifications'
     | '/orders'
     | '/settings'
@@ -162,6 +174,7 @@ export interface RootRouteChildren {
   ComingSoonRoute: typeof ComingSoonRoute
   KycRoute: typeof KycRoute
   LoginRoute: typeof LoginRoute
+  NewsRoute: typeof NewsRoute
   NotificationsRoute: typeof NotificationsRoute
   OrdersRoute: typeof OrdersRouteWithChildren
   SettingsRoute: typeof SettingsRoute
@@ -197,6 +210,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/news': {
+      id: '/news'
+      path: '/news'
+      fullPath: '/news'
+      preLoaderRoute: typeof NewsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -269,6 +289,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComingSoonRoute: ComingSoonRoute,
   KycRoute: KycRoute,
   LoginRoute: LoginRoute,
+  NewsRoute: NewsRoute,
   NotificationsRoute: NotificationsRoute,
   OrdersRoute: OrdersRouteWithChildren,
   SettingsRoute: SettingsRoute,

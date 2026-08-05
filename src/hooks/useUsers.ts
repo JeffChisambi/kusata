@@ -49,11 +49,74 @@ export function useUsersList(filters: UserFilters = {}) {
   });
 }
 
+// Shape of the aggregated workspace payload (GET /admin/users/:id).
+export type UserWorkspace = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string;
+  createdAt: string;
+  isActive: boolean;
+  kycStatus: string;
+  wallet: { balance: string; isFrozen: boolean; transactions?: WorkspaceTxn[] } | null;
+  mfaConfig: { isEnabled: boolean; enabledAt: string | null } | null;
+  devices: WorkspaceDevice[];
+  sessions: { id: string; deviceId: string; ipAddress: string | null; lastUsedAt: string }[];
+  holdings: { quantity: string; averageCost: string; stock: { symbol: string; name: string } }[];
+  linkedBanks: WorkspaceBank[];
+  kycApplications: { id: string; status: string; createdAt: string }[];
+  _count: { orders: number; notifications: number; payments: number };
+};
+export type WorkspaceDevice = {
+  id: string; platform: string; osVersion: string | null; appVersion: string | null;
+  trustLevel: string; lastSeenAt: string; lastSeenIp: string | null; lastSeenCountry: string | null;
+  isRevoked: boolean;
+};
+export type WorkspaceBank = {
+  id: string; bankName: string; accountName: string; accountNumberMasked: string;
+  isVerified: boolean; isPrimary: boolean;
+};
+export type WorkspaceTxn = {
+  id: string; type: string; status: string; amount: string; description: string | null; createdAt: string;
+};
+
 export function useUserWorkspace(userId: string | null) {
-  return useQuery({
+  return useQuery<UserWorkspace>({
     queryKey: queryKeys.users.workspace(userId ?? ''),
-    queryFn: () => api.get(`/v1/admin/users/${userId}`),
+    queryFn: () => api.get<UserWorkspace>(`/v1/admin/users/${userId}`),
     enabled: !!userId,
+    staleTime: 15_000,
+  });
+}
+
+export function useNotifyUser() {
+  return useMutation({
+    mutationFn: ({ userId, title, message, channel }: {
+      userId: string; title?: string; message: string; channel?: string;
+    }) => api.post(`/v1/admin/users/${userId}/notify`, { title, message, channel }),
+  });
+}
+
+export function useRevokeDevice() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, deviceId }: { userId: string; deviceId: string }) =>
+      api.post(`/v1/admin/users/${userId}/devices/${deviceId}/revoke`),
+    onSuccess: (_d, v) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.workspace(v.userId) });
+    },
+  });
+}
+
+export function useUntrustDevice() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, deviceId }: { userId: string; deviceId: string }) =>
+      api.post(`/v1/admin/users/${userId}/devices/${deviceId}/untrust`),
+    onSuccess: (_d, v) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.workspace(v.userId) });
+    },
   });
 }
 

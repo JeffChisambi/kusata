@@ -12,7 +12,7 @@ import {
   Users, ShieldCheck, FileCheck2,
   ChevronDown, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight,
   CircleUser, Clock, Sun, Moon, Bell, Check, LogOut,
-  ClipboardList, Settings2, Search,
+  ClipboardList, Settings2, Search, Newspaper,
 } from "lucide-react";
 
 function NineDotsIcon({ className }: { className?: string }) {
@@ -55,11 +55,14 @@ export const brokerNav: NavGroup[] = [
   { section: "TRADING", icon: ClipboardList, label: "Orders", href: "/orders" },
   { section: "TRADING", icon: ShieldCheck, label: "Auth & Security", href: "/coming-soon" },
 
+  // ── CONTENT ──
+  { section: "CONTENT", icon: Newspaper, label: "News", href: "/news" },
+
   // ── ACCOUNT ──
   { section: "ACCOUNT", icon: Settings2, label: "Settings", href: "/settings" },
 ];
 
-export const brokerSectionOrder = ["OVERVIEW", "CLIENTS", "TRADING", "ACCOUNT"];
+export const brokerSectionOrder = ["OVERVIEW", "CLIENTS", "TRADING", "CONTENT", "ACCOUNT"];
 
 const TIME_RANGES = [
   { label: "Last 1 hour",   value: "1h",  short: "Last 1h"  },

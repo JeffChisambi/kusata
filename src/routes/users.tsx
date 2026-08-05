@@ -1,4 +1,4 @@
-import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { createFileRoute, useSearch, useNavigate } from "@tanstack/react-router";
 import { Fragment, useMemo, useState, useEffect, useRef } from "react";
 import { z } from "zod";
 import {
@@ -10,7 +10,11 @@ import {
   Eye, Copy, ExternalLink, TrendingUp, TrendingDown, Trash2,
 } from "lucide-react";
 import { Card } from "@/components/broker-shell";
-import { useUsersList, useUpdateUserStatus, useRevokeUserSessions, useDeleteUser, useUpdateUserKycStatus } from "@/hooks/useUsers";
+import {
+  useUsersList, useUpdateUserStatus, useRevokeUserSessions, useDeleteUser, useUpdateUserKycStatus,
+  useUserWorkspace, useNotifyUser, useRevokeDevice, useUntrustDevice,
+  type UserWorkspace,
+} from "@/hooks/useUsers";
 
 const searchSchema = z.object({
   tab: z.string().optional(),
@@ -603,10 +607,32 @@ function UserDetails({ user: initialUser, onClose }: { user: UserRow; onClose?: 
   const updateStatus   = useUpdateUserStatus();
   const revokeSessions = useRevokeUserSessions();
   const deleteUser     = useDeleteUser();
+  const notifyUser     = useNotifyUser();
+  const navigate       = useNavigate();
+
+  // Hydrate the drawer with real, aggregated data (portfolio, wallet, MFA,
+  // devices, banks, activity) instead of the list row's partial fields.
+  const { data: ws, isLoading: wsLoading } = useUserWorkspace(user.id);
+
+  const [showMessage, setShowMessage] = useState(false);
+
+  // Derived real stats from the workspace payload.
+  const portfolioValue = (ws?.holdings ?? []).reduce(
+    (sum, h) => sum + Number(h.quantity) * Number(h.averageCost), 0,
+  );
+  const cashValue    = ws?.wallet ? Number(ws.wallet.balance) : user.cash;
+  const tradeCount   = ws?._count?.orders ?? user.trades30d;
+  const mfaEnabled   = ws?.mfaConfig?.isEnabled ?? false;
+  const latestKycId  = ws?.kycApplications?.[0]?.id ?? null;
 
   const showToast = (msg: string, tone: "ok" | "err" = "ok") => {
     setToast({ msg, tone });
     setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleView = () => {
+    if (latestKycId) navigate({ to: "/kyc/$applicationId", params: { applicationId: latestKycId } });
+    else showToast("No KYC application to view", "err");
   };
 
   const act = async (key: string, fn: () => Promise<void>) => {
@@ -684,8 +710,8 @@ function UserDetails({ user: initialUser, onClose }: { user: UserRow; onClose?: 
 
         {/* Action grid */}
         <div className="mt-4 grid grid-cols-3 gap-2">
-          <QuickAction icon={Eye}       label="View"            />
-          <QuickAction icon={Mail}      label="Message"         />
+          <QuickAction icon={Eye}       label="View"            onClick={handleView} />
+          <QuickAction icon={Mail}      label="Message"         onClick={() => setShowMessage(true)} />
           <QuickAction icon={LogOut}    label="Revoke Sessions" tone="amber" busy={busy === "revoke"}  onClick={handleRevoke}  />
           <QuickAction icon={Snowflake} label={user.status === "frozen" ? "Unfreeze" : "Freeze"} tone="amber" busy={busy === "freeze"}  onClick={handleFreeze}  />
           <QuickAction icon={Ban}       label="Suspend"         tone="rose"  busy={busy === "suspend"} onClick={handleSuspend} />
@@ -693,10 +719,10 @@ function UserDetails({ user: initialUser, onClose }: { user: UserRow; onClose?: 
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-          <MiniStat icon={Wallet}   label="Portfolio"  value={`MWK ${MWK(user.aum)}`} />
-          <MiniStat icon={Landmark} label="Cash"       value={`MWK ${MWK(user.cash)}`} />
-          <MiniStat icon={Activity} label="30d trades" value={String(user.trades30d)} />
-          <MiniStat icon={Shield}   label="MFA"        value={user.mfa ? "Enabled" : "Off"} tone={user.mfa ? "pine" : "amber"} />
+          <MiniStat icon={Wallet}   label="Portfolio"  value={wsLoading ? "…" : `MWK ${MWK(portfolioValue)}`} />
+          <MiniStat icon={Landmark} label="Cash"       value={`MWK ${MWK(cashValue)}`} />
+          <MiniStat icon={Activity} label="Trades"     value={wsLoading ? "…" : String(tradeCount)} />
+          <MiniStat icon={Shield}   label="MFA"        value={wsLoading ? "…" : (mfaEnabled ? "Enabled" : "Off")} tone={mfaEnabled ? "pine" : "amber"} />
         </div>
       </div>
 
@@ -718,11 +744,81 @@ function UserDetails({ user: initialUser, onClose }: { user: UserRow; onClose?: 
 
       {/* Tab content */}
       <div className="p-5 flex-1">
-        {tab === "profile"  && <ProfileTab user={user} />}
+        {tab === "profile"  && <ProfileTab user={user} ws={ws} />}
         {tab === "kyc"      && <KycTab user={user} onStatusChange={(s) => setUser(u => ({ ...u, kyc: s as any }))} />}
-        {tab === "devices"  && <DevicesTab user={user} />}
-        {tab === "banks"    && <BanksTab user={user} />}
-        {tab === "activity" && <ActivityTab user={user} />}
+        {tab === "devices"  && <DevicesTab userId={user.id} ws={ws} loading={wsLoading} onToast={showToast} />}
+        {tab === "banks"    && <BanksTab ws={ws} loading={wsLoading} />}
+        {tab === "activity" && <ActivityTab ws={ws} loading={wsLoading} />}
+      </div>
+
+      {showMessage && (
+        <MessageDialog
+          userName={user.name}
+          onClose={() => setShowMessage(false)}
+          onSend={async (title, message, channel) => {
+            await notifyUser.mutateAsync({ userId: user.id, title, message, channel });
+            showToast("Message sent to user");
+            setShowMessage(false);
+          }}
+          sending={notifyUser.isPending}
+        />
+      )}
+    </div>
+  );
+}
+
+/* -------------------- message dialog -------------------- */
+function MessageDialog({
+  userName, onClose, onSend, sending,
+}: {
+  userName: string;
+  onClose: () => void;
+  onSend: (title: string, message: string, channel: string) => Promise<void>;
+  sending: boolean;
+}) {
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [channel, setChannel] = useState("IN_APP");
+  const [err, setErr] = useState<string | null>(null);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <div className="relative w-full max-w-md rounded-[4px] bg-card border border-border p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-sm font-semibold mb-1">Message {userName}</h3>
+        <p className="text-xs text-muted-foreground mb-4">Sends a direct notification to this user.</p>
+        <div className="space-y-3">
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5 block">Channel</label>
+            <div className="grid grid-cols-2 gap-2">
+              {[["IN_APP", "In-app"], ["PUSH", "Push"]].map(([v, l]) => (
+                <button key={v} onClick={() => setChannel(v)}
+                  className={`h-9 rounded-[3px] border text-xs font-medium ${channel === v ? "border-pine/50 bg-pine/5 text-pine" : "border-border text-muted-foreground hover:bg-muted/40"}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)"
+            className="w-full h-9 px-3 rounded-[3px] border border-border bg-transparent text-sm focus:outline-none focus:border-pine/40" />
+          <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} placeholder="Message…"
+            className="w-full px-3 py-2.5 rounded-[3px] border border-border bg-transparent text-sm resize-none focus:outline-none focus:border-pine/40" />
+          {err && <p className="text-xs text-rose">{err}</p>}
+        </div>
+        <div className="flex justify-end gap-2 mt-4">
+          <button onClick={onClose} className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40">Cancel</button>
+          <button
+            disabled={!message.trim() || sending}
+            onClick={async () => {
+              setErr(null);
+              try { await onSend(title.trim(), message.trim(), channel); }
+              catch (e: any) { setErr(e?.message ?? "Failed to send."); }
+            }}
+            className="h-8 px-4 rounded-[3px] bg-pine text-primary-foreground text-xs font-medium hover:bg-pine/90 disabled:opacity-50 flex items-center gap-1.5"
+          >
+            {sending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />} Send
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -786,17 +882,33 @@ function Row({
   );
 }
 
-function ProfileTab({ user }: { user: UserRow }) {
+function ProfileTab({ user, ws }: { user: UserRow; ws?: UserWorkspace }) {
+  const walletState = ws?.wallet ? (ws.wallet.isFrozen ? "Frozen" : "Active") : "—";
+  const holdingsCount = ws?.holdings?.length ?? 0;
   return (
     <div>
-      <Row icon={Mail} label="Email" value={user.email} action={<Copy className="w-3.5 h-3.5 text-muted-foreground" />} />
-      <Row icon={Phone} label="Phone" value={user.phone} />
-      <Row icon={MapPin} label="City" value={user.city} />
-      <Row icon={Calendar} label="Joined" value={user.joined} />
-      <Row icon={CircleUser} label="Trading account" value={<span className="font-mono">{user.id.replace("U-", "TA-")}</span>} />
-      <Row icon={ExternalLink} label="Referred by" value="—" />
+      <Row icon={Mail} label="Email" value={ws?.email ?? user.email} action={<Copy className="w-3.5 h-3.5 text-muted-foreground" />} />
+      <Row icon={Phone} label="Phone" value={ws?.phone ?? user.phone} />
+      <Row icon={Calendar} label="Joined" value={ws?.createdAt ? fmtJoined(ws.createdAt) : user.joined} />
+      <Row icon={Shield} label="Account" value={ws ? (ws.isActive ? "Active" : "Deactivated") : "—"} />
+      <Row icon={Wallet} label="Wallet" value={walletState} />
+      <Row icon={Activity} label="Holdings" value={`${holdingsCount} position${holdingsCount === 1 ? "" : "s"}`} />
+      <Row icon={CircleUser} label="User ID" value={<span className="font-mono text-xs">{user.id}</span>} />
     </div>
   );
+}
+
+function fmtJoined(iso: string) {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+function fmtWhen(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 }
 
 function KycTab({ user, onStatusChange }: { user: UserRow; onStatusChange?: (s: string) => void }) {
@@ -886,64 +998,97 @@ function KycTab({ user, onStatusChange }: { user: UserRow; onStatusChange?: (s: 
   );
 }
 
-function DevicesTab({ user }: { user: UserRow }) {
-  const devices = [
-    { name: "iPhone 15 · iOS 18.2", loc: `${user.city}, MW`, ip: "196.44.128.9", last: "2h ago", trusted: true, current: true },
-    { name: "Chrome · macOS", loc: `${user.city}, MW`, ip: "196.44.128.9", last: "1d ago", trusted: true, current: false },
-    { name: "Samsung A54 · Android 14", loc: "Blantyre, MW", ip: "41.87.6.221", last: "12d ago", trusted: false, current: false },
-  ].slice(0, user.devices);
+function DevicesTab({
+  userId, ws, loading, onToast,
+}: {
+  userId: string; ws?: UserWorkspace; loading: boolean;
+  onToast: (msg: string, tone?: "ok" | "err") => void;
+}) {
+  const revokeDevice = useRevokeDevice();
+  const untrustDevice = useUntrustDevice();
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const devices = (ws?.devices ?? []).filter((d) => !d.isRevoked);
+
+  if (loading) return <TabLoading />;
+  if (devices.length === 0) return <TabEmpty icon={Smartphone} text="No active devices." />;
+
+  const run = async (key: string, fn: () => Promise<unknown>, ok: string) => {
+    setBusy(key);
+    try { await fn(); onToast(ok); }
+    catch (e: any) { onToast(e?.message ?? "Error", "err"); }
+    finally { setBusy(null); }
+  };
+
   return (
     <ul className="space-y-2">
-      {devices.map((d, i) => (
-        <li key={i} className="rounded-[3px] border border-border p-3">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
-              <Smartphone className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <div className="text-sm font-medium truncate">{d.name}</div>
-                {d.current && <span className="text-[10px] px-1.5 py-0.5 rounded bg-pine/10 text-pine">Current</span>}
+      {devices.map((d) => {
+        const name = [d.platform, d.osVersion].filter(Boolean).join(" · ") || "Unknown device";
+        const trusted = d.trustLevel === "TRUSTED";
+        const meta = [d.lastSeenIp, d.lastSeenCountry, fmtWhen(d.lastSeenAt)].filter(Boolean).join(" · ");
+        return (
+          <li key={d.id} className="rounded-[3px] border border-border p-3">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+                <Smartphone className="w-4 h-4 text-muted-foreground" />
               </div>
-              <div className="text-xs text-muted-foreground mt-0.5">{d.loc} · {d.ip} · {d.last}</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate">{name}</div>
+                <div className="text-xs text-muted-foreground mt-0.5 truncate">{meta}</div>
+              </div>
+              {trusted
+                ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-pine/10 text-pine">Trusted</span>
+                : <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber/10 text-amber">Untrusted</span>}
             </div>
-            {d.trusted
-              ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-pine/10 text-pine">Trusted</span>
-              : <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber/10 text-amber">Untrusted</span>}
-          </div>
-          <div className="mt-2 flex items-center gap-1">
-            <button className="text-xs h-7 px-2 rounded-[3px] border border-border hover:bg-muted/40 flex items-center gap-1"><LogOut className="w-3 h-3" /> Sign out</button>
-            <button className="text-xs h-7 px-2 rounded-[3px] border border-border hover:bg-muted/40">Remove trust</button>
-          </div>
-        </li>
-      ))}
+            <div className="mt-2 flex items-center gap-1">
+              <button
+                onClick={() => run(`so-${d.id}`, () => revokeDevice.mutateAsync({ userId, deviceId: d.id }), "Device signed out")}
+                disabled={busy === `so-${d.id}`}
+                className="text-xs h-7 px-2 rounded-[3px] border border-border hover:bg-muted/40 flex items-center gap-1 disabled:opacity-50"
+              >
+                {busy === `so-${d.id}` ? <RefreshCw className="w-3 h-3 animate-spin" /> : <LogOut className="w-3 h-3" />} Sign out
+              </button>
+              {trusted && (
+                <button
+                  onClick={() => run(`ut-${d.id}`, () => untrustDevice.mutateAsync({ userId, deviceId: d.id }), "Trust removed")}
+                  disabled={busy === `ut-${d.id}`}
+                  className="text-xs h-7 px-2 rounded-[3px] border border-border hover:bg-muted/40 disabled:opacity-50 flex items-center gap-1"
+                >
+                  {busy === `ut-${d.id}` && <RefreshCw className="w-3 h-3 animate-spin" />} Remove trust
+                </button>
+              )}
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
-function BanksTab({ user }: { user: UserRow }) {
-  const banks = [
-    { name: "National Bank of Malawi", acc: "•••• 4821", verified: true, icon: Building2 },
-    { name: "Standard Bank Malawi", acc: "•••• 7104", verified: true, icon: Building2 },
-    { name: "Airtel Money", acc: `+265 88• ••• 9${user.id.slice(-3)}`, verified: true, icon: CreditCard },
-    { name: "TNM Mpamba", acc: `+265 88• ••• 1${user.id.slice(-3)}`, verified: false, icon: CreditCard },
-  ].slice(0, user.banks + 1);
+function BanksTab({ ws, loading }: { ws?: UserWorkspace; loading: boolean }) {
+  if (loading) return <TabLoading />;
+  const banks = ws?.linkedBanks ?? [];
+  if (banks.length === 0) return <TabEmpty icon={Landmark} text="No linked bank accounts." />;
   return (
     <ul className="space-y-2">
-      {banks.map((b, i) => {
-        const Icon = b.icon;
+      {banks.map((b) => {
+        const isMobileMoney = /airtel|mpamba|money|tnm/i.test(b.bankName);
+        const Icon = isMobileMoney ? CreditCard : Building2;
         return (
-          <li key={i} className="rounded-[3px] border border-border p-3 flex items-center gap-3">
+          <li key={b.id} className="rounded-[3px] border border-border p-3 flex items-center gap-3">
             <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
               <Icon className="w-4 h-4 text-muted-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate">{b.name}</div>
-              <div className="text-xs text-muted-foreground font-mono">{b.acc}</div>
+              <div className="text-sm font-medium truncate flex items-center gap-1.5">
+                {b.bankName}
+                {b.isPrimary && <span className="text-[9px] px-1 py-0.5 rounded bg-muted text-muted-foreground">Primary</span>}
+              </div>
+              <div className="text-xs text-muted-foreground truncate">{b.accountName} · <span className="font-mono">{b.accountNumberMasked}</span></div>
             </div>
-            {b.verified
+            {b.isVerified
               ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-pine/10 text-pine flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Verified</span>
-              : <button className="text-[10px] px-2 py-0.5 rounded-[3px] bg-amber/10 text-amber hover:bg-amber/20">Verify</button>}
+              : <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber/10 text-amber">Unverified</span>}
           </li>
         );
       })}
@@ -951,43 +1096,49 @@ function BanksTab({ user }: { user: UserRow }) {
   );
 }
 
-function ActivityTab({ user }: { user: UserRow }) {
-  const items = [
-    { icon: ArrowUpRight, tone: "pine", title: "Deposit received", meta: `MWK ${MWK(user.cash / 3)} · Airtel Money`, time: "12m ago" },
-    { icon: CandlestickIcon, tone: "pine", title: "Order executed", meta: "BUY 240 × TNM @ MWK 18.20", time: "1h ago" },
-    { icon: KeyRound, tone: "amber", title: "Password reset requested", meta: `${user.city}, MW`, time: "3h ago" },
-    { icon: ArrowDownRight, tone: "amber", title: "Withdrawal initiated", meta: `MWK ${MWK(user.cash / 5)} → NBM`, time: "5h ago" },
-    { icon: ShieldCheck, tone: "pine", title: "KYC document approved", meta: "National ID", time: "1d ago" },
-    { icon: RefreshCw, tone: "pine", title: "Portfolio rebalanced", meta: "3 positions adjusted", time: "2d ago" },
-  ];
+function ActivityTab({ ws, loading }: { ws?: UserWorkspace; loading: boolean }) {
+  if (loading) return <TabLoading />;
+  const txns = ws?.wallet?.transactions ?? [];
+  if (txns.length === 0) return <TabEmpty icon={Activity} text="No recent wallet activity." />;
+
+  const iconFor = (type: string) => {
+    if (/DEPOSIT|CREDIT|DIVIDEND/.test(type)) return { Icon: ArrowUpRight, tone: "bg-pine/10 text-pine" };
+    if (/WITHDRAW|DEBIT|FEE/.test(type)) return { Icon: ArrowDownRight, tone: "bg-amber/10 text-amber" };
+    return { Icon: Activity, tone: "bg-muted text-muted-foreground" };
+  };
+  const label = (t: string) => t.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+
   return (
     <ol className="space-y-3">
-      {items.map((it, i) => {
-        const Icon = it.icon;
-        const tone = it.tone === "pine" ? "bg-pine/10 text-pine" : it.tone === "amber" ? "bg-amber/10 text-amber" : "bg-rose/10 text-rose";
+      {txns.map((t) => {
+        const { Icon, tone } = iconFor(t.type);
         return (
-          <li key={i} className="flex items-start gap-3">
+          <li key={t.id} className="flex items-start gap-3">
             <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${tone}`}>
               <Icon className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium leading-tight">{it.title}</div>
-              <div className="text-xs text-muted-foreground mt-0.5 truncate">{it.meta}</div>
+              <div className="text-sm font-medium leading-tight">{label(t.type)}</div>
+              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                MWK {MWK(Number(t.amount))}{t.description ? ` · ${t.description}` : ""} · {t.status.toLowerCase()}
+              </div>
             </div>
-            <div className="text-[11px] text-muted-foreground shrink-0">{it.time}</div>
+            <div className="text-[11px] text-muted-foreground shrink-0">{fmtWhen(t.createdAt)}</div>
           </li>
         );
       })}
-      <li className="pt-2">
-        <button className="w-full text-xs text-pine font-medium hover:underline flex items-center justify-center gap-1">
-          Full activity timeline <ChevronRight className="w-3.5 h-3.5" />
-        </button>
-      </li>
     </ol>
   );
 }
 
-/* small local alias to avoid import name collision with dashboard file */
-function CandlestickIcon({ className }: { className?: string }) {
-  return <Activity className={className} />;
+function TabLoading() {
+  return <div className="py-10 flex justify-center"><RefreshCw className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
+}
+function TabEmpty({ icon: Icon, text }: { icon: React.ComponentType<{ className?: string }>; text: string }) {
+  return (
+    <div className="py-10 flex flex-col items-center gap-2 text-center">
+      <Icon className="w-7 h-7 text-muted-foreground/30" />
+      <p className="text-xs text-muted-foreground">{text}</p>
+    </div>
+  );
 }

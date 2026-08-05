@@ -3,10 +3,10 @@ import { useState, useEffect } from "react";
 import {
   Bell, Send, Clock, CheckCircle2, AlertTriangle,
   Smartphone, Mail, MessageSquare, Megaphone, Plus,
-  XCircle, Circle,
+  XCircle, Circle, Loader2,
 } from "lucide-react";
 import { Card } from "@/components/broker-shell";
-import { useNotificationsList, useNotificationStats } from "@/hooks/useNotifications";
+import { useNotificationsList, useNotificationStats, useBroadcastNotification } from "@/hooks/useNotifications";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
@@ -69,7 +69,21 @@ const channelConfig: Record<Channel, { icon: React.ComponentType<{ className?: s
   broadcast: { icon: Megaphone,     label: "Broadcast", cls: "text-pine border border-pine/30" },
 };
 
-const segments = ["All Users", "Active Traders", "Tier 1 Users", "Tier 2 Users", "Inactive 30d", "New Signups", "KYC Pending"];
+// Real recipient targets — map to the backend broadcast's `targetRole` filter
+// (undefined = all active users). Only options the backend can actually honour.
+const AUDIENCES: { label: string; targetRole?: string }[] = [
+  { label: "All active users", targetRole: undefined },
+  { label: "Customers", targetRole: "CUSTOMER" },
+  { label: "Brokers", targetRole: "BROKER" },
+];
+
+// Compose channel → backend NotificationChannel
+const CHANNEL_MAP: Record<Channel, string> = {
+  push: "PUSH",
+  email: "EMAIL",
+  sms: "SMS",
+  broadcast: "IN_APP",
+};
 
 /* ─────────────────────────── API → UI mappers ─────────────────────────── */
 
@@ -317,9 +331,11 @@ function NotifItem({ notif: n, onRead }: { notif: Notif; onRead: (id: string) =>
 
 function ComposeModal({ onClose }: { onClose: () => void }) {
   const [channel, setChannel] = useState<Channel>("push");
-  const [segment, setSegment] = useState("All Users");
+  const [audienceIdx, setAudienceIdx] = useState(0);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const broadcast = useBroadcastNotification();
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -327,7 +343,26 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
     return () => document.removeEventListener("keydown", h);
   }, [onClose]);
 
-  const canSend = body.trim().length > 0;
+  // SMS has no title; every other channel needs one.
+  const effectiveTitle = channel === "sms" ? (title.trim() || "Pine") : title.trim();
+  const canSend = body.trim().length > 0 && (channel === "sms" || title.trim().length > 0) && !broadcast.isPending;
+
+  const handleSend = () => {
+    if (!canSend) return;
+    setError(null);
+    broadcast.mutate(
+      {
+        title: effectiveTitle,
+        body: body.trim(),
+        channel: CHANNEL_MAP[channel],
+        targetRole: AUDIENCES[audienceIdx]?.targetRole,
+      },
+      {
+        onSuccess: () => onClose(),
+        onError: (e: any) => setError(e?.message ?? "Failed to send. Please try again."),
+      },
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
@@ -374,11 +409,11 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Recipients</label>
             <select
-              value={segment}
-              onChange={(e) => setSegment(e.target.value)}
+              value={audienceIdx}
+              onChange={(e) => setAudienceIdx(Number(e.target.value))}
               className="w-full h-9 px-3 rounded-[3px] border border-border bg-background text-sm focus:outline-none focus:border-pine/40"
             >
-              {segments.map((s) => <option key={s}>{s}</option>)}
+              {AUDIENCES.map((a, i) => <option key={a.label} value={i}>{a.label}</option>)}
             </select>
           </div>
 
@@ -420,20 +455,25 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
-          <button
-            onClick={onClose}
-            className="h-9 px-4 rounded-[3px] border border-border text-sm text-muted-foreground hover:bg-muted/40"
-          >
-            Cancel
-          </button>
-          <button
-            disabled={!canSend}
-            onClick={onClose}
-            className="h-9 px-4 rounded-[3px] bg-pine text-primary-foreground text-sm font-medium hover:bg-pine/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
-          >
-            <Send className="w-3.5 h-3.5" /> Send Now
-          </button>
+        <div className="px-5 py-4 border-t border-border">
+          {error && <p className="text-xs text-rose mb-2">{error}</p>}
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={onClose}
+              className="h-9 px-4 rounded-[3px] border border-border text-sm text-muted-foreground hover:bg-muted/40"
+            >
+              Cancel
+            </button>
+            <button
+              disabled={!canSend}
+              onClick={handleSend}
+              className="h-9 px-4 rounded-[3px] bg-pine text-primary-foreground text-sm font-medium hover:bg-pine/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+            >
+              {broadcast.isPending
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
+                : <><Send className="w-3.5 h-3.5" /> Send Now</>}
+            </button>
+          </div>
         </div>
       </div>
     </div>
