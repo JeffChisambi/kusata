@@ -152,11 +152,25 @@ function OrderTable({ orders }: { orders: Order[] }) {
                   )}
                 </td>
                 <td className="px-3 py-3.5">
-                  <div className="font-medium">{fmtMoney(order.limitPrice)}</div>
-                  <div className="mt-1 text-[11px] text-muted-foreground">{fmtMoney(order.value)} est.</div>
+                  {/* Limit orders show their limit; market orders say so instead of "MK 0" */}
+                  <div className="font-medium">
+                    {order.limitPrice > 0 ? fmtMoney(order.limitPrice) : "Market"}
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    {order.avgFillPrice
+                      ? `${fmtMoney(order.avgFillPrice)} fill`
+                      : `${fmtMoney(order.value)} est.`}
+                  </div>
                 </td>
                 <td className="px-3 py-3.5">
-                  <StatusPill status={order.status} />
+                  <div className="flex items-center gap-2">
+                    <StatusPill status={order.status} />
+                    {order.backendStatus === "SUBMITTED" && (
+                      <span className="inline-flex items-center rounded-full bg-pine/10 px-2 py-0.5 text-[10px] font-semibold text-pine">
+                        Awaiting execution
+                      </span>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))

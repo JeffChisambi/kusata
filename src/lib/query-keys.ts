@@ -13,7 +13,7 @@ export const queryKeys = {
   // Users
   users: {
     all: ['users'] as const,
-    list: (filters?: Record<string, unknown>) => [...queryKeys.users.all, 'list', filters] as const,
+    list: (filters?: object) => [...queryKeys.users.all, 'list', filters] as const,
     workspace: (userId: string) => [...queryKeys.users.all, 'workspace', userId] as const,
     devices: (userId: string) => [...queryKeys.users.all, 'devices', userId] as const,
     sessions: (userId: string) => [...queryKeys.users.all, 'sessions', userId] as const,
@@ -40,14 +40,14 @@ export const queryKeys = {
   // Wallets
   wallets: {
     all: ['wallets'] as const,
-    list: (filters?: Record<string, unknown>) => [...queryKeys.wallets.all, 'list', filters] as const,
+    list: (filters?: object) => [...queryKeys.wallets.all, 'list', filters] as const,
     detail: (userId: string) => [...queryKeys.wallets.all, 'detail', userId] as const,
   },
 
   // Notifications
   notifications: {
     all: ['notifications'] as const,
-    list: (filters?: Record<string, unknown>) => [...queryKeys.notifications.all, 'list', filters] as const,
+    list: (filters?: object) => [...queryKeys.notifications.all, 'list', filters] as const,
     stats: () => [...queryKeys.notifications.all, 'stats'] as const,
   },
 

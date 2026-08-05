@@ -81,3 +81,10 @@ export function useDeleteNews() {
     onSuccess: () => qc.invalidateQueries({ queryKey: newsKeys.all }),
   });
 }
+
+/** Upload a hero image; returns its permanent public URL for the article. */
+export async function uploadNewsImage(file: File): Promise<{ imageUrl: string }> {
+  const fd = new FormData();
+  fd.append('file', file);
+  return api.postFormData<{ imageUrl: string }>('/v1/admin/news/upload-image', fd);
+}

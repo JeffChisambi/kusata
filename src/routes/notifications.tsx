@@ -27,12 +27,17 @@ type Notif = {
   id: string;
   type: NotifType;
   channel: Channel;
+  /** Backend category — ANNOUNCEMENT/MARKETING are broker-authored; others are system-generated. */
+  category: string;
   title: string;
   message: string;
   sentAt: string;
   read: boolean;
   recipients: number;
 };
+
+/** Broker-authored categories vs. platform-generated ones. */
+const BROKER_CATEGORIES = new Set(["ANNOUNCEMENT", "MARKETING"]);
 
 /* ─────────────────────────── helpers ─────────────────────────── */
 
@@ -125,6 +130,7 @@ function NotificationsPage() {
       id: n.id ?? crypto.randomUUID(),
       type: mapNotifType(n.type ?? n.category ?? "INFORMATIONAL"),
       channel: mapChannel(n.channel ?? "IN_APP"),
+      category: (n.category ?? "SYSTEM") as string,
       title: n.title ?? "Notification",
       message: n.body ?? n.message ?? "",
       sentAt: n.sentAt ?? n.createdAt ?? new Date().toISOString(),
@@ -136,6 +142,8 @@ function NotificationsPage() {
   const [items, setItems] = useState<Notif[]>([]);
   const [compose, setCompose] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
+  // Category separation: broker-authored announcements vs system-generated.
+  const [categoryTab, setCategoryTab] = useState<"all" | "broker" | "system">("all");
 
   // Sync local state when server data arrives
   useEffect(() => {
@@ -145,7 +153,13 @@ function NotificationsPage() {
   }, [rawData]);
 
   const unread = items.filter((n) => !n.read).length;
-  const visible = filter === "unread" ? items.filter((n) => !n.read) : items;
+  const byCategory =
+    categoryTab === "broker"
+      ? items.filter((n) => BROKER_CATEGORIES.has(n.category))
+      : categoryTab === "system"
+        ? items.filter((n) => !BROKER_CATEGORIES.has(n.category))
+        : items;
+  const visible = filter === "unread" ? byCategory.filter((n) => !n.read) : byCategory;
 
   // Derive "sent today" from items (sentAt within last 24h)
   const sentToday = items.filter((n) => {
@@ -232,6 +246,27 @@ function NotificationsPage() {
             </div>
           }
         >
+          {/* Category separation — broker-authored vs system-generated */}
+          <div className="mb-3 flex items-center gap-1 border-b border-border -mx-5 px-5">
+            {([
+              ["all", "All"],
+              ["broker", "Broker announcements"],
+              ["system", "System notifications"],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setCategoryTab(key)}
+                className={`relative py-2 px-3 text-xs font-medium transition-colors ${
+                  categoryTab === key ? "text-pine" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {label}
+                {categoryTab === key && (
+                  <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-pine rounded-full" />
+                )}
+              </button>
+            ))}
+          </div>
           {isLoading ? (
             <div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>
           ) : visible.length === 0 ? (
@@ -332,6 +367,7 @@ function NotifItem({ notif: n, onRead }: { notif: Notif; onRead: (id: string) =>
 function ComposeModal({ onClose }: { onClose: () => void }) {
   const [channel, setChannel] = useState<Channel>("push");
   const [audienceIdx, setAudienceIdx] = useState(0);
+  const [category, setCategory] = useState<"ANNOUNCEMENT" | "SYSTEM" | "MARKETING">("ANNOUNCEMENT");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -356,6 +392,7 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
         body: body.trim(),
         channel: CHANNEL_MAP[channel],
         targetRole: AUDIENCES[audienceIdx]?.targetRole,
+        category,
       },
       {
         onSuccess: () => onClose(),
@@ -414,6 +451,20 @@ function ComposeModal({ onClose }: { onClose: () => void }) {
               className="w-full h-9 px-3 rounded-[3px] border border-border bg-background text-sm focus:outline-none focus:border-pine/40"
             >
               {AUDIENCES.map((a, i) => <option key={a.label} value={i}>{a.label}</option>)}
+            </select>
+          </div>
+
+          {/* Category — keeps broker announcements separate from system notices */}
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Category</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value as typeof category)}
+              className="w-full h-9 px-3 rounded-[3px] border border-border bg-background text-sm focus:outline-none focus:border-pine/40"
+            >
+              <option value="ANNOUNCEMENT">Broker announcement</option>
+              <option value="SYSTEM">System notice</option>
+              <option value="MARKETING">Marketing</option>
             </select>
           </div>
 

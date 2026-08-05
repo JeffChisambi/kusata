@@ -11,10 +11,10 @@ import {
   XCircle,
 } from "lucide-react";
 import { useDashboardTitle } from "@/components/broker-shell";
-import { useOrder, type DisplayStatus, type OrderSide } from "@/hooks/useOrders";
+import { useOrder, useExecuteOrder, type DisplayStatus, type OrderSide } from "@/hooks/useOrders";
 
 export const Route = createFileRoute("/orders/$orderId")({
-  head: () => ({ title: "Order Detail — Pine Broker Portal" }),
+  head: () => ({ meta: [{ title: "Order Detail — Pine Broker Portal" }] }),
   component: OrderDetailPage,
 });
 
@@ -78,6 +78,24 @@ function OrderDetailPage() {
   const { orderId } = Route.useParams();
   const navigate = useNavigate();
   const { data: order, isLoading, isError, error } = useOrder(orderId);
+  const executeOrder = useExecuteOrder();
+  const [confirmExecute, setConfirmExecute] = useState(false);
+  const [executeError, setExecuteError] = useState<string | null>(null);
+  const [executedMsg, setExecutedMsg] = useState<string | null>(null);
+
+  const handleExecute = () => {
+    setExecuteError(null);
+    executeOrder.mutate(orderId, {
+      onSuccess: (res) => {
+        setConfirmExecute(false);
+        setExecutedMsg(res.message);
+        setTimeout(() => setExecutedMsg(null), 4000);
+      },
+      onError: (e: any) => {
+        setExecuteError(e?.message ?? "Execution failed. Please retry.");
+      },
+    });
+  };
 
   useDashboardTitle(
     isLoading
@@ -138,7 +156,59 @@ function OrderDetailPage() {
         <span className="ml-auto text-xs text-muted-foreground">
           {order.client} · {order.clientId.slice(0, 8)}
         </span>
+        {order.backendStatus === "SUBMITTED" && (
+          <button
+            onClick={() => setConfirmExecute(true)}
+            className="flex items-center gap-1.5 rounded-[3px] bg-pine px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-pine/90"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" /> Execute Order
+          </button>
+        )}
       </div>
+
+      {executedMsg && (
+        <div className="mt-2 flex items-center gap-2 rounded-[3px] border border-pine/30 bg-pine/5 px-3 py-2 text-xs text-pine">
+          <CheckCircle2 className="h-3.5 w-3.5" /> {executedMsg}
+        </div>
+      )}
+
+      {/* Execute confirmation */}
+      {confirmExecute && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setConfirmExecute(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className="relative w-full max-w-md rounded-[4px] border border-border bg-card p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-1 text-sm font-semibold">Confirm execution</h3>
+            <p className="mb-4 text-xs text-muted-foreground">
+              Confirm that this order has been executed at the exchange:
+              <span className="mt-2 block rounded-[3px] bg-muted/40 px-3 py-2 font-medium text-foreground">
+                {order.side} {fmtShares(order.quantity)} × {order.ticker}
+                {order.limitPrice ? ` @ ${fmtMoney(order.limitPrice)} (limit)` : " (market)"} · {order.client}
+              </span>
+              This settles the trade, updates the client's portfolio and wallet, and notifies them. It cannot be executed twice.
+            </p>
+            {executeError && <p className="mb-3 text-xs text-rose">{executeError}</p>}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmExecute(false)}
+                className="h-8 rounded-[3px] border border-border px-3 text-xs text-muted-foreground hover:bg-muted/40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleExecute}
+                disabled={executeOrder.isPending}
+                className="flex h-8 items-center gap-1.5 rounded-[3px] bg-pine px-4 text-xs font-medium text-primary-foreground hover:bg-pine/90 disabled:opacity-50"
+              >
+                {executeOrder.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                Confirm execution
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 pt-2 lg:grid-cols-2">
         {/* Order details */}

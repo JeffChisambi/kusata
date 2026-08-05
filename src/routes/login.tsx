@@ -78,7 +78,7 @@ function LoginPage() {
         await verifyMfa(mfaToken, mfaCode);
       }
       const user = getCurrentUser();
-      navigate({ to: user?.role === 'BROKER' ? '/broker' : '/' });
+      navigate({ to: '/' });
     } catch (err: any) {
       setError(err?.message || "Invalid code. Please try again.");
     } finally {
@@ -113,7 +113,7 @@ function LoginPage() {
 
   const handleFinish = () => {
     const user = getCurrentUser();
-    navigate({ to: user?.role === 'BROKER' ? '/broker' : '/' });
+    navigate({ to: '/' });
   };
 
   return (

@@ -112,7 +112,7 @@ function KpiGrid() {
       label: "Active Clients",
       value: isLoading ? "—" : (stats?.activeUsers ?? 0).toLocaleString(),
       delta: isLoading ? "" : `+${stats?.todayNewUsers ?? 0} today`,
-      trend: "up" as const,
+      trend: "up" as "up" | "down" | "flat",
       sub: isLoading ? "" : `out of ${(stats?.totalUsers ?? 0).toLocaleString()} registered`,
     },
     {
@@ -120,7 +120,7 @@ function KpiGrid() {
       label: "Pending KYC",
       value: isLoading ? "—" : (stats?.pendingKyc ?? 0).toString(),
       delta: "needs review",
-      trend: "flat" as const,
+      trend: "flat" as "up" | "down" | "flat",
       sub: "avg. 4h to resolve",
     },
     {
@@ -128,7 +128,7 @@ function KpiGrid() {
       label: "Trade Volume (today)",
       value: isLoading ? "—" : fmtMoney(Number(stats?.todayVolume ?? 0)),
       delta: isLoading ? "" : `${stats?.todayOrders ?? 0} orders`,
-      trend: "up" as const,
+      trend: "up" as "up" | "down" | "flat",
       sub: "orders executed today",
     },
     {
@@ -136,7 +136,7 @@ function KpiGrid() {
       label: "Total Client Funds",
       value: isLoading ? "—" : fmtMoney(Number(stats?.totalWalletBalance ?? 0)),
       delta: "live",
-      trend: "up" as const,
+      trend: "up" as "up" | "down" | "flat",
       sub: "across all wallets",
     },
   ];
@@ -297,8 +297,6 @@ function TradeVolumeChart() {
             <Bar
               dataKey="volume"
               fill={pine}
-              barCategoryGap="0%"
-              barGap={0}
               radius={[4, 4, 0, 0]}
               activeBar={{ fill: pine, fillOpacity: 0.75 }}
             />

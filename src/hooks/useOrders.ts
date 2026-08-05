@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { queryKeys } from '../lib/query-keys';
 
@@ -215,6 +215,23 @@ export function useOrder(orderId: string | null) {
 }
 
 /** Convenience: call from a Refresh button to force re-fetch */
+/**
+ * Broker confirms a queued order as executed. Idempotent server-side —
+ * only SUBMITTED (queued) orders are accepted; re-clicks meet a 409.
+ */
+export function useExecuteOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (orderId: string) =>
+      api.post<{ orderId: string; status: string; message: string }>(
+        `/v1/admin/trading/orders/${orderId}/execute`,
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.trading.all });
+    },
+  });
+}
+
 export function useRefreshOrders() {
   const qc = useQueryClient();
   return () => qc.invalidateQueries({ queryKey: queryKeys.trading.all });

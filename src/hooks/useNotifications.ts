@@ -62,6 +62,8 @@ export function useBroadcastNotification() {
       body: string;
       channel?: string;
       targetRole?: string;
+      /** ANNOUNCEMENT (broker-authored, default) | SYSTEM | MARKETING */
+      category?: string;
     }) => api.post('/v1/admin/notifications/broadcast', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });

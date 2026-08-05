@@ -168,6 +168,33 @@ class ApiClient {
   }
 
   /**
+   * Authenticated multipart upload (FormData). Content-Type is left to the
+   * browser so the multipart boundary is set correctly.
+   */
+  async postFormData<T>(path: string, formData: FormData): Promise<T> {
+    const url = `${BASE_URL}/${path.replace(/^\//, '')}`;
+    const doFetch = () =>
+      fetch(url, {
+        method: 'POST',
+        headers: this.getToken() ? { Authorization: `Bearer ${this.getToken()}` } : {},
+        body: formData,
+      });
+
+    let res = await doFetch();
+    if (res.status === 401) {
+      const refreshed = await this.tryRefresh();
+      if (refreshed) res = await doFetch();
+    }
+    if (!res.ok) {
+      let errorData: any = {};
+      try { errorData = await res.json(); } catch { /* non-JSON */ }
+      throw new ApiError(res.status, errorData?.message ?? `Upload failed: ${res.status}`);
+    }
+    const json = await res.json();
+    return (json?.data !== undefined ? json.data : json) as T;
+  }
+
+  /**
    * Authenticated binary download (e.g. generated PDFs). Mirrors request()'s
    * auth + single-refresh-retry behaviour but returns the raw Blob.
    */

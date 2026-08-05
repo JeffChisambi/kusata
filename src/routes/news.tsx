@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/broker-shell";
 import {
-  useNewsList, useCreateNews, useUpdateNews, useDeleteNews,
+  useNewsList, useCreateNews, useUpdateNews, useDeleteNews, uploadNewsImage,
   type NewsArticle, type NewsInput,
 } from "@/hooks/useNewsAdmin";
 
@@ -186,6 +186,21 @@ function NewsEditor({ article, onClose }: { article: NewsArticle | null; onClose
   const [featured, setFeatured] = useState(article?.featured ?? false);
   const [isPublished, setIsPublished] = useState(article?.isPublished ?? true);
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleImageFile = async (file: File | undefined) => {
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    try {
+      const { imageUrl: url } = await uploadNewsImage(file);
+      setImageUrl(url);
+    } catch (e: any) {
+      setError(e?.message ?? "Image upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -252,8 +267,25 @@ function NewsEditor({ article, onClose }: { article: NewsArticle | null; onClose
               <input value={summary} onChange={(e) => setSummary(e.target.value)} className="form-input" placeholder="One-line teaser" />
             </Field>
 
-            <Field label="Hero image URL (optional)">
-              <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="form-input" placeholder="https://…/image.png" />
+            <Field label="Hero image (optional)">
+              <div className="flex items-center gap-2">
+                <label className={`h-[38px] px-3 rounded-[3px] border border-border text-sm flex items-center gap-1.5 cursor-pointer hover:bg-muted/40 ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+                  {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
+                  {uploading ? "Uploading…" : "Upload image"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => handleImageFile(e.target.files?.[0])}
+                  />
+                </label>
+                <input
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  className="form-input flex-1"
+                  placeholder="…or paste an image URL"
+                />
+              </div>
             </Field>
 
             <Field label="Body — separate paragraphs with a blank line">
