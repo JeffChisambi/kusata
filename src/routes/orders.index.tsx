@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/broker-shell";
 import { useOrders, useRefreshOrders, type Order, type DisplayStatus, type OrderSide } from "@/hooks/useOrders";
+import { useTreasuryInvestments, type TreasuryInvestment } from "@/hooks/useTreasuryAdmin";
 
 export const Route = createFileRoute("/orders/")({
   head: () => ({
@@ -178,18 +179,59 @@ function exportOrders(orders: Order[]) {
   URL.revokeObjectURL(url);
 }
 
+function TreasuryOrderTable({ investments }: { investments: TreasuryInvestment[] }) {
+  const mwk = (n: number) => `MK ${n.toLocaleString("en-MW")}`;
+  const fmt = (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); };
+  if (investments.length === 0) {
+    return <div className="py-14 text-center text-sm text-muted-foreground">No treasury bill orders yet.</div>;
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border bg-muted/30">
+            <th className="pl-1 py-2.5 text-left font-medium">Investor</th>
+            <th className="py-2.5 text-left font-medium">Tenor</th>
+            <th className="py-2.5 text-left font-medium">Amount</th>
+            <th className="py-2.5 text-left font-medium">Maturity value</th>
+            <th className="py-2.5 text-left font-medium">Maturity</th>
+            <th className="py-2.5 text-left font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {investments.map((iv) => (
+            <tr key={iv.investmentId} className="border-b border-border hover:bg-muted/20">
+              <td className="pl-1 py-3">
+                <div className="font-medium text-[13px]">{iv.user?.name ?? "—"}</div>
+                <div className="text-[11px] text-muted-foreground">{iv.user?.phone ?? ""}</div>
+              </td>
+              <td className="py-3 text-muted-foreground">{iv.product?.duration ?? iv.product?.tenorDays ?? "—"}-Day T-bill</td>
+              <td className="py-3 font-medium">{mwk(Number(iv.amount))}</td>
+              <td className="py-3 text-pine">{mwk(Number(iv.maturityValue))}</td>
+              <td className="py-3 text-muted-foreground whitespace-nowrap">{fmt(iv.maturityDate)}</td>
+              <td className="py-3"><span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground capitalize">{iv.status.toLowerCase()}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function OrdersPage() {
-  const [sideFilter, setSideFilter] = useState<"ALL" | OrderSide>("ALL");
+  const [sideFilter, setSideFilter] = useState<"ALL" | OrderSide | "TREASURY">("ALL");
   const [notice, setNotice] = useState("");
   const refreshOrders = useRefreshOrders();
+  const isTreasury = sideFilter === "TREASURY";
 
   // Fetch from the real API — pass side filter as a query param
   const { data, isLoading, isError, error } = useOrders(
-    sideFilter === "ALL" ? {} : { side: sideFilter },
+    sideFilter === "ALL" || isTreasury ? {} : { side: sideFilter as OrderSide },
   );
+  const treasury = useTreasuryInvestments();
 
   const orders = data?.orders ?? [];
-  const total = data?.total ?? 0;
+  const total = isTreasury ? (treasury.data?.investments?.length ?? 0) : (data?.total ?? 0);
 
   const showNotice = (msg: string) => { setNotice(msg); window.setTimeout(() => setNotice(""), 2800); };
   const orderViewLabel = sideFilter === "ALL" ? "All orders" : `${sideFilter === "BUY" ? "Buy" : "Sell"} orders`;
@@ -209,12 +251,13 @@ function OrdersPage() {
           <select
             id="order-side-filter"
             value={sideFilter}
-            onChange={(event) => setSideFilter(event.target.value as "ALL" | OrderSide)}
+            onChange={(event) => setSideFilter(event.target.value as "ALL" | OrderSide | "TREASURY")}
             className="h-10 min-w-36 appearance-none rounded-[3px] border border-border bg-card pl-3 pr-8 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-pine/20"
           >
             <option value="ALL">All orders</option>
             <option value="BUY">Buy orders</option>
             <option value="SELL">Sell orders</option>
+            <option value="TREASURY">Treasury bill orders</option>
           </select>
           <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         </div>
@@ -243,7 +286,15 @@ function OrdersPage() {
               : `${orders.length} orders shown · click an order to open`
         }
       >
-        {isLoading ? (
+        {isTreasury ? (
+          treasury.isLoading ? (
+            <div className="flex items-center justify-center py-14 text-muted-foreground gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" /> Loading treasury orders…
+            </div>
+          ) : (
+            <TreasuryOrderTable investments={treasury.data?.investments ?? []} />
+          )
+        ) : isLoading ? (
           <div className="flex items-center justify-center py-14 text-muted-foreground gap-2">
             <Loader2 className="h-5 w-5 animate-spin" /> Loading orders from server…
           </div>
@@ -251,7 +302,7 @@ function OrdersPage() {
           <OrderTable orders={orders} />
         )}
         <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
-          <span>Showing <span className="font-medium text-foreground">{orders.length}</span> of {total} orders</span>
+          <span>Showing <span className="font-medium text-foreground">{isTreasury ? (treasury.data?.investments?.length ?? 0) : orders.length}</span> of {total} {isTreasury ? "treasury orders" : "orders"}</span>
           <span className="hidden sm:inline">Auto-refreshes every 15s</span>
         </div>
       </Card>

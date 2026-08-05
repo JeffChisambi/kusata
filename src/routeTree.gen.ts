@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
+import { Route as TreasuryRouteImport } from './routes/treasury'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as NotificationsRouteImport } from './routes/notifications'
@@ -25,6 +26,11 @@ import { Route as KycApplicationIdRouteImport } from './routes/kyc_.$application
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TreasuryRoute = TreasuryRouteImport.update({
+  id: '/treasury',
+  path: '/treasury',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/orders': typeof OrdersRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/treasury': typeof TreasuryRoute
   '/users': typeof UsersRoute
   '/kyc/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/news': typeof NewsRoute
   '/notifications': typeof NotificationsRoute
   '/settings': typeof SettingsRoute
+  '/treasury': typeof TreasuryRoute
   '/users': typeof UsersRoute
   '/kyc/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/orders': typeof OrdersRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/treasury': typeof TreasuryRoute
   '/users': typeof UsersRoute
   '/kyc_/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/orders'
     | '/settings'
+    | '/treasury'
     | '/users'
     | '/kyc/$applicationId'
     | '/orders/$orderId'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/news'
     | '/notifications'
     | '/settings'
+    | '/treasury'
     | '/users'
     | '/kyc/$applicationId'
     | '/orders/$orderId'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/orders'
     | '/settings'
+    | '/treasury'
     | '/users'
     | '/kyc_/$applicationId'
     | '/orders/$orderId'
@@ -178,6 +190,7 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   OrdersRoute: typeof OrdersRouteWithChildren
   SettingsRoute: typeof SettingsRoute
+  TreasuryRoute: typeof TreasuryRoute
   UsersRoute: typeof UsersRoute
   KycApplicationIdRoute: typeof KycApplicationIdRoute
 }
@@ -189,6 +202,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/treasury': {
+      id: '/treasury'
+      path: '/treasury'
+      fullPath: '/treasury'
+      preLoaderRoute: typeof TreasuryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -293,6 +313,7 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   OrdersRoute: OrdersRouteWithChildren,
   SettingsRoute: SettingsRoute,
+  TreasuryRoute: TreasuryRoute,
   UsersRoute: UsersRoute,
   KycApplicationIdRoute: KycApplicationIdRoute,
 }

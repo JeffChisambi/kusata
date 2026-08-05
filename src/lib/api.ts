@@ -134,11 +134,16 @@ class ApiClient {
 
       if (!res.ok) return false;
 
-      const data = await res.json();
-      if (data.accessToken) {
-        localStorage.setItem('pine_admin_access_token', data.accessToken);
-        if (data.refreshToken) {
-          localStorage.setItem('pine_admin_refresh_token', data.refreshToken);
+      // Unwrap the response envelope ({ success, data, meta }) — the refresh
+      // tokens live under `data`. Reading the raw envelope here (data.accessToken
+      // on the wrapper) always returned undefined, so refresh silently failed
+      // and the dashboard logged out at the first 401.
+      const json = await res.json();
+      const payload = json?.data !== undefined ? json.data : json;
+      if (payload?.accessToken) {
+        localStorage.setItem('pine_admin_access_token', payload.accessToken);
+        if (payload.refreshToken) {
+          localStorage.setItem('pine_admin_refresh_token', payload.refreshToken);
         }
         return true;
       }
