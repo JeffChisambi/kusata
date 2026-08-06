@@ -20,6 +20,7 @@ import { Route as KycRouteImport } from './routes/kyc'
 import { Route as ComingSoonRouteImport } from './routes/coming-soon'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
+import { Route as UsersUserIdRouteImport } from './routes/users_.$userId'
 import { Route as OrdersOrderIdRouteImport } from './routes/orders.$orderId'
 import { Route as KycApplicationIdRouteImport } from './routes/kyc_.$applicationId'
 
@@ -78,6 +79,11 @@ const OrdersIndexRoute = OrdersIndexRouteImport.update({
   path: '/',
   getParentRoute: () => OrdersRoute,
 } as any)
+const UsersUserIdRoute = UsersUserIdRouteImport.update({
+  id: '/users_/$userId',
+  path: '/users/$userId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrdersOrderIdRoute = OrdersOrderIdRouteImport.update({
   id: '/$orderId',
   path: '/$orderId',
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/users': typeof UsersRoute
   '/kyc/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
+  '/users/$userId': typeof UsersUserIdRoute
   '/orders/': typeof OrdersIndexRoute
 }
 export interface FileRoutesByTo {
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/users': typeof UsersRoute
   '/kyc/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
+  '/users/$userId': typeof UsersUserIdRoute
   '/orders': typeof OrdersIndexRoute
 }
 export interface FileRoutesById {
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/users': typeof UsersRoute
   '/kyc_/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
+  '/users_/$userId': typeof UsersUserIdRoute
   '/orders/': typeof OrdersIndexRoute
 }
 export interface FileRouteTypes {
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/kyc/$applicationId'
     | '/orders/$orderId'
+    | '/users/$userId'
     | '/orders/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/kyc/$applicationId'
     | '/orders/$orderId'
+    | '/users/$userId'
     | '/orders'
   id:
     | '__root__'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/kyc_/$applicationId'
     | '/orders/$orderId'
+    | '/users_/$userId'
     | '/orders/'
   fileRoutesById: FileRoutesById
 }
@@ -193,6 +205,7 @@ export interface RootRouteChildren {
   TreasuryRoute: typeof TreasuryRoute
   UsersRoute: typeof UsersRoute
   KycApplicationIdRoute: typeof KycApplicationIdRoute
+  UsersUserIdRoute: typeof UsersUserIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -274,6 +287,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrdersIndexRouteImport
       parentRoute: typeof OrdersRoute
     }
+    '/users_/$userId': {
+      id: '/users_/$userId'
+      path: '/users/$userId'
+      fullPath: '/users/$userId'
+      preLoaderRoute: typeof UsersUserIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/orders/$orderId': {
       id: '/orders/$orderId'
       path: '/$orderId'
@@ -316,6 +336,7 @@ const rootRouteChildren: RootRouteChildren = {
   TreasuryRoute: TreasuryRoute,
   UsersRoute: UsersRoute,
   KycApplicationIdRoute: KycApplicationIdRoute,
+  UsersUserIdRoute: UsersUserIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

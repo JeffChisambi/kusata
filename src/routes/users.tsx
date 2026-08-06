@@ -110,11 +110,11 @@ const MWK = (n: number) =>
 
 function UsersPage() {
   const search = useSearch({ from: "/users" });
+  const navigate = useNavigate();
   const initialTab = tabs.find((t) => t.key === search.tab)?.key ?? "all";
   const [activeTab, setActiveTab] = useState(initialTab);
   const [q] = useState("");
   const [riskFilter, setRiskFilter] = useState<"all" | Risk>("all");
-  const [drawerUser, setDrawerUser] = useState<UserRow | null>(null);
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
   // Fetch real users from API
@@ -157,7 +157,7 @@ function UsersPage() {
               onCheck={toggle}
               onSelectAll={() => setChecked(new Set(filtered.map((r) => r.id)))}
               onClear={() => setChecked(new Set())}
-              onOpenDrawer={setDrawerUser}
+              onOpenDrawer={(u) => navigate({ to: "/users/$userId", params: { userId: u.id } })}
               tabs={tabs}
               activeTab={activeTab}
               onTabChange={setActiveTab}
@@ -166,16 +166,6 @@ function UsersPage() {
             <TableFooter total={filtered.length} />
           </Card>
         </div>
-
-        {/* Inline detail panel */}
-        {drawerUser && (
-          <div
-            className="w-96 shrink-0 rounded-[3px] bg-card border border-border overflow-hidden flex flex-col sticky top-4"
-            style={{ maxHeight: "calc(100vh - 160px)" }}
-          >
-            <UserDetails user={drawerUser} onClose={() => setDrawerUser(null)} />
-          </div>
-        )}
       </div>
     </>
   );
