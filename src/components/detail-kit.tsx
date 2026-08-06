@@ -106,12 +106,12 @@ export function RingStatCard({
         <Ring value={value} max={max} color={color} centerMain={centerMain} centerSub={centerSub} />
       </div>
       {legend && legend.length > 0 && (
-        <div className="flex items-center justify-center gap-5 pt-1">
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-1">
           {legend.map((l, i) => (
-            <div key={i} className="flex items-center gap-1.5">
-              {l.dot !== false && <span className="w-2 h-2 rounded-full" style={{ background: color }} />}
-              <span className="text-[11px] text-muted-foreground">{l.label}</span>
-              <span className="text-[11px] font-semibold">{l.value}</span>
+            <div key={i} className="flex items-center gap-1.5 min-w-0">
+              {l.dot !== false && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />}
+              <span className="text-[11px] text-muted-foreground shrink-0">{l.label}</span>
+              <span className="text-[11px] font-semibold truncate">{l.value}</span>
             </div>
           ))}
         </div>

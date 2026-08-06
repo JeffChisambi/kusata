@@ -147,6 +147,14 @@ function UserDetailPage() {
         </button>
       </div>
 
+      {/* ── Top KPI row (full width) ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+        <Kpi icon={<Wallet className="w-4 h-4" />} label="Portfolio value" value={`MWK ${MWK(portfolioValue)}`} tone="pine" />
+        <Kpi icon={<Landmark className="w-4 h-4" />} label="Available cash" value={`MWK ${MWK(cash)}`} />
+        <Kpi icon={<Activity className="w-4 h-4" />} label="Holdings" value={holdingsCount} sub={holdingsCount === 1 ? "position" : "positions"} />
+        <Kpi icon={<ArrowUpRight className="w-4 h-4" />} label="Total trades" value={trades} />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)_320px] gap-5 items-start">
         {/* ── LEFT: profile + info + documents ── */}
         <div className="flex flex-col gap-5">
@@ -228,15 +236,8 @@ function UserDetailPage() {
           </Panel>
         </div>
 
-        {/* ── CENTRE: KPIs, rings, holdings, activity ── */}
+        {/* ── CENTRE: rings, holdings, activity ── */}
         <div className="flex flex-col gap-5 min-w-0">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Kpi icon={<Wallet className="w-4 h-4" />} label="Portfolio value" value={`MWK ${MWK(portfolioValue)}`} tone="pine" />
-            <Kpi icon={<Landmark className="w-4 h-4" />} label="Available cash" value={`MWK ${MWK(cash)}`} />
-            <Kpi icon={<Activity className="w-4 h-4" />} label="Holdings" value={holdingsCount} sub={`${holdingsCount === 1 ? "position" : "positions"}`} />
-            <Kpi icon={<ArrowUpRight className="w-4 h-4" />} label="Total trades" value={trades} />
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <RingStatCard
               title="KYC verification" subtitle="Onboarding steps completed"
