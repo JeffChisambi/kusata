@@ -6,6 +6,5 @@ const config = getConfig({
   generatedRouteTree: path.join(root, 'src/routeTree.gen.ts'),
   quoteStyle: 'single',
 }, root);
-const gen = new Generator({ config, root });
-await gen.run();
+await new Generator({ config, root }).run();
 console.log('ROUTE TREE GENERATED');

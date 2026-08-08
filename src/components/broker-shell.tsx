@@ -13,7 +13,7 @@ import {
   Users, ShieldCheck, FileCheck2,
   ChevronDown, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight,
   CircleUser, Clock, Sun, Moon, Bell, Check, LogOut,
-  ClipboardList, Settings2, Search, Newspaper, Landmark, LifeBuoy,
+  ClipboardList, Settings2, Search, Newspaper, Landmark, LifeBuoy, Palette,
 } from "lucide-react";
 
 function NineDotsIcon({ className }: { className?: string }) {
@@ -60,6 +60,7 @@ export const brokerNav: NavGroup[] = [
 
   // ── CONTENT ──
   { section: "CONTENT", icon: Newspaper, label: "News", href: "/news" },
+  { section: "CONTENT", icon: Palette, label: "Mobile Themes", href: "/mobile-themes" },
 
   // ── ACCOUNT ──
   { section: "ACCOUNT", icon: Settings2, label: "Settings", href: "/settings" },
@@ -120,6 +121,7 @@ const STATIC_TITLES: Record<string, string> = {
   "/settings": "Settings",
   "/notifications": "Notifications",
   "/support": "Support",
+  "/mobile-themes": "Mobile Themes",
 };
 
 function defaultTitleFor(pathname: string): string {
