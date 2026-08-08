@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as TreasuryRouteImport } from './routes/treasury'
+import { Route as SupportRouteImport } from './routes/support'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as NotificationsRouteImport } from './routes/notifications'
@@ -21,6 +22,7 @@ import { Route as ComingSoonRouteImport } from './routes/coming-soon'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
 import { Route as UsersUserIdRouteImport } from './routes/users_.$userId'
+import { Route as SupportTicketIdRouteImport } from './routes/support_.$ticketId'
 import { Route as OrdersOrderIdRouteImport } from './routes/orders.$orderId'
 import { Route as KycApplicationIdRouteImport } from './routes/kyc_.$applicationId'
 
@@ -32,6 +34,11 @@ const UsersRoute = UsersRouteImport.update({
 const TreasuryRoute = TreasuryRouteImport.update({
   id: '/treasury',
   path: '/treasury',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -84,6 +91,11 @@ const UsersUserIdRoute = UsersUserIdRouteImport.update({
   path: '/users/$userId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SupportTicketIdRoute = SupportTicketIdRouteImport.update({
+  id: '/support_/$ticketId',
+  path: '/support/$ticketId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrdersOrderIdRoute = OrdersOrderIdRouteImport.update({
   id: '/$orderId',
   path: '/$orderId',
@@ -104,10 +116,12 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/orders': typeof OrdersRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
   '/treasury': typeof TreasuryRoute
   '/users': typeof UsersRoute
   '/kyc/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
+  '/support/$ticketId': typeof SupportTicketIdRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/orders/': typeof OrdersIndexRoute
 }
@@ -119,10 +133,12 @@ export interface FileRoutesByTo {
   '/news': typeof NewsRoute
   '/notifications': typeof NotificationsRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
   '/treasury': typeof TreasuryRoute
   '/users': typeof UsersRoute
   '/kyc/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
+  '/support/$ticketId': typeof SupportTicketIdRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/orders': typeof OrdersIndexRoute
 }
@@ -136,10 +152,12 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/orders': typeof OrdersRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
   '/treasury': typeof TreasuryRoute
   '/users': typeof UsersRoute
   '/kyc_/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
+  '/support_/$ticketId': typeof SupportTicketIdRoute
   '/users_/$userId': typeof UsersUserIdRoute
   '/orders/': typeof OrdersIndexRoute
 }
@@ -154,10 +172,12 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/orders'
     | '/settings'
+    | '/support'
     | '/treasury'
     | '/users'
     | '/kyc/$applicationId'
     | '/orders/$orderId'
+    | '/support/$ticketId'
     | '/users/$userId'
     | '/orders/'
   fileRoutesByTo: FileRoutesByTo
@@ -169,10 +189,12 @@ export interface FileRouteTypes {
     | '/news'
     | '/notifications'
     | '/settings'
+    | '/support'
     | '/treasury'
     | '/users'
     | '/kyc/$applicationId'
     | '/orders/$orderId'
+    | '/support/$ticketId'
     | '/users/$userId'
     | '/orders'
   id:
@@ -185,10 +207,12 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/orders'
     | '/settings'
+    | '/support'
     | '/treasury'
     | '/users'
     | '/kyc_/$applicationId'
     | '/orders/$orderId'
+    | '/support_/$ticketId'
     | '/users_/$userId'
     | '/orders/'
   fileRoutesById: FileRoutesById
@@ -202,9 +226,11 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   OrdersRoute: typeof OrdersRouteWithChildren
   SettingsRoute: typeof SettingsRoute
+  SupportRoute: typeof SupportRoute
   TreasuryRoute: typeof TreasuryRoute
   UsersRoute: typeof UsersRoute
   KycApplicationIdRoute: typeof KycApplicationIdRoute
+  SupportTicketIdRoute: typeof SupportTicketIdRoute
   UsersUserIdRoute: typeof UsersUserIdRoute
 }
 
@@ -222,6 +248,13 @@ declare module '@tanstack/react-router' {
       path: '/treasury'
       fullPath: '/treasury'
       preLoaderRoute: typeof TreasuryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -294,6 +327,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsersUserIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/support_/$ticketId': {
+      id: '/support_/$ticketId'
+      path: '/support/$ticketId'
+      fullPath: '/support/$ticketId'
+      preLoaderRoute: typeof SupportTicketIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/orders/$orderId': {
       id: '/orders/$orderId'
       path: '/$orderId'
@@ -333,21 +373,13 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   OrdersRoute: OrdersRouteWithChildren,
   SettingsRoute: SettingsRoute,
+  SupportRoute: SupportRoute,
   TreasuryRoute: TreasuryRoute,
   UsersRoute: UsersRoute,
   KycApplicationIdRoute: KycApplicationIdRoute,
+  SupportTicketIdRoute: SupportTicketIdRoute,
   UsersUserIdRoute: UsersUserIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

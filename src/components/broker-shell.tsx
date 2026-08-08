@@ -7,12 +7,13 @@ import { Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { useCurrentUser, logout } from "@/lib/auth";
 import { useKycQueue } from "@/hooks/useKyc";
 import { useUnreadNotificationCount } from "@/hooks/useNotifications";
+import { useUnreadSupportCount } from "@/hooks/useSupport";
 import { useNotificationDelivery } from "@/hooks/useNotificationDelivery";
 import {
   Users, ShieldCheck, FileCheck2,
   ChevronDown, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight,
   CircleUser, Clock, Sun, Moon, Bell, Check, LogOut,
-  ClipboardList, Settings2, Search, Newspaper, Landmark,
+  ClipboardList, Settings2, Search, Newspaper, Landmark, LifeBuoy,
 } from "lucide-react";
 
 function NineDotsIcon({ className }: { className?: string }) {
@@ -50,6 +51,7 @@ export const brokerNav: NavGroup[] = [
   // ── CLIENTS ──
   { section: "CLIENTS", icon: Users, label: "Users", href: "/users" },
   { section: "CLIENTS", icon: FileCheck2, label: "KYC", href: "/kyc" },
+  { section: "CLIENTS", icon: LifeBuoy, label: "Support", href: "/support" },
 
   // ── TRADING ──
   { section: "TRADING", icon: ClipboardList, label: "Orders", href: "/orders" },
@@ -117,6 +119,7 @@ const STATIC_TITLES: Record<string, string> = {
   "/orders": "Orders",
   "/settings": "Settings",
   "/notifications": "Notifications",
+  "/support": "Support",
 };
 
 function defaultTitleFor(pathname: string): string {
@@ -216,10 +219,16 @@ function BrokerSidebar({
   const { data: kycData } = useKycQueue({ status: 'PENDING', limit: 1 });
   const pendingKycCount = kycData?.count ?? 0;
 
+  // Live count of support tickets awaiting a staff reply.
+  const awaitingSupportCount = useUnreadSupportCount();
+
   // Merge live badge counts into the static nav definition.
   const navWithBadges = brokerNav.map((item) => {
     if (item.label === 'KYC') {
       return { ...item, badge: pendingKycCount > 0 ? pendingKycCount : undefined };
+    }
+    if (item.label === 'Support') {
+      return { ...item, badge: awaitingSupportCount > 0 ? awaitingSupportCount : undefined };
     }
     return item;
   });

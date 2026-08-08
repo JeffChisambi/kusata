@@ -20,7 +20,7 @@ import { DashboardLayout, DashboardTitleProvider } from "../components/broker-sh
 
 // Real dashboard sections get the persistent shell (sidebar + topbar). Login,
 // coming-soon and any not-found path render bare/full-screen.
-const SHELL_PREFIXES = ["/users", "/kyc", "/orders", "/settings", "/notifications", "/news", "/treasury"];
+const SHELL_PREFIXES = ["/users", "/kyc", "/orders", "/settings", "/notifications", "/news", "/treasury", "/support"];
 function isShellRoute(pathname: string): boolean {
   return (
     pathname === "/" ||

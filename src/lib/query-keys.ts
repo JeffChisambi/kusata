@@ -51,6 +51,14 @@ export const queryKeys = {
     stats: () => [...queryKeys.notifications.all, 'stats'] as const,
   },
 
+  // Support tickets
+  support: {
+    all: ['support'] as const,
+    list: (filters?: object) => [...queryKeys.support.all, 'list', filters] as const,
+    detail: (id: string) => [...queryKeys.support.all, 'detail', id] as const,
+    stats: () => [...queryKeys.support.all, 'stats'] as const,
+  },
+
   // Audit
   audit: {
     all: ['audit'] as const,
