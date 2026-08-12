@@ -59,6 +59,16 @@ export const queryKeys = {
     stats: () => [...queryKeys.support.all, 'stats'] as const,
   },
 
+  // Brokers (super-admin platform management)
+  brokers: {
+    all: ['brokers'] as const,
+    list: () => [...queryKeys.brokers.all, 'list'] as const,
+    detail: (id: string) => [...queryKeys.brokers.all, 'detail', id] as const,
+    users: (id: string, filters?: Record<string, unknown>) => [...queryKeys.brokers.all, 'users', id, filters] as const,
+    paymentConfig: (id: string) => [...queryKeys.brokers.all, 'payment-config', id] as const,
+    apiConfig: (id: string) => [...queryKeys.brokers.all, 'api-config', id] as const,
+  },
+
   // Audit
   audit: {
     all: ['audit'] as const,

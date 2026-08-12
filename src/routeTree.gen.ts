@@ -20,12 +20,16 @@ import { Route as MobileThemesRouteImport } from './routes/mobile-themes'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as KycRouteImport } from './routes/kyc'
 import { Route as ComingSoonRouteImport } from './routes/coming-soon'
+import { Route as BrokersRouteImport } from './routes/brokers'
+import { Route as AuditRouteImport } from './routes/audit'
+import { Route as ActivateRouteImport } from './routes/activate'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
 import { Route as UsersUserIdRouteImport } from './routes/users_.$userId'
 import { Route as SupportTicketIdRouteImport } from './routes/support_.$ticketId'
 import { Route as OrdersOrderIdRouteImport } from './routes/orders.$orderId'
 import { Route as KycApplicationIdRouteImport } from './routes/kyc_.$applicationId'
+import { Route as BrokersBrokerIdRouteImport } from './routes/brokers_.$brokerId'
 
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
@@ -82,6 +86,21 @@ const ComingSoonRoute = ComingSoonRouteImport.update({
   path: '/coming-soon',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BrokersRoute = BrokersRouteImport.update({
+  id: '/brokers',
+  path: '/brokers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuditRoute = AuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivateRoute = ActivateRouteImport.update({
+  id: '/activate',
+  path: '/activate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -112,9 +131,17 @@ const KycApplicationIdRoute = KycApplicationIdRouteImport.update({
   path: '/kyc/$applicationId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BrokersBrokerIdRoute = BrokersBrokerIdRouteImport.update({
+  id: '/brokers_/$brokerId',
+  path: '/brokers/$brokerId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/activate': typeof ActivateRoute
+  '/audit': typeof AuditRoute
+  '/brokers': typeof BrokersRoute
   '/coming-soon': typeof ComingSoonRoute
   '/kyc': typeof KycRoute
   '/login': typeof LoginRoute
@@ -126,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/support': typeof SupportRoute
   '/treasury': typeof TreasuryRoute
   '/users': typeof UsersRoute
+  '/brokers/$brokerId': typeof BrokersBrokerIdRoute
   '/kyc/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
@@ -134,6 +162,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/activate': typeof ActivateRoute
+  '/audit': typeof AuditRoute
+  '/brokers': typeof BrokersRoute
   '/coming-soon': typeof ComingSoonRoute
   '/kyc': typeof KycRoute
   '/login': typeof LoginRoute
@@ -144,6 +175,7 @@ export interface FileRoutesByTo {
   '/support': typeof SupportRoute
   '/treasury': typeof TreasuryRoute
   '/users': typeof UsersRoute
+  '/brokers/$brokerId': typeof BrokersBrokerIdRoute
   '/kyc/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
@@ -153,6 +185,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/activate': typeof ActivateRoute
+  '/audit': typeof AuditRoute
+  '/brokers': typeof BrokersRoute
   '/coming-soon': typeof ComingSoonRoute
   '/kyc': typeof KycRoute
   '/login': typeof LoginRoute
@@ -164,6 +199,7 @@ export interface FileRoutesById {
   '/support': typeof SupportRoute
   '/treasury': typeof TreasuryRoute
   '/users': typeof UsersRoute
+  '/brokers_/$brokerId': typeof BrokersBrokerIdRoute
   '/kyc_/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/support_/$ticketId': typeof SupportTicketIdRoute
@@ -174,6 +210,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/activate'
+    | '/audit'
+    | '/brokers'
     | '/coming-soon'
     | '/kyc'
     | '/login'
@@ -185,6 +224,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/treasury'
     | '/users'
+    | '/brokers/$brokerId'
     | '/kyc/$applicationId'
     | '/orders/$orderId'
     | '/support/$ticketId'
@@ -193,6 +233,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/activate'
+    | '/audit'
+    | '/brokers'
     | '/coming-soon'
     | '/kyc'
     | '/login'
@@ -203,6 +246,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/treasury'
     | '/users'
+    | '/brokers/$brokerId'
     | '/kyc/$applicationId'
     | '/orders/$orderId'
     | '/support/$ticketId'
@@ -211,6 +255,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/activate'
+    | '/audit'
+    | '/brokers'
     | '/coming-soon'
     | '/kyc'
     | '/login'
@@ -222,6 +269,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/treasury'
     | '/users'
+    | '/brokers_/$brokerId'
     | '/kyc_/$applicationId'
     | '/orders/$orderId'
     | '/support_/$ticketId'
@@ -231,6 +279,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ActivateRoute: typeof ActivateRoute
+  AuditRoute: typeof AuditRoute
+  BrokersRoute: typeof BrokersRoute
   ComingSoonRoute: typeof ComingSoonRoute
   KycRoute: typeof KycRoute
   LoginRoute: typeof LoginRoute
@@ -242,6 +293,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   TreasuryRoute: typeof TreasuryRoute
   UsersRoute: typeof UsersRoute
+  BrokersBrokerIdRoute: typeof BrokersBrokerIdRoute
   KycApplicationIdRoute: typeof KycApplicationIdRoute
   SupportTicketIdRoute: typeof SupportTicketIdRoute
   UsersUserIdRoute: typeof UsersUserIdRoute
@@ -326,6 +378,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComingSoonRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/brokers': {
+      id: '/brokers'
+      path: '/brokers'
+      fullPath: '/brokers'
+      preLoaderRoute: typeof BrokersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audit': {
+      id: '/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activate': {
+      id: '/activate'
+      path: '/activate'
+      fullPath: '/activate'
+      preLoaderRoute: typeof ActivateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -368,6 +441,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KycApplicationIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/brokers_/$brokerId': {
+      id: '/brokers_/$brokerId'
+      path: '/brokers/$brokerId'
+      fullPath: '/brokers/$brokerId'
+      preLoaderRoute: typeof BrokersBrokerIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -386,6 +466,9 @@ const OrdersRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ActivateRoute: ActivateRoute,
+  AuditRoute: AuditRoute,
+  BrokersRoute: BrokersRoute,
   ComingSoonRoute: ComingSoonRoute,
   KycRoute: KycRoute,
   LoginRoute: LoginRoute,
@@ -397,6 +480,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   TreasuryRoute: TreasuryRoute,
   UsersRoute: UsersRoute,
+  BrokersBrokerIdRoute: BrokersBrokerIdRoute,
   KycApplicationIdRoute: KycApplicationIdRoute,
   SupportTicketIdRoute: SupportTicketIdRoute,
   UsersUserIdRoute: UsersUserIdRoute,

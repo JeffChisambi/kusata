@@ -1,9 +1,15 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { Eye, EyeOff, ShieldCheck, KeyRound, Smartphone, Copy, CheckCircle2 } from "lucide-react";
+import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import type { LoginResponse, MfaSetupResponse } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/auth";
+
+const loginSearchSchema = z.object({
+  /** Set by /activate after a successful account activation. */
+  activated: z.string().optional(),
+});
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -12,6 +18,7 @@ export const Route = createFileRoute("/login")({
       { name: "description", content: "Sign in to the Pine broker administration portal." },
     ],
   }),
+  validateSearch: loginSearchSchema,
   component: LoginPage,
 });
 
@@ -19,6 +26,7 @@ type Step = 'credentials' | 'mfa-setup' | 'mfa-verify' | 'recovery-codes';
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { activated } = useSearch({ from: "/login" });
   const { login, verifyMfa, setupMfa, confirmMfaSetup, verifyRecoveryCode } = useAuth();
 
   const [step, setStep] = useState<Step>('credentials');
@@ -148,6 +156,13 @@ function LoginPage() {
               <h2 className="text-[22px] font-bold text-white">Welcome back</h2>
               <p className="text-sm text-white/80 mt-1">Sign in to your admin account</p>
 
+              {activated === "1" && (
+                <p className="mt-4 flex items-start gap-2 text-[13px] text-white bg-pine/25 border border-white/25 rounded-[2px] px-3.5 py-2.5">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-px" />
+                  Account activated — sign in with your email and new password.
+                </p>
+              )}
+
               <form onSubmit={handleLogin} className="mt-8 space-y-4">
                 <div>
                   <label className="block text-[13px] font-medium text-white mb-1.5">Email address</label>
@@ -205,6 +220,13 @@ function LoginPage() {
                   )}
                 </button>
               </form>
+
+              <p className="mt-5 text-center text-[13px] text-white/80">
+                Have an invitation?{" "}
+                <Link to="/activate" className="font-semibold text-white hover:underline">
+                  Activate your account
+                </Link>
+              </p>
 
             </>
           )}

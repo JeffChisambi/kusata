@@ -20,7 +20,7 @@ import { DashboardLayout, DashboardTitleProvider } from "../components/broker-sh
 
 // Real dashboard sections get the persistent shell (sidebar + topbar). Login,
 // coming-soon and any not-found path render bare/full-screen.
-const SHELL_PREFIXES = ["/users", "/kyc", "/orders", "/settings", "/notifications", "/news", "/treasury", "/support", "/mobile-themes"];
+const SHELL_PREFIXES = ["/users", "/kyc", "/orders", "/settings", "/notifications", "/news", "/treasury", "/support", "/mobile-themes", "/brokers", "/audit"];
 function isShellRoute(pathname: string): boolean {
   return (
     pathname === "/" ||
@@ -99,8 +99,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
     const authed = isAuthenticated();
     const onLogin = location.pathname === "/login";
+    // /activate is public: invited broker admins land here with their one-time
+    // invitation token before they have any credentials.
+    const isPublic = onLogin || location.pathname === "/activate";
 
-    if (!authed && !onLogin) {
+    if (!authed && !isPublic) {
       throw redirect({ to: "/login" });
     }
 
@@ -127,8 +130,8 @@ const AUTH_GUARD_SCRIPT = `(function(){
   try{
     var token=localStorage.getItem('pine_admin_access_token');
     var path=location.pathname;
-    var onLogin=path==='/login';
-    if(!token&&!onLogin){location.replace('/login');return;}
+    var isPublic=path==='/login'||path==='/activate';
+    if(!token&&!isPublic){location.replace('/login');return;}
   }catch(e){}
   document.documentElement.classList.add('pine-auth-ready');
 })();`;

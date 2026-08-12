@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Palette, Loader2, RotateCcw, Check, Smartphone } from "lucide-react";
 import { Card } from "@/components/broker-shell";
+import { requireSuperAdmin } from "@/lib/auth";
 import {
   useMobileTheme, useUpdateMobileTheme, useResetMobileTheme,
   BRAND_KEYS, type BrandKey, type ThemeColors,
@@ -9,6 +10,7 @@ import {
 
 export const Route = createFileRoute("/mobile-themes")({
   head: () => ({ meta: [{ title: "Mobile Themes — Pine Broker Admin" }] }),
+  beforeLoad: () => requireSuperAdmin(),
   component: MobileThemesPage,
 });
 

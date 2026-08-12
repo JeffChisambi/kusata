@@ -11,6 +11,7 @@
  *   3. If 'verify': verifyMfa(mfaToken, code) → { accessToken, refreshToken }
  */
 import { useEffect, useState } from 'react';
+import { redirect } from '@tanstack/react-router';
 import { api } from './api';
 
 const KEYS = {
@@ -142,6 +143,29 @@ export function getCurrentUser(): AdminUser | null {
     return JSON.parse(raw);
   } catch {
     return null;
+  }
+}
+
+/**
+ * Role helper — SUPER_ADMIN is the platform operator; any other staff role is
+ * treated as broker-operations level (scoped to a single broker).
+ */
+export function isSuperAdmin(user: AdminUser | null | undefined): boolean {
+  return user?.role === 'SUPER_ADMIN';
+}
+
+/**
+ * Per-route guard for super-admin-only sections (follows the __root.tsx auth
+ * pattern: no-op on the server, reads the cached user on the client). Broker
+ * staff navigating to a platform page are bounced back to the overview. The
+ * backend enforces the same restriction server-side — this only prevents a
+ * broker admin from landing on a screen that would 403.
+ */
+export function requireSuperAdmin(): void {
+  if (typeof window === 'undefined') return;
+  const user = getCurrentUser();
+  if (user && !isSuperAdmin(user)) {
+    throw redirect({ to: '/' });
   }
 }
 

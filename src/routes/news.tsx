@@ -5,6 +5,7 @@ import {
   AlertTriangle, ImageIcon, Check,
 } from "lucide-react";
 import { Card } from "@/components/broker-shell";
+import { requireSuperAdmin } from "@/lib/auth";
 import {
   useNewsList, useCreateNews, useUpdateNews, useDeleteNews, uploadNewsImage,
   type NewsArticle, type NewsInput,
@@ -12,6 +13,7 @@ import {
 
 export const Route = createFileRoute("/news")({
   head: () => ({ meta: [{ title: "News — Pine Broker Admin" }] }),
+  beforeLoad: () => requireSuperAdmin(),
   component: NewsAdminPage,
 });
 

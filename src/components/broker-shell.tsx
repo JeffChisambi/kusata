@@ -4,7 +4,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
-import { useCurrentUser, logout } from "@/lib/auth";
+import { useCurrentUser, logout, isSuperAdmin } from "@/lib/auth";
 import { useKycQueue } from "@/hooks/useKyc";
 import { useUnreadNotificationCount } from "@/hooks/useNotifications";
 import { useUnreadSupportCount } from "@/hooks/useSupport";
@@ -14,6 +14,7 @@ import {
   ChevronDown, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight,
   CircleUser, Clock, Sun, Moon, Bell, Check, LogOut,
   ClipboardList, Settings2, Search, Newspaper, Landmark, LifeBuoy, Palette,
+  Building2, ScrollText,
 } from "lucide-react";
 
 function NineDotsIcon({ className }: { className?: string }) {
@@ -42,6 +43,8 @@ export type NavGroup = {
   section: string;
   badge?: string | number;
   children?: NavChild[];
+  /** Only visible to SUPER_ADMIN staff — broker admins never see these. */
+  superAdminOnly?: boolean;
 };
 
 export const brokerNav: NavGroup[] = [
@@ -55,18 +58,21 @@ export const brokerNav: NavGroup[] = [
 
   // ── TRADING ──
   { section: "TRADING", icon: ClipboardList, label: "Orders", href: "/orders" },
-  { section: "TRADING", icon: Landmark, label: "Treasury", href: "/treasury" },
-  { section: "TRADING", icon: ShieldCheck, label: "Auth & Security", href: "/coming-soon" },
+  { section: "TRADING", icon: ShieldCheck, label: "Auth & Security", href: "/coming-soon", superAdminOnly: true },
 
-  // ── CONTENT ──
-  { section: "CONTENT", icon: Newspaper, label: "News", href: "/news" },
-  { section: "CONTENT", icon: Palette, label: "Mobile Themes", href: "/mobile-themes" },
+  // ── PLATFORM (super admin only) ──
+  { section: "PLATFORM", icon: Building2, label: "Brokers", href: "/brokers", superAdminOnly: true },
+  { section: "PLATFORM", icon: ScrollText, label: "Audit Log", href: "/audit", superAdminOnly: true },
+  { section: "PLATFORM", icon: Newspaper, label: "News", href: "/news", superAdminOnly: true },
+  { section: "PLATFORM", icon: Palette, label: "Mobile Themes", href: "/mobile-themes", superAdminOnly: true },
+  { section: "PLATFORM", icon: Landmark, label: "Treasury", href: "/treasury", superAdminOnly: true },
 
   // ── ACCOUNT ──
+  { section: "ACCOUNT", icon: Bell, label: "Notifications", href: "/notifications" },
   { section: "ACCOUNT", icon: Settings2, label: "Settings", href: "/settings" },
 ];
 
-export const brokerSectionOrder = ["OVERVIEW", "CLIENTS", "TRADING", "CONTENT", "ACCOUNT"];
+export const brokerSectionOrder = ["OVERVIEW", "CLIENTS", "TRADING", "PLATFORM", "ACCOUNT"];
 
 const TIME_RANGES = [
   { label: "Last 1 hour",   value: "1h",  short: "Last 1h"  },
@@ -122,11 +128,16 @@ const STATIC_TITLES: Record<string, string> = {
   "/notifications": "Notifications",
   "/support": "Support",
   "/mobile-themes": "Mobile Themes",
+  "/news": "News",
+  "/treasury": "Treasury",
+  "/brokers": "Brokers",
+  "/audit": "Audit Log",
 };
 
 function defaultTitleFor(pathname: string): string {
   if (STATIC_TITLES[pathname]) return STATIC_TITLES[pathname];
   if (pathname.startsWith("/orders/")) return "Orders";
+  if (pathname.startsWith("/brokers/")) return "Brokers";
   return "";
 }
 
@@ -224,8 +235,14 @@ function BrokerSidebar({
   // Live count of support tickets awaiting a staff reply.
   const awaitingSupportCount = useUnreadSupportCount();
 
+  // Role-aware nav: broker admins only see their operational scope; the
+  // PLATFORM section (and other superAdminOnly items) is SUPER_ADMIN only.
+  const user = useCurrentUser();
+  const superAdmin = isSuperAdmin(user);
+  const visibleNav = brokerNav.filter((item) => !item.superAdminOnly || superAdmin);
+
   // Merge live badge counts into the static nav definition.
-  const navWithBadges = brokerNav.map((item) => {
+  const navWithBadges = visibleNav.map((item) => {
     if (item.label === 'KYC') {
       return { ...item, badge: pendingKycCount > 0 ? pendingKycCount : undefined };
     }

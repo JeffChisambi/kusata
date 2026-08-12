@@ -4,6 +4,7 @@ import {
   Landmark, Plus, Pencil, Trash2, Eye, EyeOff, Loader2, X, Check, AlertTriangle, ListChecks,
 } from "lucide-react";
 import { Card } from "@/components/broker-shell";
+import { requireSuperAdmin } from "@/lib/auth";
 import {
   useTreasuryProducts, useTreasuryInvestments, useCreateTreasuryProduct,
   useUpdateTreasuryProduct, useDeleteTreasuryProduct,
@@ -12,6 +13,7 @@ import {
 
 export const Route = createFileRoute("/treasury")({
   head: () => ({ meta: [{ title: "Treasury — Pine Broker Admin" }] }),
+  beforeLoad: () => requireSuperAdmin(),
   component: TreasuryAdminPage,
 });
 
