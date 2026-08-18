@@ -10,6 +10,10 @@ export const Route = createFileRoute("/activate")({
       { name: "description", content: "Activate your Pine broker administrator account with your invitation token." },
     ],
   }),
+  // The invitation email links here with ?token=… so the token arrives prefilled.
+  validateSearch: (search: Record<string, unknown>) => ({
+    token: typeof search.token === "string" ? search.token : undefined,
+  }),
   component: ActivatePage,
 });
 
@@ -18,8 +22,9 @@ const MIN_PASSWORD_LENGTH = 12;
 function ActivatePage() {
   const navigate = useNavigate();
   const activate = useActivateAccount();
+  const { token: tokenFromLink } = Route.useSearch();
 
-  const [token, setToken] = useState("");
+  const [token, setToken] = useState(tokenFromLink ?? "");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
