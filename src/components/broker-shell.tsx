@@ -267,7 +267,9 @@ function BrokerSidebar({
         {!isCollapsed && (
           <div className="flex-1 min-w-0">
             <div className="text-[15px] font-bold text-foreground leading-none">Pine</div>
-            <div className="text-[9px] tracking-[0.18em] text-muted-foreground mt-0.5">BROKER PORTAL</div>
+            <div className="text-[9px] tracking-[0.18em] text-muted-foreground mt-0.5">
+              {superAdmin ? "PLATFORM ADMIN" : "BROKER PORTAL"}
+            </div>
           </div>
         )}
         <button
