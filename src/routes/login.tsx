@@ -125,10 +125,10 @@ function LoginPage() {
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-[#45B369] lg:p-5">
 
-      {/* ── Left: logo panel — white background, oversized mark, nothing else ── */}
-      <div className="hidden lg:flex lg:w-[46%] items-center justify-center bg-white">
+      {/* ── Left: logo panel — a white card floating inside the green page ── */}
+      <div className="hidden lg:flex lg:w-[46%] items-center justify-center bg-white rounded-md shadow-xl">
         <img
           src="/logo.png"
           alt="Pine"
@@ -137,9 +137,9 @@ function LoginPage() {
         />
       </div>
 
-      {/* ── Right: form panel — green background, transparent card ── */}
-      <div className="flex-1 flex items-center justify-center bg-[#45B369] px-6 py-12">
-        <div className="w-full max-w-[400px] rounded-md bg-white/10 border border-white/15 shadow-xl px-7 py-8">
+      {/* ── Right: form panel — on the green page background ── */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-[400px] px-2 py-2">
 
           {/* Mobile logo (shown only when left panel is hidden) */}
           <div className="flex items-center gap-2.5 mb-8 lg:hidden">
