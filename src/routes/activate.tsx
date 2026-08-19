@@ -10,9 +10,11 @@ export const Route = createFileRoute("/activate")({
       { name: "description", content: "Activate your Pine broker administrator account with your invitation token." },
     ],
   }),
-  // The invitation email links here with ?token=… so the token arrives prefilled.
-  validateSearch: (search: Record<string, unknown>) => ({
-    token: typeof search.token === "string" ? search.token : undefined,
+  // The invitation email links here with ?token=… so the token arrives
+  // prefilled. The explicit optional return type keeps plain <Link
+  // to="/activate"> usages (no search) type-valid.
+  validateSearch: (search: Record<string, unknown>): { token?: string } => ({
+    ...(typeof search.token === "string" ? { token: search.token } : {}),
   }),
   component: ActivatePage,
 });
