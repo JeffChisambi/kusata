@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/broker-shell";
 import { useOrders, useRefreshOrders, type Order, type DisplayStatus, type OrderSide } from "@/hooks/useOrders";
+import { useCurrentUser, isSuperAdmin } from "@/lib/auth";
 import { useTreasuryInvestments, type TreasuryInvestment } from "@/hooks/useTreasuryAdmin";
 
 export const Route = createFileRoute("/orders/")({
@@ -107,6 +108,8 @@ function KpiStrip({ orders, total }: { orders: Order[]; total: number }) {
 
 function OrderTable({ orders }: { orders: Order[] }) {
   const navigate = useNavigate();
+  // Platform admins observe across brokers — label every row with its owner.
+  const superAdmin = isSuperAdmin(useCurrentUser());
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[700px] text-[13px]">
@@ -139,6 +142,11 @@ function OrderTable({ orders }: { orders: Order[] }) {
                 <td className="max-w-[150px] px-3 py-3.5 first:pl-4">
                   <div className="truncate font-medium">{order.client}</div>
                   <div className="mt-1 truncate text-[11px] text-muted-foreground font-mono">{order.id.slice(0, 8)}</div>
+                  {superAdmin && order.brokerName && (
+                    <div className="mt-1 inline-flex items-center rounded-[3px] border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                      {order.brokerName}
+                    </div>
+                  )}
                 </td>
                 <td className="px-3 py-3.5">
                   <SideBadge side={order.side} />

@@ -51,6 +51,8 @@ type KycApplication = {
   notes?: string;
   emailVerified: boolean | null;
   phoneVerified: boolean | null;
+  /** Owning broker — shown to platform admins observing cross-broker. */
+  brokerName: string | null;
 };
 
 /* ─────────────────────────── map API → local type ─────────────────────────── */
@@ -101,6 +103,7 @@ function mapApiToLocal(app: KycApplicationRow): KycApplication {
     notes:          app.reviewNotes ?? undefined,
     emailVerified:  app.emailVerified ?? null,
     phoneVerified:  app.phoneVerified ?? null,
+    brokerName:     (app as any).brokerName ?? null,
   };
 }
 
@@ -631,7 +634,12 @@ function KycRow({
       <td className="py-3">
         <div className="flex items-center gap-2.5">
           <Initials name={app.name} />
-          <div className="font-medium text-[13px]">{app.name}</div>
+          <div>
+            <div className="font-medium text-[13px]">{app.name}</div>
+            {app.brokerName && (
+              <div className="text-[10px] text-muted-foreground">{app.brokerName}</div>
+            )}
+          </div>
         </div>
       </td>
       <td className="py-3 text-[12px] text-muted-foreground">{docTypeLabel[app.docType]}</td>

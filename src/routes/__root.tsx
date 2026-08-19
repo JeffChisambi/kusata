@@ -12,6 +12,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { isAuthenticated, getCurrentUser } from "@/lib/auth";
 import { registerNavigate } from "@/lib/nav-registry";
+import { installErrorReporter } from "@/lib/error-reporter";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -163,6 +164,11 @@ function RootComponent() {
   useEffect(() => {
     registerNavigate((to) => navigate({ to: to as any }));
   }, [navigate]);
+
+  // Ship unhandled errors to the platform System Errors console.
+  useEffect(() => {
+    installErrorReporter();
+  }, []);
 
   // The shell is mounted ONCE here and persists across section switches — only
   // the <Outlet/> content changes — so the sidebar/topbar never remount and the

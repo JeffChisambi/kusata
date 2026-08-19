@@ -8,6 +8,7 @@ import {
 import {
   Breadcrumb, Panel, Ring, Field, DocRow, InitialsAvatar, LoadingBlock,
 } from "@/components/detail-kit";
+import { useCurrentUser, isSuperAdmin } from "@/lib/auth";
 import {
   useKycApplication, useApproveKyc, useRejectKyc, useRequestAdditionalDocs,
   useCsdData, useSaveCsdData, downloadCsdForm,
@@ -131,6 +132,9 @@ function KycReviewPage() {
   // auto-approves/rejects with no reviewer, and brokers can override that.
   const isReviewed =
     (status === "APPROVED" || status === "REJECTED") && !!app?.reviewerName;
+  // Platform admins OBSERVE KYC — decisions belong to the owning broker
+  // (enforced server-side too).
+  const superAdmin = isSuperAdmin(useCurrentUser());
   const mrz = app?.mrz ?? null;
 
   useEffect(() => { if (app?.reviewNotes) setReviewNotes(app.reviewNotes); }, [app?.reviewNotes]);
@@ -187,7 +191,7 @@ function KycReviewPage() {
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Submitted {relativeTime(app.submittedAt)}{app.reviewerName && <> · Reviewed by {app.reviewerName}</>}
+            Submitted {relativeTime(app.submittedAt)}{app.reviewerName && <> · Reviewed by {app.reviewerName}</>}{superAdmin && app.brokerName && <> · Broker: <span className="font-medium text-foreground">{app.brokerName}</span></>}
           </p>
         </div>
       </div>
@@ -270,8 +274,15 @@ function KycReviewPage() {
         </div>
       </div>
 
+      {/* Read-only notice for platform admins */}
+      {superAdmin && !isReviewed && (
+        <div className="sticky bottom-0 mt-5 px-4 py-3 rounded-[6px] border border-border bg-card/95 backdrop-blur text-xs text-muted-foreground text-center">
+          View only — KYC decisions are made by the owning broker{app?.brokerName ? ` (${app.brokerName})` : ""}.
+        </div>
+      )}
+
       {/* Sticky decision bar */}
-      {!isReviewed && (
+      {!isReviewed && !superAdmin && (
         <div className="sticky bottom-0 mt-5 flex items-center gap-2 px-4 py-3 rounded-[6px] border border-border bg-card/95 backdrop-blur shadow-lg">
           <button onClick={() => setShowRequestDocs(true)} className="h-9 px-3 rounded-[4px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5">
             <FilePlus className="w-3.5 h-3.5" /> Request docs

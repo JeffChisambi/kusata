@@ -14,7 +14,7 @@ import {
   ChevronDown, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight,
   CircleUser, Clock, Sun, Moon, Bell, Check, LogOut,
   ClipboardList, Settings2, Search, Newspaper, Landmark, LifeBuoy, Palette,
-  Building2, ScrollText,
+  Building2, ScrollText, AlertOctagon,
 } from "lucide-react";
 
 function NineDotsIcon({ className }: { className?: string }) {
@@ -63,6 +63,7 @@ export const brokerNav: NavGroup[] = [
   // ── PLATFORM (super admin only) ──
   { section: "PLATFORM", icon: Building2, label: "Brokers", href: "/brokers", superAdminOnly: true },
   { section: "PLATFORM", icon: ScrollText, label: "Audit Log", href: "/audit", superAdminOnly: true },
+  { section: "PLATFORM", icon: AlertOctagon, label: "System Errors", href: "/errors", superAdminOnly: true },
   { section: "PLATFORM", icon: Newspaper, label: "News", href: "/news", superAdminOnly: true },
   { section: "PLATFORM", icon: Palette, label: "Mobile Themes", href: "/mobile-themes", superAdminOnly: true },
   { section: "PLATFORM", icon: Landmark, label: "Treasury", href: "/treasury", superAdminOnly: true },
@@ -551,19 +552,27 @@ function BrokerTopbar({ title }: { title: string }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [rangeOpen]);
 
+  // Theme preference is PER-USER: keyed by the signed-in account id so two
+  // people sharing a browser (or one person with admin + broker accounts)
+  // never overwrite each other's dark-mode choice. The legacy global key is
+  // read once as a migration fallback, never written again.
+  const themeUser = useCurrentUser();
+  const themeKey = themeUser?.id ? `pine-theme:${themeUser.id}` : "pine-theme";
+
   useEffect(() => {
-    const stored = localStorage.getItem("pine-theme");
+    const stored = localStorage.getItem(themeKey) ?? localStorage.getItem("pine-theme");
     const initialDark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
     setDark(initialDark);
     setMounted(true);
-  }, []);
+    // Re-resolve when the signed-in user changes (login/logout/switch).
+  }, [themeKey]);
 
   useEffect(() => {
     if (!mounted) return;
     const root = document.documentElement;
-    if (dark) { root.classList.add("dark"); localStorage.setItem("pine-theme", "dark"); }
-    else { root.classList.remove("dark"); localStorage.setItem("pine-theme", "light"); }
-  }, [dark, mounted]);
+    if (dark) { root.classList.add("dark"); localStorage.setItem(themeKey, "dark"); }
+    else { root.classList.remove("dark"); localStorage.setItem(themeKey, "light"); }
+  }, [dark, mounted, themeKey]);
 
   return (
     <header className="flex items-center gap-4 px-8 py-4 bg-background sticky top-0 z-10 border-b border-border">

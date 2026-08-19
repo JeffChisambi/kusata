@@ -34,6 +34,8 @@ export type KycApplicationRow = {
   reviewDecision: string | null;
   /** Display name of the admin who last reviewed this application. */
   reviewerName: string | null;
+  /** Owning broker's name — shown to platform admins observing cross-broker. */
+  brokerName?: string | null;
   /** Internal notes left by the reviewer. */
   reviewNotes: string | null;
   /**

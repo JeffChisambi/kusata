@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useDashboardTitle } from "@/components/broker-shell";
 import { useOrder, useExecuteOrder, type DisplayStatus, type OrderSide } from "@/hooks/useOrders";
+import { useCurrentUser, isSuperAdmin } from "@/lib/auth";
 
 export const Route = createFileRoute("/orders/$orderId")({
   head: () => ({ meta: [{ title: "Order Detail — Pine Broker Portal" }] }),
@@ -77,6 +78,9 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 function OrderDetailPage() {
   const { orderId } = Route.useParams();
   const navigate = useNavigate();
+  // Platform admins OBSERVE broker operations — execution belongs to the
+  // owning broker only (enforced server-side too).
+  const superAdmin = isSuperAdmin(useCurrentUser());
   const { data: order, isLoading, isError, error } = useOrder(orderId);
   const executeOrder = useExecuteOrder();
   const [confirmExecute, setConfirmExecute] = useState(false);
@@ -156,13 +160,23 @@ function OrderDetailPage() {
         <span className="ml-auto text-xs text-muted-foreground">
           {order.client} · {order.clientId.slice(0, 8)}
         </span>
-        {order.backendStatus === "SUBMITTED" && (
+        {superAdmin && order.brokerName && (
+          <span className="rounded-[3px] border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+            {order.brokerName}
+          </span>
+        )}
+        {order.backendStatus === "SUBMITTED" && !superAdmin && (
           <button
             onClick={() => setConfirmExecute(true)}
             className="flex items-center gap-1.5 rounded-[3px] bg-pine px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-pine/90"
           >
             <CheckCircle2 className="h-3.5 w-3.5" /> Execute Order
           </button>
+        )}
+        {order.backendStatus === "SUBMITTED" && superAdmin && (
+          <span className="text-[11px] text-muted-foreground italic">
+            View only — execution is performed by the owning broker
+          </span>
         )}
       </div>
 

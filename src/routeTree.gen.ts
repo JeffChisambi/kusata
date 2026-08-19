@@ -19,6 +19,7 @@ import { Route as NewsRouteImport } from './routes/news'
 import { Route as MobileThemesRouteImport } from './routes/mobile-themes'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as KycRouteImport } from './routes/kyc'
+import { Route as ErrorsRouteImport } from './routes/errors'
 import { Route as ComingSoonRouteImport } from './routes/coming-soon'
 import { Route as BrokersRouteImport } from './routes/brokers'
 import { Route as AuditRouteImport } from './routes/audit'
@@ -79,6 +80,11 @@ const LoginRoute = LoginRouteImport.update({
 const KycRoute = KycRouteImport.update({
   id: '/kyc',
   path: '/kyc',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ErrorsRoute = ErrorsRouteImport.update({
+  id: '/errors',
+  path: '/errors',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComingSoonRoute = ComingSoonRouteImport.update({
@@ -143,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/audit': typeof AuditRoute
   '/brokers': typeof BrokersRoute
   '/coming-soon': typeof ComingSoonRoute
+  '/errors': typeof ErrorsRoute
   '/kyc': typeof KycRoute
   '/login': typeof LoginRoute
   '/mobile-themes': typeof MobileThemesRoute
@@ -166,6 +173,7 @@ export interface FileRoutesByTo {
   '/audit': typeof AuditRoute
   '/brokers': typeof BrokersRoute
   '/coming-soon': typeof ComingSoonRoute
+  '/errors': typeof ErrorsRoute
   '/kyc': typeof KycRoute
   '/login': typeof LoginRoute
   '/mobile-themes': typeof MobileThemesRoute
@@ -189,6 +197,7 @@ export interface FileRoutesById {
   '/audit': typeof AuditRoute
   '/brokers': typeof BrokersRoute
   '/coming-soon': typeof ComingSoonRoute
+  '/errors': typeof ErrorsRoute
   '/kyc': typeof KycRoute
   '/login': typeof LoginRoute
   '/mobile-themes': typeof MobileThemesRoute
@@ -214,6 +223,7 @@ export interface FileRouteTypes {
     | '/audit'
     | '/brokers'
     | '/coming-soon'
+    | '/errors'
     | '/kyc'
     | '/login'
     | '/mobile-themes'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/audit'
     | '/brokers'
     | '/coming-soon'
+    | '/errors'
     | '/kyc'
     | '/login'
     | '/mobile-themes'
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
     | '/audit'
     | '/brokers'
     | '/coming-soon'
+    | '/errors'
     | '/kyc'
     | '/login'
     | '/mobile-themes'
@@ -283,6 +295,7 @@ export interface RootRouteChildren {
   AuditRoute: typeof AuditRoute
   BrokersRoute: typeof BrokersRoute
   ComingSoonRoute: typeof ComingSoonRoute
+  ErrorsRoute: typeof ErrorsRoute
   KycRoute: typeof KycRoute
   LoginRoute: typeof LoginRoute
   MobileThemesRoute: typeof MobileThemesRoute
@@ -369,6 +382,13 @@ declare module '@tanstack/react-router' {
       path: '/kyc'
       fullPath: '/kyc'
       preLoaderRoute: typeof KycRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/errors': {
+      id: '/errors'
+      path: '/errors'
+      fullPath: '/errors'
+      preLoaderRoute: typeof ErrorsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/coming-soon': {
@@ -470,6 +490,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuditRoute: AuditRoute,
   BrokersRoute: BrokersRoute,
   ComingSoonRoute: ComingSoonRoute,
+  ErrorsRoute: ErrorsRoute,
   KycRoute: KycRoute,
   LoginRoute: LoginRoute,
   MobileThemesRoute: MobileThemesRoute,
@@ -488,3 +509,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

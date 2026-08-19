@@ -42,13 +42,13 @@ export interface BackendOrder {
   submittedAt: string | null;
   filledAt: string | null;
   cancelledAt: string | null;
-  user: { id: string; firstName: string; lastName: string };
+  user: { id: string; firstName: string; lastName: string; broker?: { id: string; name: string } | null };
   stock: { symbol: string; name: string };
 }
 
 /** Raw shape returned by `GET /v1/admin/trading/orders/:id` */
 export interface BackendOrderDetail extends BackendOrder {
-  user: { id: string; firstName: string; lastName: string; phone: string };
+  user: { id: string; firstName: string; lastName: string; phone: string; broker?: { id: string; name: string } | null };
   stock: { symbol: string; name: string; sector: string | null };
   trades: Array<{
     id: string;
@@ -97,6 +97,8 @@ export interface Order {
   executed: string | null;
   rejectionReason: string | null;
   brokerRef: string | null;
+  /** Owning broker's name — shown to platform admins observing cross-broker. */
+  brokerName: string | null;
 }
 
 // ── Mappers ───────────────────────────────────────────────────────────────────
@@ -152,6 +154,7 @@ function mapOrder(o: BackendOrder): Order {
     executed: o.filledAt,
     rejectionReason: o.rejectionReason,
     brokerRef: o.brokerRef,
+    brokerName: o.user.broker?.name ?? null,
   };
 }
 
