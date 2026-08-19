@@ -315,17 +315,8 @@ function UserDetailPage() {
 
         {/* ── RIGHT: summary ── */}
         <div className="flex flex-col gap-5">
-          <Panel title="Wallet & portfolio">
-            <div className="text-center pb-4 mb-2 border-b border-border">
-              <div className="text-[11px] text-muted-foreground">Total net worth</div>
-              <div className="text-2xl font-bold mt-1">MWK {totalWorth.toLocaleString()}</div>
-            </div>
-            <SummaryRow label="Portfolio value" value={`MWK ${portfolioValue.toLocaleString()}`} />
-            <SummaryRow label="Available cash" value={`MWK ${cash.toLocaleString()}`} />
-            <SummaryRow label="Holdings" value={`${holdingsCount} ${holdingsCount === 1 ? "position" : "positions"}`} />
-            <SummaryRow label="Wallet status" value={<span className={frozen ? "text-amber" : "text-pine"}>{frozen ? "Frozen" : "Active"}</span>} />
-          </Panel>
-
+          {/* "Wallet & portfolio" panel removed — it duplicated the stat
+              cards at the top of the page (portfolio value, cash, holdings). */}
           <Panel title="Security">
             <SummaryRow label="Two-factor auth" value={<span className={mfaEnabled ? "text-pine" : "text-amber"}>{mfaEnabled ? "Enabled" : "Off"}</span>} />
             <SummaryRow label="Active devices" value={devices.length} />
