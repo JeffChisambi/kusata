@@ -127,7 +127,10 @@ function KycReviewPage() {
     idDoc?.imageUrl;
 
   const status = (app?.status ?? "PENDING").toUpperCase();
-  const isReviewed = status === "APPROVED" || status === "REJECTED";
+  // A decision is only final when a HUMAN made it — the AI pipeline
+  // auto-approves/rejects with no reviewer, and brokers can override that.
+  const isReviewed =
+    (status === "APPROVED" || status === "REJECTED") && !!app?.reviewerName;
   const mrz = app?.mrz ?? null;
 
   useEffect(() => { if (app?.reviewNotes) setReviewNotes(app.reviewNotes); }, [app?.reviewNotes]);
