@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft, ShieldCheck, XCircle, AlertTriangle, User, FileText, ExternalLink,
-  Loader2, Download, BadgeCheck, ScanLine, Camera, Fingerprint, Pencil, Save,
+  Loader2, Download, BadgeCheck, ScanLine, Camera, Pencil, Save,
   RotateCcw, FilePlus,
 } from "lucide-react";
 import {
@@ -152,10 +152,11 @@ function KycReviewPage() {
   }
 
   const applicantName = app.registration?.fullName || app.userName || "Applicant";
+  // Liveness gauge removed — the mobile app no longer runs the head-turn
+  // liveness capture, so the score would always read 0.
   const scores = [
     { icon: <ScanLine className="w-4 h-4" />, label: "OCR confidence", value: app.ocrConfidence ?? 0 },
     { icon: <Camera className="w-4 h-4" />, label: "Face match", value: app.facialMatchScore ?? 0 },
-    { icon: <Fingerprint className="w-4 h-4" />, label: "Liveness", value: app.livenessScore ?? 0 },
   ];
 
   const docTabs = ([
@@ -192,7 +193,7 @@ function KycReviewPage() {
       </div>
 
       {/* Score rings */}
-      <div className="grid grid-cols-3 gap-4 mb-5">
+      <div className="grid grid-cols-2 gap-4 mb-5">
         {scores.map((s) => (
           <div key={s.label} className="rounded-[6px] bg-card border border-border p-4 flex items-center gap-4">
             <Ring value={s.value} max={100} size={72} stroke={7} color={scoreVar(s.value)}
