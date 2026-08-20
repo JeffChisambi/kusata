@@ -75,6 +75,8 @@ export type WorkspaceDevice = {
 };
 export type WorkspaceBank = {
   id: string; bankName: string; accountName: string; accountNumberMasked: string;
+  /** Full account number — brokers need it for CSD account opening. */
+  accountNumber?: string;
   isVerified: boolean; isPrimary: boolean;
 };
 export type WorkspaceTxn = {

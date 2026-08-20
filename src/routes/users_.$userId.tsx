@@ -345,7 +345,10 @@ function UserDetailPage() {
                       <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0"><Icon className="w-4 h-4 text-muted-foreground" /></div>
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-medium truncate flex items-center gap-1.5">{b.bankName}{b.isPrimary && <span className="text-[9px] px-1 py-0.5 rounded bg-muted text-muted-foreground">Primary</span>}</div>
-                        <div className="text-[11px] text-muted-foreground truncate font-mono">{b.accountNumberMasked}</div>
+                        {/* Full account number, not masked — the broker needs it
+                            to open the investor's CSD trading account. */}
+                        <div className="text-[11px] text-foreground font-mono select-all">{b.accountNumber ?? b.accountNumberMasked}</div>
+                        {b.accountName && <div className="text-[10px] text-muted-foreground truncate">{b.accountName}</div>}
                       </div>
                       {b.isVerified
                         ? <BadgeCheck className="w-4 h-4 text-pine shrink-0" />

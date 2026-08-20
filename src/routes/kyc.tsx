@@ -14,6 +14,7 @@ import {
   useRequestAdditionalDocs, useKycCounts, downloadCsdForm,
   type KycApplicationRow, type KycDocument, type KycOcrData,
 } from "@/hooks/useKyc";
+import { useCurrentUser, isSuperAdmin } from "@/lib/auth";
 
 export const Route = createFileRoute("/kyc")({
   head: () => ({
@@ -738,7 +739,9 @@ function RowMenu({
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
 
-  const isReviewed = app.status === "approved" || app.status === "rejected";
+  // A decision is final only when a HUMAN made it (reviewer set) — the AI
+  // pipeline auto-approves/rejects with no reviewer, and brokers can override.
+  const isReviewed = (app.status === "approved" || app.status === "rejected") && !!app.reviewer;
 
   const items = [
     { label: "Review",        icon: Eye,          action: onReview,      show: true },
@@ -969,6 +972,9 @@ function ReviewPanel({
 
   const approveMutation = useApproveKyc();
   const rejectMutation  = useRejectKyc();
+  // Platform admins observe — KYC decisions belong to the owning broker
+  // (the backend rejects them with 403 anyway; don't show dead buttons).
+  const superAdmin = isSuperAdmin(useCurrentUser());
 
   // CSD Securities Account Opening form (server-generated, pre-filled PDF)
   const [csdDownloading, setCsdDownloading] = useState(false);
@@ -1058,7 +1064,10 @@ function ReviewPanel({
   const passCount    = steps.filter((s) => s.ok).length;
   const allPass      = passCount === steps.length;
   const hasIssues    = app.flags.length > 0;
-  const isReviewed   = app.status === "approved" || app.status === "rejected" || app.status === "additional_docs";
+  // Final only when a HUMAN decided (reviewer set): AI auto-decisions stay
+  // overridable, and "additional docs requested" must NOT lock the buttons —
+  // the broker still needs to decide once the documents arrive.
+  const isReviewed   = (app.status === "approved" || app.status === "rejected") && !!app.reviewer;
 
   const scoreColor    = (v: number) => v >= 85 ? "text-pine"  : v >= 70 ? "text-amber"  : "text-rose";
   const scoreBarColor = (v: number) => v >= 85 ? "bg-pine"    : v >= 70 ? "bg-amber"    : "bg-rose";
@@ -1401,7 +1410,7 @@ function ReviewPanel({
       </div>
 
       {/* ── Section 4: Decision footer ── */}
-      {!isReviewed ? (
+      {!isReviewed && !superAdmin ? (
         <div className="flex items-center gap-2 px-5 py-3 border-t border-border bg-background shrink-0">
           <button
             onClick={onRequestDocs}
