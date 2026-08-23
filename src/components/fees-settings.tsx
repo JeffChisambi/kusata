@@ -140,7 +140,7 @@ export function FeesSection() {
         return `Tier ${i + 1}: "to" must be greater than "from".`;
       if (i < parsed.length - 1) {
         if (t.maxAmount == null) return `Tier ${i + 1}: only the last tier may be open-ended.`;
-        if (parsed[i + 1].minAmount <= t.maxAmount)
+        if (parsed[i + 1].minAmount < t.maxAmount)
           return `Tiers ${i + 1} and ${i + 2} overlap.`;
       }
       if (t.ratePct < 0 || t.ratePct > 100) return `Tier ${i + 1}: rate must be 0–100%.`;
