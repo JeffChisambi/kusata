@@ -73,6 +73,27 @@ const fmtMoney = (n: number) => {
   return `MK ${n}`;
 };
 
+/** Exact unrounded figure, for hover tooltips on abbreviated amounts. */
+const fmtExact = (n: number) =>
+  `MWK ${n.toLocaleString("en-MW", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+
+/**
+ * Abbreviated amount that reveals the TRUE full value on hover — both as a
+ * native tooltip and a styled popover, so brokers can always verify the
+ * exact figure behind a rounded display.
+ */
+function Money({ value, className = "" }: { value: number | null | undefined; className?: string }) {
+  if (value == null) return <span className={className}>—</span>;
+  return (
+    <span className={`relative group/money cursor-help ${className}`} title={fmtExact(value)}>
+      {fmtMoney(value)}
+      <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-50 hidden group-hover/money:block whitespace-nowrap rounded-[4px] border border-border bg-card px-2.5 py-1.5 text-[11px] font-mono font-medium text-foreground shadow-lg">
+        {fmtExact(value)}
+      </span>
+    </span>
+  );
+}
+
 function relativeTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60_000);
@@ -129,7 +150,7 @@ function KpiGrid() {
     {
       icon: TradeVolumeIcon,
       label: "Trade Volume (today)",
-      value: isLoading ? "—" : fmtMoney(Number(stats?.todayVolume ?? 0)),
+      value: isLoading ? "—" : <Money value={Number(stats?.todayVolume ?? 0)} />,
       delta: isLoading ? "" : `${stats?.todayOrders ?? 0} orders`,
       trend: "up" as "up" | "down" | "flat",
       sub: "orders executed today",
@@ -137,7 +158,7 @@ function KpiGrid() {
     {
       icon: Wallet,
       label: "Client Cash",
-      value: isLoading ? "—" : fmtMoney(Number(stats?.totalWalletBalance ?? 0)),
+      value: isLoading ? "—" : <Money value={Number(stats?.totalWalletBalance ?? 0)} />,
       delta: "live",
       trend: "up" as "up" | "down" | "flat",
       sub: "uninvested wallet balances only",
@@ -187,7 +208,8 @@ function KpiGrid() {
 
 function FinancialOverview() {
   const { data: fin, isLoading } = useDashboardFinancials();
-  const money = (n?: number) => (isLoading || n == null ? "—" : fmtMoney(n));
+  // Abbreviated on screen; the exact unrounded figure appears on hover.
+  const money = (n?: number) => (isLoading || n == null ? <>—</> : <Money value={n} />);
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
@@ -540,10 +562,10 @@ function PendingWithdrawalsCard() {
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] font-medium text-foreground truncate">{w.user.name}</div>
                 <div className="text-[11px] text-muted-foreground">
-                  {relativeTime(w.requestedAt)} · wallet {fmtMoney(w.walletBalance)}
+                  {relativeTime(w.requestedAt)} · wallet <Money value={w.walletBalance} />
                 </div>
               </div>
-              <span className="font-mono text-sm font-semibold shrink-0">{fmtMoney(w.amount)}</span>
+              <span className="font-mono text-sm font-semibold shrink-0"><Money value={w.amount} /></span>
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   onClick={() => onApprove(w.transactionId, w.user.name, w.amount)}

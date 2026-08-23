@@ -100,6 +100,9 @@ const tabs: { key: string; label: string; filter: (u: UserRow) => boolean }[] = 
   { key: "closed", label: "Closed", filter: (u) => u.status === "closed" },
 ];
 
+const MWKexact = (n: number) =>
+  `MWK ${n.toLocaleString("en-MW", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+
 const MWK = (n: number) =>
   n >= 1_000_000_000 ? `${(n / 1_000_000_000).toFixed(2)}B` :
   n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` :
@@ -439,9 +442,9 @@ function UsersTable({
               </td>
               <td className="py-3"><StatusBadge status={r.status} /></td>
               <td className="py-3"><KycBadge kyc={r.kyc} /></td>
-              <td className="py-3 text-right font-mono">MWK {MWK(r.portfolio)}</td>
-              <td className="py-3 text-right font-mono text-muted-foreground">MWK {MWK(r.cash)}</td>
-              <td className="py-3 text-right font-mono font-medium">MWK {MWK(r.aum)}</td>
+              <td className="py-3 text-right font-mono cursor-help" title={MWKexact(r.portfolio)}>MWK {MWK(r.portfolio)}</td>
+              <td className="py-3 text-right font-mono text-muted-foreground cursor-help" title={MWKexact(r.cash)}>MWK {MWK(r.cash)}</td>
+              <td className="py-3 text-right font-mono font-medium cursor-help" title={MWKexact(r.aum)}>MWK {MWK(r.aum)}</td>
               <td className="pr-5 py-3 text-right">
                 <RowMenu onViewMore={() => onOpenDrawer(r)} />
               </td>
