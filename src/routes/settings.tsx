@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import {
-  User, Lock, Bell, Shield, Eye, EyeOff, CheckCircle2,
+  User, Lock, Bell, Shield, Eye, EyeOff, CheckCircle2, Percent,
   AlertTriangle, Smartphone, LogOut, ChevronRight, Save,
   Loader2, KeyRound, Copy, Check, RefreshCw, Monitor,
 } from "lucide-react";
@@ -18,6 +18,7 @@ import {
   useNotifPrefs, useUpdateNotifPrefs,
   type NotifPrefs,
 } from "@/hooks/useSettings";
+import { FeesSection } from "@/components/fees-settings";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -758,10 +759,11 @@ function SessionsSection() {
 // ─── Nav tabs ─────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { key: "profile",       label: "Profile",       icon: User },
-  { key: "security",      label: "Security",      icon: Lock },
-  { key: "notifications", label: "Notifications", icon: Bell },
-  { key: "sessions",      label: "Sessions",      icon: Smartphone },
+  { key: "profile",       label: "Profile",         icon: User },
+  { key: "fees",          label: "Fees & Charges",  icon: Percent },
+  { key: "security",      label: "Security",        icon: Lock },
+  { key: "notifications", label: "Notifications",   icon: Bell },
+  { key: "sessions",      label: "Sessions",        icon: Smartphone },
 ] as const;
 type TabKey = typeof TABS[number]["key"];
 
@@ -803,6 +805,7 @@ function SettingsPage() {
         {/* Content */}
         <div className="flex-1 min-w-0 space-y-5">
           {tab === "profile"       && <ProfileSection />}
+          {tab === "fees"          && <FeesSection />}
           {tab === "security"      && (
             <>
               <PasswordSection />

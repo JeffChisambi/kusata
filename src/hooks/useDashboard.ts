@@ -23,6 +23,25 @@ export function useDashboardStats() {
   });
 }
 
+export function useDashboardFinancials() {
+  return useQuery({
+    queryKey: [...queryKeys.dashboard.all, 'financials'] as const,
+    queryFn: () => api.get<{
+      clientAssets: {
+        clientCash: number;
+        portfolioValue: number;
+        totalInvestorAssets: number;
+      };
+      brokerRevenue: { tradingCommissions: number };
+      statutory: { leviesCollected: number };
+      paymentCosts: { processingFees: number };
+      pendingWithdrawals: { count: number; amount: number };
+    }>('/v1/admin/dashboard/financials'),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+  });
+}
+
 export function useDashboardCharts(days = 14) {
   return useQuery({
     queryKey: queryKeys.dashboard.charts(days),

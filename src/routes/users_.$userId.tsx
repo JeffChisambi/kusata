@@ -71,9 +71,15 @@ function UserDetailPage() {
   const frozen = ws?.wallet?.isFrozen ?? false;
   const active = ws?.isActive ?? true;
 
-  const portfolioValue = (ws?.holdings ?? []).reduce((s, h) => s + Number(h.quantity) * Number(h.averageCost), 0);
-  const cash = ws?.wallet ? Number(ws.wallet.balance) : 0;
-  const totalWorth = portfolioValue + cash;
+  // Server-computed financial summary — the single source of truth (same
+  // formulas the mobile app is served). No client-side valuation math.
+  const fin = ws?.financialSummary ?? null;
+  const portfolioValue = fin?.portfolioValue ?? 0;
+  const cash = fin?.cash.total ?? (ws?.wallet ? Number(ws.wallet.balance) : 0);
+  const cashAvailable = fin?.cash.available ?? cash;
+  const cashReserved = fin?.cash.reserved ?? 0;
+  const pendingWithdrawals = fin?.cash.pendingWithdrawals ?? 0;
+  const totalWorth = fin?.totalAssets ?? portfolioValue + cash;
   const holdingsCount = ws?.holdings?.length ?? 0;
   const trades = ws?._count?.orders ?? 0;
   const mfaEnabled = ws?.mfaConfig?.isEnabled ?? false;
@@ -149,10 +155,10 @@ function UserDetailPage() {
 
       {/* ── Top KPI row (full width) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-        <Kpi icon={<Wallet className="w-4 h-4" />} label="Portfolio value" value={`MWK ${MWK(portfolioValue)}`} tone="pine" />
-        <Kpi icon={<Landmark className="w-4 h-4" />} label="Available cash" value={`MWK ${MWK(cash)}`} />
-        <Kpi icon={<Activity className="w-4 h-4" />} label="Holdings" value={holdingsCount} sub={holdingsCount === 1 ? "position" : "positions"} />
-        <Kpi icon={<ArrowUpRight className="w-4 h-4" />} label="Total trades" value={trades} />
+        <Kpi icon={<Wallet className="w-4 h-4" />} label="Portfolio value" value={`MWK ${MWK(portfolioValue)}`} tone="pine" sub="holdings at latest market price" />
+        <Kpi icon={<Landmark className="w-4 h-4" />} label="Client cash" value={`MWK ${MWK(cash)}`} sub={`MWK ${MWK(cashAvailable)} available${cashReserved > 0 ? ` · ${MWK(cashReserved)} reserved` : ""}${pendingWithdrawals > 0 ? ` · ${MWK(pendingWithdrawals)} withdrawing` : ""}`} />
+        <Kpi icon={<Activity className="w-4 h-4" />} label="Total assets" value={`MWK ${MWK(totalWorth)}`} sub="cash + portfolio value" />
+        <Kpi icon={<ArrowUpRight className="w-4 h-4" />} label="Total trades" value={trades} sub={`${holdingsCount} open ${holdingsCount === 1 ? "position" : "positions"}`} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)_320px] gap-5 items-start">
@@ -248,7 +254,7 @@ function UserDetailPage() {
               legend={[{ label: "Done", value: String(kycDone) }, { label: "Left", value: String(kycSteps.length - kycDone) }]}
             />
             <RingStatCard
-              title="Portfolio allocation" subtitle="Invested vs available cash"
+              title="Portfolio allocation" subtitle="Market value invested vs client cash"
               value={investedPct} max={100} color="var(--sky)"
               centerMain={<span className="text-2xl">{investedPct}%</span>}
               centerSub="invested"
@@ -263,13 +269,14 @@ function UserDetailPage() {
             ) : (
               <div className="space-y-3">
                 {(ws?.holdings ?? []).map((h, i) => {
-                  const val = Number(h.quantity) * Number(h.averageCost);
-                  const pct = portfolioValue > 0 ? (val / portfolioValue) * 100 : 0;
+                  const costBasis = Number(h.quantity) * Number(h.averageCost);
+                  const totalCost = (ws?.holdings ?? []).reduce((s2, x) => s2 + Number(x.quantity) * Number(x.averageCost), 0);
+                  const pct = totalCost > 0 ? (costBasis / totalCost) * 100 : 0;
                   return (
                     <div key={i}>
                       <div className="flex items-center justify-between text-sm mb-1">
                         <span className="font-medium truncate">{h.stock.symbol} <span className="text-muted-foreground font-normal">· {h.stock.name}</span></span>
-                        <span className="font-mono text-xs shrink-0 ml-3">MWK {MWK(val)}</span>
+                        <span className="font-mono text-xs shrink-0 ml-3" title="Cost basis (quantity × average cost incl. fees)">MWK {MWK(costBasis)} <span className="text-muted-foreground font-sans">at cost</span></span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
@@ -317,6 +324,14 @@ function UserDetailPage() {
         <div className="flex flex-col gap-5">
           {/* "Wallet & portfolio" panel removed — it duplicated the stat
               cards at the top of the page (portfolio value, cash, holdings). */}
+          {fin && (
+            <Panel title="Fees paid" subtitle="Lifetime, from trade & deposit records">
+              <SummaryRow label="Trading commissions" value={`MWK ${MWK(fin.lifetimeFees.commissionsPaid)}`} />
+              <SummaryRow label="Statutory levies" value={`MWK ${MWK(fin.lifetimeFees.leviesPaid)}`} />
+              <SummaryRow label="Deposit processing fees" value={`MWK ${MWK(fin.lifetimeFees.depositFeesPaid)}`} />
+              <SummaryRow label="Total trading fees" value={<span className="font-semibold">MWK {MWK(fin.lifetimeFees.totalTradingFees)}</span>} />
+            </Panel>
+          )}
           <Panel title="Security">
             <SummaryRow label="Two-factor auth" value={<span className={mfaEnabled ? "text-pine" : "text-amber"}>{mfaEnabled ? "Enabled" : "Off"}</span>} />
             <SummaryRow label="Active devices" value={devices.length} />

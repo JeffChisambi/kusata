@@ -44,8 +44,11 @@ import {
   Tooltip,
 } from "recharts";
 import { Card } from "@/components/broker-shell";
-import { useDashboardStats, useDashboardCharts } from "@/hooks/useDashboard";
+import { useDashboardStats, useDashboardCharts, useDashboardFinancials } from "@/hooks/useDashboard";
 import { useKycQueue } from "@/hooks/useKyc";
+import {
+  usePendingWithdrawals, useApproveWithdrawal, useRejectWithdrawal,
+} from "@/hooks/useWithdrawals";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -133,11 +136,11 @@ function KpiGrid() {
     },
     {
       icon: Wallet,
-      label: "Total Client Funds",
+      label: "Client Cash",
       value: isLoading ? "—" : fmtMoney(Number(stats?.totalWalletBalance ?? 0)),
       delta: "live",
       trend: "up" as "up" | "down" | "flat",
-      sub: "across all wallets",
+      sub: "uninvested wallet balances only",
     },
   ];
 
@@ -174,6 +177,106 @@ function KpiGrid() {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─── Financial overview ───────────────────────────────────────────────────────
+// Client money, broker revenue, and payment costs are DIFFERENT kinds of
+// money — grouped visually so they are never read as one number.
+
+function FinancialOverview() {
+  const { data: fin, isLoading } = useDashboardFinancials();
+  const money = (n?: number) => (isLoading || n == null ? "—" : fmtMoney(n));
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+      {/* Client Assets — client money the broker administers */}
+      <Card
+        title="Client Assets"
+        subtitle="Money you hold and administer for clients"
+        className="xl:col-span-1"
+      >
+        <div className="space-y-3">
+          <div
+            className="flex items-baseline justify-between"
+            title="Sum of all investors' uninvested wallet balances. Cash only — excludes stock positions."
+          >
+            <span className="text-xs text-muted-foreground">Client Cash</span>
+            <span className="text-sm font-bold font-mono">{money(fin?.clientAssets.clientCash)}</span>
+          </div>
+          <div
+            className="flex items-baseline justify-between"
+            title="Market value of all client stock holdings at the latest close. Not cash."
+          >
+            <span className="text-xs text-muted-foreground">Portfolio Value</span>
+            <span className="text-sm font-bold font-mono">{money(fin?.clientAssets.portfolioValue)}</span>
+          </div>
+          <div
+            className="flex items-baseline justify-between pt-2.5 border-t border-border"
+            title="Client Cash + Portfolio Value. Assets under administration — still client money."
+          >
+            <span className="text-xs font-medium text-foreground">Total Investor Assets</span>
+            <span className="text-base font-bold font-mono text-pine">
+              {money(fin?.clientAssets.totalInvestorAssets)}
+            </span>
+          </div>
+        </div>
+      </Card>
+
+      {/* Broker Revenue — the broker's own earnings */}
+      <Card
+        title="Broker Revenue"
+        subtitle="Your earnings — separate from client money"
+      >
+        <div className="space-y-3">
+          <div
+            className="flex items-baseline justify-between"
+            title="Sum of commissions recorded on every executed trade, under your configured tier schedule (Settings → Fees & Charges)."
+          >
+            <span className="text-xs text-muted-foreground">Trading Commissions</span>
+            <span className="text-base font-bold font-mono text-pine">
+              {money(fin?.brokerRevenue.tradingCommissions)}
+            </span>
+          </div>
+          <div
+            className="flex items-baseline justify-between"
+            title="SEC + MSE levies collected on trades — statutory pass-through, not your revenue."
+          >
+            <span className="text-xs text-muted-foreground">Statutory Levies (pass-through)</span>
+            <span className="text-sm font-medium font-mono text-muted-foreground">
+              {money(fin?.statutory.leviesCollected)}
+            </span>
+          </div>
+        </div>
+      </Card>
+
+      {/* Payment Costs + withdrawals awaiting action */}
+      <Card
+        title="Payment Costs"
+        subtitle="Deposit processing fees collected"
+      >
+        <div className="space-y-3">
+          <div
+            className="flex items-baseline justify-between"
+            title="Deposit processing fees recorded on completed deposits, under Settings → Fees & Charges. Reported separately from trading commissions."
+          >
+            <span className="text-xs text-muted-foreground">Processing Fees</span>
+            <span className="text-base font-bold font-mono">{money(fin?.paymentCosts.processingFees)}</span>
+          </div>
+          <div
+            className="flex items-baseline justify-between pt-2.5 border-t border-border"
+            title="Withdrawal requests waiting for your approval. Funds stay in the client's wallet (held) until you approve."
+          >
+            <span className="text-xs text-muted-foreground">
+              Pending Withdrawals{isLoading ? "" : ` (${fin?.pendingWithdrawals.count ?? 0})`}
+            </span>
+            <span className={`text-sm font-bold font-mono ${(fin?.pendingWithdrawals.count ?? 0) > 0 ? "text-amber" : ""}`}>
+              {money(fin?.pendingWithdrawals.amount)}
+            </span>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }
@@ -399,6 +502,72 @@ function RecentOrders() {
   );
 }
 
+function PendingWithdrawalsCard() {
+  const { data, isLoading } = usePendingWithdrawals();
+  const approve = useApproveWithdrawal();
+  const reject = useRejectWithdrawal();
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const rows = data?.withdrawals ?? [];
+
+  const onApprove = async (id: string, name: string, amount: number) => {
+    if (!confirm(`Approve withdrawal of ${fmtMoney(amount)} for ${name}?\n\nThis debits their wallet and completes the payout.`)) return;
+    setBusyId(id);
+    try { await approve.mutateAsync(id); } catch (e: any) { alert(e?.message ?? "Approval failed"); }
+    setBusyId(null);
+  };
+  const onReject = async (id: string, name: string) => {
+    const reason = prompt(`Reject ${name}'s withdrawal — reason (shown to the client):`);
+    if (reason === null) return;
+    setBusyId(id);
+    try { await reject.mutateAsync({ transactionId: id, reason: reason || undefined }); }
+    catch (e: any) { alert(e?.message ?? "Rejection failed"); }
+    setBusyId(null);
+  };
+
+  return (
+    <Card
+      title="Withdrawal Requests"
+      subtitle="Client withdrawals awaiting your decision — funds stay held until approved"
+    >
+      {isLoading ? (
+        <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+      ) : rows.length === 0 ? (
+        <div className="py-8 text-center text-sm text-muted-foreground">No pending withdrawals</div>
+      ) : (
+        <div className="space-y-1">
+          {rows.map((w) => (
+            <div key={w.transactionId} className="flex items-center gap-3 py-2.5 border-b border-border last:border-0">
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-medium text-foreground truncate">{w.user.name}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {relativeTime(w.requestedAt)} · wallet {fmtMoney(w.walletBalance)}
+                </div>
+              </div>
+              <span className="font-mono text-sm font-semibold shrink-0">{fmtMoney(w.amount)}</span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={() => onApprove(w.transactionId, w.user.name, w.amount)}
+                  disabled={busyId === w.transactionId}
+                  className="h-7 px-2.5 rounded-[3px] bg-pine text-primary-foreground text-[11px] font-medium hover:bg-pine/90 disabled:opacity-50"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => onReject(w.transactionId, w.user.name)}
+                  disabled={busyId === w.transactionId}
+                  className="h-7 px-2.5 rounded-[3px] border border-border text-[11px] font-medium text-muted-foreground hover:bg-rose/10 hover:text-rose disabled:opacity-50"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function SupportTickets() {
   return (
     <Card
@@ -428,16 +597,19 @@ function BrokerDashboard() {
       {/* KPI row */}
       <KpiGrid />
 
+      {/* Financial overview: client assets vs broker revenue vs payment costs */}
+      <FinancialOverview />
+
       {/* Charts row */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         <ClientGrowthChart />
         <TradeVolumeChart />
       </div>
 
-      {/* KYC row */}
+      {/* KYC + withdrawals row */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <KycQueue />
-        <SupportTickets />
+        <PendingWithdrawalsCard />
       </div>
     </>
   );

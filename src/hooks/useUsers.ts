@@ -35,6 +35,10 @@ export function useUsersList(filters: UserFilters = {}) {
         isActive: boolean;
         walletBalance: string;
         walletFrozen: boolean;
+        /** Market value of holdings at latest close (server-computed) */
+        portfolioValue: number;
+        /** Cash + portfolio market value (server-computed) */
+        totalAssets: number;
         deviceCount: number;
         orderCount: number;
         holdingCount: number;
@@ -67,6 +71,18 @@ export type UserWorkspace = {
   linkedBanks: WorkspaceBank[];
   kycApplications: { id: string; status: string; createdAt: string }[];
   _count: { orders: number; notifications: number; payments: number };
+  /** Server-computed financial summary — the same numbers the investor sees on mobile. */
+  financialSummary: {
+    cash: { total: number; reserved: number; pendingWithdrawals: number; available: number };
+    portfolioValue: number;
+    totalAssets: number;
+    lifetimeFees: {
+      commissionsPaid: number;
+      leviesPaid: number;
+      totalTradingFees: number;
+      depositFeesPaid: number;
+    };
+  } | null;
 };
 export type WorkspaceDevice = {
   id: string; platform: string; osVersion: string | null; appVersion: string | null;

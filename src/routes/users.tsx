@@ -38,8 +38,6 @@ export const Route = createFileRoute("/users")({
 
 type Status = "active" | "frozen" | "suspended" | "closed" | "pending";
 type Kyc = "verified" | "pending" | "rejected" | "tier1" | "tier2";
-type Risk = "low" | "medium" | "high";
-
 type UserRow = {
   id: string;
   name: string;
@@ -48,8 +46,10 @@ type UserRow = {
   city: string;
   status: Status;
   kyc: Kyc;
-  risk: Risk;
+  /** Total assets = cash + portfolio market value (server-computed) */
   aum: number;
+  /** Market value of stock holdings (server-computed) */
+  portfolio: number;
   cash: number;
   joined: string;
   lastLogin: string;
@@ -80,8 +80,8 @@ function mapUserRow(u: any): UserRow {
     city: '', // Backend doesn't have city
     status: u.walletFrozen ? 'frozen' : u.isActive ? 'active' : 'closed',
     kyc: mapKyc(u.kycStatus),
-    risk: 'low', // Default — risk scoring not implemented yet
-    aum: 0,
+    aum: Number(u.totalAssets ?? 0),
+    portfolio: Number(u.portfolioValue ?? 0),
     cash: parseFloat(u.walletBalance || '0'),
     joined: u.createdAt?.slice(0, 10) ?? '',
     lastLogin: '',
@@ -98,7 +98,6 @@ const tabs: { key: string; label: string; filter: (u: UserRow) => boolean }[] = 
   { key: "frozen", label: "Frozen", filter: (u) => u.status === "frozen" },
   { key: "suspended", label: "Suspended", filter: (u) => u.status === "suspended" },
   { key: "closed", label: "Closed", filter: (u) => u.status === "closed" },
-  { key: "risk", label: "High risk", filter: (u) => u.risk === "high" },
 ];
 
 const MWK = (n: number) =>
@@ -114,7 +113,6 @@ function UsersPage() {
   const initialTab = tabs.find((t) => t.key === search.tab)?.key ?? "all";
   const [activeTab, setActiveTab] = useState(initialTab);
   const [q] = useState("");
-  const [riskFilter, setRiskFilter] = useState<"all" | Risk>("all");
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
   // Fetch real users from API
@@ -128,10 +126,9 @@ function UsersPage() {
     const tab = tabs.find((t) => t.key === activeTab)!;
     return users.filter((u) =>
       tab.filter(u) &&
-      (riskFilter === "all" || u.risk === riskFilter) &&
       (!q || (u.name + u.email + u.id + u.phone).toLowerCase().includes(q.toLowerCase()))
     );
-  }, [activeTab, riskFilter, q, users]);
+  }, [activeTab, q, users]);
 
   const toggle = (id: string) => {
     const next = new Set(checked);
@@ -147,10 +144,7 @@ function UsersPage() {
         {/* Main table */}
         <div className="flex-1 min-w-0">
           <Card>
-            <Toolbar
-              riskFilter={riskFilter} setRiskFilter={setRiskFilter}
-              selectedCount={checked.size}
-            />
+            <Toolbar selectedCount={checked.size} />
             <UsersTable
               rows={filtered}
               checked={checked}
@@ -179,7 +173,6 @@ function UserStats({ users }: { users: UserRow[] }) {
   const verified = users.filter((u) => u.kyc === "verified").length;
   const pending = users.filter((u) => u.kyc === "pending").length;
   const frozen = users.filter((u) => u.status === "frozen").length;
-  const highRisk = users.filter((u) => u.risk === "high").length;
 
   const combined = [
     { label: "Total users", value: totalUsers.toLocaleString(), sub: `${totalUsers} loaded`, trend: "live", up: true },
@@ -294,13 +287,7 @@ function TabDropdown({
   );
 }
 
-function Toolbar({
-  riskFilter, setRiskFilter,
-  selectedCount,
-}: {
-  riskFilter: "all" | Risk; setRiskFilter: (v: "all" | Risk) => void;
-  selectedCount: number;
-}) {
+function Toolbar({ selectedCount }: { selectedCount: number }) {
   if (selectedCount === 0) return null;
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -424,9 +411,10 @@ function UsersTable({
               <TabDropdown tabs={tabs} active={activeTab} onChange={onTabChange} counts={tabCounts} />
             </th>
             <th className="py-2.5 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground">Status</th>
-            <th className="py-2.5 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground">Risk</th>
-            <th className="py-2.5 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground">AUM</th>
-            <th className="py-2.5 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground">Cash</th>
+            <th className="py-2.5 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground">KYC</th>
+            <th className="py-2.5 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground" title="Market value of stock holdings at the latest close">Portfolio</th>
+            <th className="py-2.5 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground" title="Uninvested wallet cash held for the client">Cash</th>
+            <th className="py-2.5 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground" title="Total assets = cash + portfolio market value">Total</th>
             <th className="pr-5 py-2.5"></th>
           </tr>
         </thead>
@@ -450,16 +438,17 @@ function UsersTable({
                 </div>
               </td>
               <td className="py-3"><StatusBadge status={r.status} /></td>
-              <td className="py-3"><RiskBadge risk={r.risk} /></td>
-              <td className="py-3 text-right font-mono">MWK {MWK(r.aum)}</td>
+              <td className="py-3"><KycBadge kyc={r.kyc} /></td>
+              <td className="py-3 text-right font-mono">MWK {MWK(r.portfolio)}</td>
               <td className="py-3 text-right font-mono text-muted-foreground">MWK {MWK(r.cash)}</td>
+              <td className="py-3 text-right font-mono font-medium">MWK {MWK(r.aum)}</td>
               <td className="pr-5 py-3 text-right">
                 <RowMenu onViewMore={() => onOpenDrawer(r)} />
               </td>
             </tr>
           ))}
           {rows.length === 0 && (
-            <tr><td colSpan={7} className="py-16 text-center text-sm text-muted-foreground">No users match these filters.</td></tr>
+            <tr><td colSpan={8} className="py-16 text-center text-sm text-muted-foreground">No users match these filters.</td></tr>
           )}
         </tbody>
       </table>
@@ -503,15 +492,6 @@ function KycBadge({ kyc }: { kyc: Kyc }) {
     rejected: { cls: "bg-rose/10 text-rose", label: "Rejected" },
   };
   return <span className={`text-[11px] font-medium px-2 py-0.5 rounded ${map[kyc].cls}`}>{map[kyc].label}</span>;
-}
-
-function RiskBadge({ risk }: { risk: Risk }) {
-  const map: Record<Risk, string> = {
-    low: "bg-pine/10 text-pine",
-    medium: "bg-amber/10 text-amber",
-    high: "bg-rose/10 text-rose",
-  };
-  return <span className={`text-[11px] font-medium px-2 py-0.5 rounded capitalize ${map[risk]}`}>{risk}</span>;
 }
 
 function TableFooter({ total }: { total: number }) {
