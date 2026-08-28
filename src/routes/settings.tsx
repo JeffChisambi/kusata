@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import {
-  User, Lock, Bell, Shield, Eye, EyeOff, CheckCircle2, Percent,
+  User, Lock, Bell, Shield, Eye, EyeOff, CheckCircle2, Percent, ShieldAlert,
   AlertTriangle, Smartphone, LogOut, ChevronRight, Save,
   Loader2, KeyRound, Copy, Check, RefreshCw, Monitor,
 } from "lucide-react";
@@ -19,6 +19,7 @@ import {
   type NotifPrefs,
 } from "@/hooks/useSettings";
 import { FeesSection } from "@/components/fees-settings";
+import { RiskSection } from "@/components/risk-settings";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -761,6 +762,7 @@ function SessionsSection() {
 const TABS = [
   { key: "profile",       label: "Profile",         icon: User },
   { key: "fees",          label: "Fees & Charges",  icon: Percent },
+  { key: "risk",          label: "Risk & Limits",   icon: ShieldAlert },
   { key: "security",      label: "Security",        icon: Lock },
   { key: "notifications", label: "Notifications",   icon: Bell },
   { key: "sessions",      label: "Sessions",        icon: Smartphone },
@@ -806,6 +808,7 @@ function SettingsPage() {
         <div className="flex-1 min-w-0 space-y-5">
           {tab === "profile"       && <ProfileSection />}
           {tab === "fees"          && <FeesSection />}
+          {tab === "risk"          && <RiskSection />}
           {tab === "security"      && (
             <>
               <PasswordSection />
