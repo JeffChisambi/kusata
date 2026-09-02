@@ -110,6 +110,20 @@ export interface BrokerPaymentConfig {
   updatedAt?: string;
 }
 
+/** Result of a live MPGS connection + credential test. Contains no secrets. */
+export interface BrokerGatewayTestResult {
+  /** The acquirer's gateway host answered its public probe. */
+  reachable: boolean;
+  /** Merchant ID + API password were accepted by the gateway. */
+  authenticated: boolean;
+  latencyMs: number;
+  environment: string;
+  baseUrl: string;
+  /** Masked merchant id, e.g. ••••1234. */
+  merchantId: string;
+  message: string;
+}
+
 export interface CreateBrokerInput {
   name: string;
   code: string;
@@ -269,6 +283,17 @@ export function useUpdateBrokerPaymentConfig() {
       queryClient.invalidateQueries({ queryKey: queryKeys.brokers.detail(v.brokerId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.brokers.list() });
     },
+  });
+}
+
+/**
+ * Live credential test against the broker's own MPGS merchant account.
+ * Charges nothing: it probes the host, then creates a payment session.
+ */
+export function useTestBrokerPaymentConfig() {
+  return useMutation({
+    mutationFn: (brokerId: string) =>
+      api.post<BrokerGatewayTestResult>(`/v1/admin/brokers/${brokerId}/payment-config/test`),
   });
 }
 

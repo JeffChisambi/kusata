@@ -11,10 +11,11 @@ import { requireSuperAdmin } from "@/lib/auth";
 import {
   useBrokerDetail, useUpdateBroker, useUpdateBrokerStatus,
   useInviteBrokerAdmin, useReinviteBrokerAdmin,
-  useBrokerPaymentConfig, useUpdateBrokerPaymentConfig,
+  useBrokerPaymentConfig, useUpdateBrokerPaymentConfig, useTestBrokerPaymentConfig,
   useBrokerApiConfigs, useUpsertBrokerApiConfig,
   useBrokerUsers,
   type BrokerDetail, type BrokerAdmin, type BrokerApiConfig, type PaymentConfigInput,
+  type BrokerGatewayTestResult,
 } from "@/hooks/useBrokers";
 
 export const Route = createFileRoute("/brokers_/$brokerId")({
@@ -603,13 +604,35 @@ function TokenModal({ invitation, onClose }: { invitation: OneTimeToken; onClose
   );
 }
 
-/* ── Payment configuration ────────────────────────────────────────────────── */
+/* ── Payment configuration (Mastercard Gateway / MPGS) ───────────────────── */
+
+/**
+ * Each broker settles through their OWN MPGS merchant account with their own
+ * acquiring bank. These helpers keep the UI honest about which host belongs to
+ * which environment, mirroring the backend guard exactly.
+ */
+const gatewayHost = (url: string) => {
+  const raw = url.trim();
+  if (!raw) return "";
+  try {
+    return new URL(raw).hostname.toLowerCase();
+  } catch {
+    return raw.toLowerCase();
+  }
+};
+const looksLikeTestHost = (url: string) => {
+  const host = gatewayHost(url);
+  return host.includes("test") || host.includes("mtf");
+};
+
+type OnboardingStage = "not-started" | "credentials" | "live";
 
 function PaymentPanel({ brokerId, onFlash }: { brokerId: string; onFlash: (m: string, t?: "ok" | "err") => void }) {
   const { data: config, isLoading, isError } = useBrokerPaymentConfig(brokerId);
   const update = useUpdateBrokerPaymentConfig();
+  const test = useTestBrokerPaymentConfig();
 
-  const [provider, setProvider] = useState("");
+  const [provider, setProvider] = useState("MPGS");
   const [baseUrl, setBaseUrl] = useState("");
   const [apiVersion, setApiVersion] = useState("");
   const [environment, setEnvironment] = useState<"test" | "production">("test");
@@ -620,10 +643,12 @@ function PaymentPanel({ brokerId, onFlash }: { brokerId: string; onFlash: (m: st
   const [settlementAccountNumber, setSettlementAccountNumber] = useState("");
   const [isEnabled, setIsEnabled] = useState(false);
   const [seeded, setSeeded] = useState(false);
+  const [testResult, setTestResult] = useState<BrokerGatewayTestResult | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
 
   useEffect(() => {
     if (config && !seeded) {
-      setProvider(config.provider ?? "");
+      setProvider(config.provider ?? "MPGS");
       setBaseUrl(config.baseUrl ?? "");
       setApiVersion(config.apiVersion ?? "");
       setEnvironment(config.environment ?? "test");
@@ -635,9 +660,47 @@ function PaymentPanel({ brokerId, onFlash }: { brokerId: string; onFlash: (m: st
     }
   }, [config, seeded]);
 
+  // Environment guard — mirrors the backend rule so the operator gets
+  // feedback before the request is ever sent.
+  const envMismatch: string | null = (() => {
+    const url = baseUrl.trim();
+    if (!url) return null;
+    const host = gatewayHost(url);
+    if (environment === "production" && looksLikeTestHost(url)) {
+      return `Environment is Production but ${host} is a test/MTF gateway host. Real deposits must point at the acquirer's production host.`;
+    }
+    if (environment === "test" && !looksLikeTestHost(url)) {
+      return `Environment is Test but ${host} is not a test/MTF host. Use the acquirer's test host, or switch the environment to Production.`;
+    }
+    return null;
+  })();
+
+  // Onboarding progress, derived from what is actually stored.
+  const storedMerchant = !!config?.merchantId;
+  const storedPassword = !!config?.apiPasswordSet;
+  const storedBaseUrl = !!config?.baseUrl;
+  const stage: OnboardingStage = config?.isEnabled
+    ? "live"
+    : storedMerchant && storedPassword && storedBaseUrl
+      ? "credentials"
+      : "not-started";
+  const missing = [
+    !storedBaseUrl ? "base URL" : null,
+    !storedMerchant ? "merchant ID" : null,
+    !storedPassword ? "API password" : null,
+    !config?.isEnabled ? "payments not switched on" : null,
+  ].filter(Boolean) as string[];
+
+  const canTest = storedMerchant && storedPassword && storedBaseUrl && !test.isPending;
+
   const save = () => {
+    if (envMismatch) {
+      onFlash("Fix the environment / base URL mismatch before saving.", "err");
+      return;
+    }
     const input: PaymentConfigInput = {
-      provider: provider.trim() || undefined,
+      // Provider is fixed: every broker integrates through MPGS.
+      provider: provider.trim() || "MPGS",
       baseUrl: baseUrl.trim() || undefined,
       apiVersion: apiVersion.trim() || undefined,
       environment,
@@ -646,7 +709,8 @@ function PaymentPanel({ brokerId, onFlash }: { brokerId: string; onFlash: (m: st
       settlementAccountName: settlementAccountName.trim() || undefined,
       isEnabled,
     };
-    // Write-only secrets — only sent when the operator typed a new value.
+    // Write-only secrets — only sent when the operator typed a new value, so a
+    // blank field can never clear a stored secret.
     if (apiPassword) input.apiPassword = apiPassword;
     if (settlementAccountNumber) input.settlementAccountNumber = settlementAccountNumber;
 
@@ -656,43 +720,90 @@ function PaymentPanel({ brokerId, onFlash }: { brokerId: string; onFlash: (m: st
         onSuccess: () => {
           setApiPassword("");
           setSettlementAccountNumber("");
-          onFlash("Payment configuration saved.");
+          setTestResult(null);
+          setTestError(null);
+          onFlash("Gateway configuration saved.");
         },
         onError: (e: any) => onFlash(e?.message ?? "Save failed.", "err"),
       },
     );
   };
 
-  if (isLoading) return <Panel title="Payment Configuration"><LoadingBlock /></Panel>;
+  const runTest = () => {
+    setTestResult(null);
+    setTestError(null);
+    test.mutate(brokerId, {
+      onSuccess: (r) => setTestResult(r),
+      onError: (e: any) => setTestError(e?.message ?? "The connection test could not be run."),
+    });
+  };
+
+  if (isLoading) return <Panel title="Mastercard Gateway (MPGS)"><LoadingBlock /></Panel>;
   if (isError) {
     return (
-      <Panel title="Payment Configuration">
-        <div className="py-10 text-center text-sm text-rose">Failed to load the payment configuration.</div>
+      <Panel title="Mastercard Gateway (MPGS)">
+        <div className="py-10 text-center text-sm text-rose">Failed to load the gateway configuration.</div>
       </Panel>
     );
   }
 
   return (
     <Panel
-      title="Payment Configuration"
-      subtitle={config?.configured
-        ? `Configured · last updated ${fmtDateTime(config.updatedAt)}`
-        : "Not configured yet — fill in the gateway details to enable deposits and withdrawals."}
+      title="Mastercard Gateway (MPGS)"
+      subtitle="Deposits are charged to this broker's own MPGS merchant account and settle to their bank — Pine never holds the funds."
       action={
-        <button
-          onClick={save}
-          disabled={update.isPending}
-          className="h-8 px-3.5 rounded-[3px] bg-pine text-primary-foreground text-xs font-medium hover:bg-pine/90 disabled:opacity-40 flex items-center gap-1.5"
-        >
-          {update.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Save configuration
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={runTest}
+            disabled={!canTest}
+            title={canTest ? "Runs against the saved credentials — charges nothing" : "Save a base URL, merchant ID and API password first"}
+            className="h-8 px-3 rounded-[3px] border border-border text-xs font-medium hover:bg-muted/40 disabled:opacity-40 flex items-center gap-1.5"
+          >
+            {test.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plug className="w-3.5 h-3.5" />} Test connection
+          </button>
+          <button
+            onClick={save}
+            disabled={update.isPending || !!envMismatch}
+            className="h-8 px-3.5 rounded-[3px] bg-pine text-primary-foreground text-xs font-medium hover:bg-pine/90 disabled:opacity-40 flex items-center gap-1.5"
+          >
+            {update.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Save configuration
+          </button>
+        </div>
       }
     >
+      {/* Onboarding status */}
+      <div className="flex flex-wrap items-center gap-3 mb-5">
+        <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full ${
+          stage === "live" ? "bg-pine/10 text-pine"
+            : stage === "credentials" ? "bg-amber/10 text-amber"
+              : "bg-muted text-muted-foreground"
+        }`}>
+          {stage === "live" ? <ShieldCheck className="w-3.5 h-3.5" /> : <CreditCard className="w-3.5 h-3.5" />}
+          {stage === "live" ? "Live" : stage === "credentials" ? "Credentials saved" : "Not started"}
+        </span>
+        <span className="text-[11px] text-muted-foreground">
+          {stage === "live"
+            ? `Taking deposits in ${config?.environment ?? "test"} · last updated ${fmtDateTime(config?.updatedAt)}`
+            : missing.length
+              ? `Still needed: ${missing.join(", ")}.`
+              : "Ready to switch on."}
+        </span>
+      </div>
+
+      {envMismatch && (
+        <div className="rounded-[3px] border border-rose/30 bg-rose/8 px-3.5 py-2.5 text-xs text-rose flex items-start gap-2 mb-5">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-px" />
+          <span><strong>Environment mismatch.</strong> {envMismatch} Saving is blocked until this is corrected.</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
-        <FormField label="Provider">
-          <input value={provider} onChange={(e) => setProvider(e.target.value)} className="form-input" placeholder="e.g. dpo, paychangu" />
+        <FormField label="Provider" hint="Fixed — every Pine broker integrates through MPGS.">
+          <div className="form-input flex items-center text-muted-foreground bg-muted/30">
+            MPGS · Mastercard Payment Gateway Services
+          </div>
         </FormField>
-        <FormField label="Environment">
+        <FormField label="Environment" hint="Test uses the acquirer's MTF sandbox; production moves real money.">
           <select
             value={environment}
             onChange={(e) => setEnvironment(e.target.value as "test" | "production")}
@@ -702,39 +813,53 @@ function PaymentPanel({ brokerId, onFlash }: { brokerId: string; onFlash: (m: st
             <option value="production">Production</option>
           </select>
         </FormField>
-        <FormField label="Base URL">
-          <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} className="form-input" placeholder="https://api.gateway.com" />
+        <FormField
+          label="Base URL"
+          hint="The acquiring bank's gateway host. Test: https://test-nbm.mtf.gateway.mastercard.com · Production: https://nbm.gateway.mastercard.com"
+        >
+          <input
+            value={baseUrl}
+            onChange={(e) => setBaseUrl(e.target.value)}
+            className="form-input"
+            placeholder="https://test-nbm.mtf.gateway.mastercard.com"
+          />
         </FormField>
-        <FormField label="API version">
-          <input value={apiVersion} onChange={(e) => setApiVersion(e.target.value)} className="form-input" placeholder="e.g. v6" />
+        <FormField label="API version" hint="Numeric MPGS REST version issued with the merchant account, e.g. 100.">
+          <input value={apiVersion} onChange={(e) => setApiVersion(e.target.value)} className="form-input" placeholder="100" />
         </FormField>
-        <FormField label="Merchant ID">
+        <FormField label="Merchant ID" hint="Issued by the acquiring bank for this broker's merchant account.">
           <input value={merchantId} onChange={(e) => setMerchantId(e.target.value)} className="form-input" />
         </FormField>
-        <FormField label={config?.apiPasswordSet ? "API password · set ✓" : "API password"}>
+        <FormField
+          label="API password"
+          hint="Write-only: encrypted at rest and never returned. Leaving it blank keeps the stored password."
+        >
           <input
             type="password"
             autoComplete="new-password"
             value={apiPassword}
             onChange={(e) => setApiPassword(e.target.value)}
             className="form-input"
-            placeholder={config?.apiPasswordSet ? "leave blank to keep current" : "enter the gateway API password"}
+            placeholder={config?.apiPasswordSet ? "•••••• (set)" : "enter the gateway API password"}
           />
         </FormField>
-        <FormField label="Settlement bank">
+        <FormField label="Settlement bank" hint="The broker's own bank — where captured deposits land.">
           <input value={settlementBankName} onChange={(e) => setSettlementBankName(e.target.value)} className="form-input" placeholder="e.g. National Bank of Malawi" />
         </FormField>
         <FormField label="Settlement account name">
           <input value={settlementAccountName} onChange={(e) => setSettlementAccountName(e.target.value)} className="form-input" />
         </FormField>
-        <FormField label={config?.settlementAccountMasked ? `Settlement account · ${config.settlementAccountMasked}` : "Settlement account number"}>
+        <FormField
+          label="Settlement account number"
+          hint={config?.settlementAccountMasked ? `Stored: ${config.settlementAccountMasked} — leave blank to keep it.` : "Write-only: encrypted at rest."}
+        >
           <input
             type="password"
             autoComplete="off"
             value={settlementAccountNumber}
             onChange={(e) => setSettlementAccountNumber(e.target.value)}
             className="form-input"
-            placeholder={config?.settlementAccountMasked ? "leave blank to keep current" : "enter the settlement account number"}
+            placeholder={config?.settlementAccountMasked ? "•••••• (set)" : "enter the settlement account number"}
           />
         </FormField>
         <div className="flex items-end pb-1">
@@ -742,14 +867,71 @@ function PaymentPanel({ brokerId, onFlash }: { brokerId: string; onFlash: (m: st
             checked={isEnabled}
             onChange={setIsEnabled}
             label="Payments enabled"
-            hint="Turns the gateway on for this broker's investors"
+            hint="Turns this broker's merchant account on for their investors"
           />
         </div>
       </div>
+
+      {/* Connection test results */}
+      {(testResult || testError) && (
+        <div className="mt-5 max-w-3xl rounded-[3px] border border-border bg-muted/20 p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            Connection test
+          </div>
+
+          {testError && (
+            <div className="text-xs text-rose flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-px" />
+              <span>{testError}</span>
+            </div>
+          )}
+
+          {testResult && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <TestRow
+                  ok={testResult.reachable}
+                  label="Gateway reachable"
+                  detail={testResult.reachable ? testResult.baseUrl : `No response from ${testResult.baseUrl}`}
+                />
+                <TestRow
+                  ok={testResult.authenticated}
+                  label="Credentials valid"
+                  detail={testResult.authenticated ? "Payment session created — merchant ID and API password accepted" : "Gateway did not accept these credentials"}
+                />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-muted-foreground">
+                <span>Latency <strong className="text-foreground">{testResult.latencyMs} ms</strong></span>
+                <span>Environment <strong className="text-foreground">{testResult.environment}</strong></span>
+                <span>Merchant <strong className="text-foreground font-mono">{testResult.merchantId}</strong></span>
+              </div>
+              <p className={`mt-2.5 text-xs ${testResult.authenticated ? "text-muted-foreground" : "text-rose"}`}>
+                {testResult.message}
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
       <FormStyles />
     </Panel>
   );
 }
+
+function TestRow({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      {ok
+        ? <CheckCircle2 className="w-4 h-4 text-pine shrink-0 mt-px" />
+        : <AlertTriangle className="w-4 h-4 text-rose shrink-0 mt-px" />}
+      <div className="min-w-0">
+        <div className={`text-xs font-medium ${ok ? "text-foreground" : "text-rose"}`}>{label}</div>
+        <div className="text-[11px] text-muted-foreground break-all">{detail}</div>
+      </div>
+    </div>
+  );
+}
+
 
 /* ── API configuration ────────────────────────────────────────────────────── */
 
@@ -1084,11 +1266,12 @@ function InvestorsPanel({ brokerId }: { brokerId: string }) {
 
 /* ── Small local pieces (news.tsx / mobile-themes.tsx patterns) ───────────── */
 
-function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+function FormField({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{label}</label>
       {children}
+      {hint && <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground break-words">{hint}</p>}
     </div>
   );
 }

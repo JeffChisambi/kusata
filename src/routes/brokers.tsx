@@ -127,7 +127,7 @@ function BrokersPage() {
       <div className="flex gap-4">
         {[
           { label: "Brokers", value: isLoading ? "—" : String(list.length), sub: `${activeCount} active` },
-          { label: "Payments configured", value: isLoading ? "—" : `${configuredCount}/${list.length || 0}`, sub: "payment gateways set up" },
+          { label: "Payments configured", value: isLoading ? "—" : `${configuredCount}/${list.length || 0}`, sub: "live on their own gateway" },
           { label: "Investors", value: isLoading ? "—" : totalUsers.toLocaleString(), sub: "across all brokers" },
         ].map((s) => (
           <div key={s.label} className="flex-1 rounded-[3px] bg-card border border-border p-4">
@@ -244,10 +244,20 @@ function BrokerRow({ broker: b, earnings, onOpen }: { broker: BrokerSummary; ear
         {earnings ? fmtMK(earnings.lifetime.owedToPlatform) : "—"}
       </td>
       <td className="pl-4 py-3">
+        {/* `paymentConfigured` is the gateway's isEnabled flag. When it is off but
+            provider/environment are present, credentials exist but are not live yet. */}
         {b.paymentConfigured ? (
           <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-pine/10 text-pine">
             <CreditCard className="w-3 h-3" />
             Configured{b.paymentProvider ? ` · ${b.paymentProvider}` : ""}{b.paymentEnvironment ? ` (${b.paymentEnvironment})` : ""}
+          </span>
+        ) : b.paymentProvider || b.paymentEnvironment ? (
+          <span
+            className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber/10 text-amber"
+            title="Gateway details are stored but payments are not switched on yet"
+          >
+            <CreditCard className="w-3 h-3" />
+            Credentials saved
           </span>
         ) : (
           <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
