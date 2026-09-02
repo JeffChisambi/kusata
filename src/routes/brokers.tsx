@@ -166,10 +166,10 @@ function BrokersPage() {
                   <th className="py-2.5 text-left font-medium">Code</th>
                   <th className="py-2.5 text-left font-medium">Status</th>
                   <th className="py-2.5 text-left font-medium">Users</th>
-                  <th className="py-2.5 text-right font-medium" title="Broker's trading commissions this month">Earned (mo)</th>
-                  <th className="py-2.5 text-right font-medium" title="Platform commission the broker owes Pine this month">Owes Pine (mo)</th>
-                  <th className="py-2.5 text-right font-medium" title="All-time platform commission owed">Owes (lifetime)</th>
-                  <th className="py-2.5 text-left font-medium">Payments</th>
+                  <th className="px-3 py-2.5 text-right font-medium whitespace-nowrap" title="Broker's trading commissions this month">Earned (mo)</th>
+                  <th className="px-3 py-2.5 text-right font-medium whitespace-nowrap" title="Platform commission the broker owes Pine this month">Owes Pine (mo)</th>
+                  <th className="px-3 py-2.5 text-right font-medium whitespace-nowrap" title="All-time platform commission owed">Owes (lifetime)</th>
+                  <th className="pl-4 py-2.5 text-left font-medium">Payments</th>
                   <th className="pr-5 py-2.5 text-left font-medium">Created</th>
                 </tr>
               </thead>
@@ -234,16 +234,16 @@ function BrokerRow({ broker: b, earnings, onOpen }: { broker: BrokerSummary; ear
           <Users className="w-3.5 h-3.5 text-muted-foreground/60" /> {b.userCount.toLocaleString()}
         </span>
       </td>
-      <td className="py-3 text-right font-mono text-[12px] cursor-help" title={earnings ? fmtExact(earnings.thisMonth.commissions) : undefined}>
+      <td className="px-3 py-3 text-right font-mono text-[12px] whitespace-nowrap cursor-help" title={earnings ? fmtExact(earnings.thisMonth.commissions) : undefined}>
         {earnings ? fmtMK(earnings.thisMonth.commissions) : "—"}
       </td>
-      <td className="py-3 text-right font-mono text-[12px] font-semibold text-pine cursor-help" title={earnings ? fmtExact(earnings.thisMonth.owedToPlatform) : undefined}>
+      <td className="px-3 py-3 text-right font-mono text-[12px] font-semibold text-pine whitespace-nowrap cursor-help" title={earnings ? fmtExact(earnings.thisMonth.owedToPlatform) : undefined}>
         {earnings ? fmtMK(earnings.thisMonth.owedToPlatform) : "—"}
       </td>
-      <td className="py-3 text-right font-mono text-[12px] text-muted-foreground cursor-help" title={earnings ? fmtExact(earnings.lifetime.owedToPlatform) : undefined}>
+      <td className="px-3 py-3 text-right font-mono text-[12px] text-muted-foreground whitespace-nowrap cursor-help" title={earnings ? fmtExact(earnings.lifetime.owedToPlatform) : undefined}>
         {earnings ? fmtMK(earnings.lifetime.owedToPlatform) : "—"}
       </td>
-      <td className="py-3">
+      <td className="pl-4 py-3">
         {b.paymentConfigured ? (
           <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-pine/10 text-pine">
             <CreditCard className="w-3 h-3" />
