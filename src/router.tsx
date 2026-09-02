@@ -5,18 +5,26 @@ import { routeTree } from "./routeTree.gen";
 /**
  * Shared QueryClient default options.
  *
- * staleTime: 30s — prevents re-fetching data that was just loaded when the
- * user navigates between routes. Previously 0, which re-fetched everything
- * on every navigation.
+ * staleTime: 60s — prevents re-fetching data that was just loaded when the
+ * user navigates between routes.
  *
- * gcTime: 5 min — keep unused data in cache for 5 minutes (React Query default).
+ * gcTime: 5 min — keep unused data in cache for 5 minutes.
+ *
+ * placeholderData: keep the previous result while a new key (filter / page
+ * change) loads, so lists never blank out between pages.
+ *
+ * refetchOnWindowFocus: off — the pollers already keep hot data fresh and a
+ * tab switch shouldn't trigger a burst of requests. Hooks that want it can
+ * opt back in.
  */
 const QUERY_DEFAULTS = {
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
-      gcTime: 5 * 60 * 1000,
+      staleTime: 60_000,
+      gcTime: 5 * 60_000,
       retry: 1,
+      placeholderData: <T,>(prev: T | undefined) => prev,
+      refetchOnWindowFocus: false,
     },
   },
 };
@@ -46,8 +54,16 @@ export const getRouter = () => {
   const router = createRouter({
     routeTree,
     context: { queryClient },
+    // Required for useElementScrollRestoration (the dashboard's inner scroller
+    // in DashboardLayout) — the window itself never scrolls.
     scrollRestoration: true,
+    // Start loading a route's code/loader on hover/focus so clicks feel instant.
+    defaultPreload: 'intent',
     defaultPreloadStaleTime: 30_000,
+    // Don't flash a pending UI for fast transitions; show one only if a
+    // navigation takes longer than 300ms, and drop it as soon as it's ready.
+    defaultPendingMs: 300,
+    defaultPendingMinMs: 0,
   });
 
   return router;

@@ -5,12 +5,13 @@ import {
   useRouter,
   useLocation,
   useNavigate,
+  useMatches,
   redirect,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { isAuthenticated, getCurrentUser } from "@/lib/auth";
+import { isAuthenticated } from "@/lib/auth";
 import { registerNavigate } from "@/lib/nav-registry";
 import { installErrorReporter } from "@/lib/error-reporter";
 
@@ -19,14 +20,12 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ComingSoonView } from "../components/coming-soon-view";
 import { DashboardLayout, DashboardTitleProvider } from "../components/broker-shell";
 
-// Real dashboard sections get the persistent shell (sidebar + topbar). Login,
-// coming-soon and any not-found path render bare/full-screen.
-const SHELL_PREFIXES = ["/users", "/kyc", "/orders", "/settings", "/notifications", "/news", "/treasury", "/support", "/mobile-themes", "/brokers", "/audit"];
-function isShellRoute(pathname: string): boolean {
-  return (
-    pathname === "/" ||
-    SHELL_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"))
-  );
+// Every authenticated section renders inside the persistent shell (sidebar +
+// topbar). Only the public auth pages and a not-found path render bare, so
+// adding a new dashboard route never requires touching this list.
+const BARE_PATHS = new Set(["/login", "/activate"]);
+function isBareRoute(pathname: string): boolean {
+  return BARE_PATHS.has(pathname);
 }
 
 function NotFoundComponent() {
@@ -119,22 +118,40 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 /**
- * Inline auth-guard script injected into <head>.
+ * Inline auth-guard + pre-paint preferences script injected into <head>.
  *
  * Runs synchronously before the browser paints a single pixel of body content.
  * Checks localStorage for a valid token and either:
  *   - redirects to /login (unauthenticated access to a protected route)
  *   - adds .pine-auth-ready to <html>, which lifts the visibility:hidden set in
  *     styles.css and allows the body to paint.
+ *
+ * It also applies the two persisted UI preferences BEFORE first paint so the
+ * shell never flashes and then flips:
+ *   - theme: the per-user key `pine-theme:<userId>` (falling back to the legacy
+ *     global `pine-theme`, then the OS preference) — mirrors BrokerTopbar.
+ *   - sidebar: `pine-broker-sidebar-collapsed` → `data-sidebar` attribute and
+ *     the `--pine-sidebar-w` CSS var that the sidebar's SSR frame is sized from.
  */
 const AUTH_GUARD_SCRIPT = `(function(){
+  var root=document.documentElement;
   try{
     var token=localStorage.getItem('pine_admin_access_token');
     var path=location.pathname;
     var isPublic=path==='/login'||path==='/activate';
     if(!token&&!isPublic){location.replace('/login');return;}
+    var userId=null;
+    try{var u=JSON.parse(localStorage.getItem('pine_admin_user')||'null');userId=u&&u.id;}catch(e){}
+    var stored=null;
+    if(userId){stored=localStorage.getItem('pine-theme:'+userId);}
+    if(stored===null){stored=localStorage.getItem('pine-theme');}
+    var dark=stored!==null?stored==='dark':(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if(dark){root.classList.add('dark');}
+    var collapsed=localStorage.getItem('pine-broker-sidebar-collapsed')==='1';
+    root.setAttribute('data-sidebar',collapsed?'collapsed':'expanded');
+    root.style.setProperty('--pine-sidebar-w',collapsed?'4.5rem':'17rem');
   }catch(e){}
-  document.documentElement.classList.add('pine-auth-ready');
+  root.classList.add('pine-auth-ready');
 })();`;
 
 function RootShell({ children }: { children: ReactNode }) {
@@ -157,6 +174,10 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  // A not-found path renders the full-screen ComingSoonView without the shell.
+  const isNotFound = useMatches({
+    select: (matches) => matches.some((m) => m.status === "notFound" || m.globalNotFound === true),
+  });
 
   // Register the router's navigate function so ApiClient can use it for
   // session-expiry redirects instead of window.location.href, which would
@@ -176,12 +197,12 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <DashboardTitleProvider>
-        {isShellRoute(pathname) ? (
+        {isBareRoute(pathname) || isNotFound ? (
+          <Outlet />
+        ) : (
           <DashboardLayout>
             <Outlet />
           </DashboardLayout>
-        ) : (
-          <Outlet />
         )}
       </DashboardTitleProvider>
     </QueryClientProvider>

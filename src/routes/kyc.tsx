@@ -2,19 +2,18 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, useEffect, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import {
-  ShieldCheck, Clock, CheckCircle2, XCircle, FileText,
-  Eye, MoreHorizontal, ChevronDown, AlertTriangle, User,
-  Camera, ScanLine, ClipboardList, FilePlus,
-  TrendingUp, TrendingDown, Download, Fingerprint, ExternalLink,
-  RefreshCw, Loader2, MapPin, BadgeCheck,
+  Clock, CheckCircle2, XCircle, FileText,
+  Eye, MoreHorizontal, ChevronDown, AlertTriangle,
+  ScanLine, ClipboardList, FilePlus,
+  TrendingUp, TrendingDown, Download,
+  RefreshCw, Loader2,
 } from "lucide-react";
 import { Card } from "@/components/broker-shell";
 import {
-  useKycQueue, useKycApplication, useApproveKyc, useRejectKyc,
-  useRequestAdditionalDocs, useKycCounts, downloadCsdForm,
-  type KycApplicationRow, type KycDocument, type KycOcrData,
+  useKycQueue, useRequestAdditionalDocs, useKycCounts,
+  type KycApplicationRow,
 } from "@/hooks/useKyc";
-import { useCurrentUser, isSuperAdmin } from "@/lib/auth";
+import { DOC_REQUEST_OPTIONS } from "@/lib/kyc-docs";
 
 export const Route = createFileRoute("/kyc")({
   head: () => ({
@@ -231,8 +230,10 @@ function KycPage() {
     setPage(1);
   };
 
-  const handleApproveFromMenu = (app: KycApplication) => openReview(app);
-  const handleRejectFromMenu  = (app: KycApplication) => openReview(app);
+  // The "OCR Results" tab is a client-side filter, so its count comes from the
+  // rows currently loaded rather than the server's per-status counts.
+  const ocrTab = TABS.find((t) => t.key === "ocr");
+  const ocrCount = ocrTab?.clientFilter ? applications.filter(ocrTab.clientFilter).length : 0;
 
   return (
     <>
@@ -245,6 +246,7 @@ function KycPage() {
           setActiveTab={handleTabChange}
           tabs={TABS}
           counts={counts}
+          ocrCount={ocrCount}
         />
         <div className="ml-auto flex items-center gap-2 py-2">
           {isFetching && !isLoading && (
@@ -290,8 +292,6 @@ function KycPage() {
               <KycTable
                 rows={rows}
                 onSelect={openReview}
-                onApprove={handleApproveFromMenu}
-                onReject={handleRejectFromMenu}
                 onRequestDocs={setRequestDocsFor}
                 showDetailColumns={activeTab === "all"}
               />
@@ -319,7 +319,7 @@ function KycPage() {
         </div>
       </div>
 
-      {/* Request additional docs modal (opened from either row menu or review panel) */}
+      {/* Request additional docs modal (opened from the row menu) */}
       {requestDocsFor && (
         <RequestDocsDialog
           app={requestDocsFor}
@@ -456,12 +456,14 @@ function KycStats({ counts }: { counts?: Record<string, number> }) {
 /* ─────────────────────────── filter tabs dropdown ─────────────────────────── */
 
 function FilterTabsDropdown({
-  activeTab, setActiveTab, tabs, counts,
+  activeTab, setActiveTab, tabs, counts, ocrCount,
 }: {
   activeTab: string;
   setActiveTab: (v: string) => void;
   tabs: Tab[];
   counts?: Record<string, number>;
+  /** Client-side count for the OCR tab (computed from loaded rows). */
+  ocrCount: number;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -486,7 +488,7 @@ function FilterTabsDropdown({
     additional: String(counts?.ADDITIONAL_DOCS ?? "—"),
     approved:   String(counts?.APPROVED   ?? "—"),
     rejected:   String(counts?.REJECTED   ?? "—"),
-    ocr:        "—",
+    ocr:        String(ocrCount),
   };
 
   return (
@@ -558,12 +560,10 @@ function KycTableSkeleton() {
 /* ─────────────────────────── table ─────────────────────────── */
 
 function KycTable({
-  rows, onSelect, onApprove, onReject, onRequestDocs, showDetailColumns,
+  rows, onSelect, onRequestDocs, showDetailColumns,
 }: {
   rows: KycApplication[];
   onSelect: (a: KycApplication) => void;
-  onApprove: (a: KycApplication) => void;
-  onReject: (a: KycApplication) => void;
   onRequestDocs: (a: KycApplication) => void;
   showDetailColumns: boolean;
 }) {
@@ -596,8 +596,6 @@ function KycTable({
               app={r}
               idx={idx + 1}
               onSelect={onSelect}
-              onApprove={onApprove}
-              onReject={onReject}
               onRequestDocs={onRequestDocs}
               showDetailColumns={showDetailColumns}
             />
@@ -616,13 +614,11 @@ function KycTable({
 }
 
 function KycRow({
-  app, idx, onSelect, onApprove, onReject, onRequestDocs, showDetailColumns,
+  app, idx, onSelect, onRequestDocs, showDetailColumns,
 }: {
   app: KycApplication;
   idx: number;
   onSelect: (a: KycApplication) => void;
-  onApprove: (a: KycApplication) => void;
-  onReject: (a: KycApplication) => void;
   onRequestDocs: (a: KycApplication) => void;
   showDetailColumns: boolean;
 }) {
@@ -670,8 +666,6 @@ function KycRow({
         <RowMenu
           app={app}
           onReview={() => onSelect(app)}
-          onApprove={() => onApprove(app)}
-          onReject={() => onReject(app)}
           onRequestDocs={() => onRequestDocs(app)}
         />
       </td>
@@ -728,12 +722,10 @@ function ScoreBar({ value }: { value: number }) {
 /* ─────────────────────────── row menu ─────────────────────────── */
 
 function RowMenu({
-  app, onReview, onApprove, onReject, onRequestDocs,
+  app, onReview, onRequestDocs,
 }: {
   app: KycApplication;
   onReview: () => void;
-  onApprove: () => void;
-  onReject: () => void;
   onRequestDocs: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -743,12 +735,12 @@ function RowMenu({
   // pipeline auto-approves/rejects with no reviewer, and brokers can override.
   const isReviewed = (app.status === "approved" || app.status === "rejected") && !!app.reviewer;
 
-  const items = [
-    { label: "Review",        icon: Eye,          action: onReview,      show: true },
-    { label: "Approve",       icon: CheckCircle2, action: onApprove,     show: !isReviewed },
-    { label: "Request docs",  icon: FilePlus,     action: onRequestDocs, show: !isReviewed },
-    { label: "Reject",        icon: XCircle,      tone: "rose" as const, action: onReject, show: !isReviewed },
-  ].filter((it) => it.show);
+  // Approve/Reject decisions are made on the full review page (with the
+  // documents in view), so the row menu only opens the review.
+  const items: Array<{ label: string; icon: React.ComponentType<{ className?: string }>; action: () => void; tone?: "rose" }> = [
+    { label: isReviewed ? "View review" : "Review", icon: Eye, action: onReview },
+    ...(!isReviewed ? [{ label: "Request docs", icon: FilePlus, action: onRequestDocs }] : []),
+  ];
 
   return (
     <>
@@ -851,13 +843,6 @@ function PopoverMenu({
 
 /* ─────────────────────────── request docs dialog ─────────────────────────── */
 
-const DOC_REQUEST_OPTIONS = [
-  { value: "ID_FRONT",         label: "ID / Passport front" },
-  { value: "ID_BACK",          label: "ID / Passport back" },
-  { value: "SELFIE",           label: "Selfie / Liveness video" },
-  { value: "PROOF_OF_ADDRESS", label: "Proof of address" },
-];
-
 function RequestDocsDialog({ app, onClose }: { app: KycApplication; onClose: () => void }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [message,  setMessage]  = useState("");
@@ -935,621 +920,6 @@ function RequestDocsDialog({ app, onClose }: { app: KycApplication; onClose: () 
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────── review panel ─────────────────────────── */
-
-/** Document slot types that represent the front-facing ID document. */
-const ID_FRONT_TYPES  = new Set(["ID_FRONT", "NATIONAL_ID", "PASSPORT", "PASSPORT_FRONT", "DRIVERS_LICENSE_FRONT"]);
-const ID_BACK_TYPES   = new Set(["ID_BACK", "NATIONAL_ID_BACK", "PASSPORT_BACK", "DRIVERS_LICENSE_BACK"]);
-const SELFIE_TYPES    = new Set(["SELFIE", "LIVENESS"]);
-const ADDRESS_TYPES   = new Set(["PROOF_OF_RESIDENCE", "UTILITY_BILL", "BANK_STATEMENT", "ADDRESS_PROOF"]);
-
-function ReviewPanel({
-  app, onClose, onApprove, onReject, onRequestDocs,
-}: {
-  app: KycApplication;
-  onClose: () => void;
-  onApprove: () => void;
-  onReject: () => void;
-  onRequestDocs: () => void;
-}) {
-  const [docTab,             setDocTab]             = useState<"front" | "back" | "selfie" | "address">("front");
-  const [infoTab,            setInfoTab]            = useState<"checklist" | "ocr" | "notes">("checklist");
-  const [showRejectDialog,   setShowRejectDialog]   = useState(false);
-  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
-  const [rejectReason,       setRejectReason]       = useState("");
-  const [reviewNotes,        setReviewNotes]        = useState(app.notes ?? "");
-
-  // Fetch full detail including document image URLs + OCR data
-  const {
-    data: reviewData,
-    isLoading: isDetailLoading,
-    isError: isDetailError,
-  } = useKycApplication(app.id);
-
-  const approveMutation = useApproveKyc();
-  const rejectMutation  = useRejectKyc();
-  // Platform admins observe — KYC decisions belong to the owning broker
-  // (the backend rejects them with 403 anyway; don't show dead buttons).
-  const superAdmin = isSuperAdmin(useCurrentUser());
-
-  // CSD Securities Account Opening form (server-generated, pre-filled PDF)
-  const [csdDownloading, setCsdDownloading] = useState(false);
-  const handleCsdDownload = async () => {
-    setCsdDownloading(true);
-    try {
-      await downloadCsdForm(app.id);
-    } catch {
-      // Non-fatal — keep the panel usable; the button simply re-enables
-    } finally {
-      setCsdDownloading(false);
-    }
-  };
-
-  // Close on Escape
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", h);
-    return () => document.removeEventListener("keydown", h);
-  }, [onClose]);
-
-  // Extract and type documents from review data
-  const docs: KycDocument[] = useMemo(
-    () => reviewData?.documents ?? [],
-    [reviewData],
-  );
-
-  const idDoc      = docs.find((d) => ID_FRONT_TYPES.has(d.type));
-  const backDoc    = docs.find((d) => ID_BACK_TYPES.has(d.type));
-  const selfieDoc  = docs.find((d) => SELFIE_TYPES.has(d.type));
-  const addressDoc = docs.find((d) => ADDRESS_TYPES.has(d.type));
-  const hasBack    = !!backDoc;
-  const hasAddress = !!addressDoc;
-
-  const currentDocUrl =
-    docTab === "selfie"   ? selfieDoc?.imageUrl :
-    docTab === "back"     ? backDoc?.imageUrl    :
-    docTab === "address"  ? addressDoc?.imageUrl :
-    idDoc?.imageUrl;
-
-  // OCR data — from detail endpoint; fall back gracefully
-  const ocrData: Partial<KycOcrData> = reviewData?.application?.ocrExtractedData ?? {};
-  const fieldConf = reviewData?.application?.ocrFieldConfidences ?? {};
-  const mrz = reviewData?.application?.mrz ?? null;
-  const extractedAddress = reviewData?.application?.address ?? null;
-
-  /** Compare name from OCR with the user's registered name (case-insensitive). */
-  const nameMatch = !ocrData.fullName ||
-    ocrData.fullName.trim().toLowerCase() === app.name.trim().toLowerCase();
-
-  const genderLabel =
-    ocrData.gender === "M" ? "Male" : ocrData.gender === "F" ? "Female" : ocrData.gender;
-
-  const ocrFields = [
-    { label: "Full name",       value: ocrData.fullName       ?? app.name,          match: nameMatch, conf: fieldConf.fullName },
-    { label: "Document type",   value: docTypeLabel[app.docType],                   match: true },
-    ...(ocrData.nationalId      ? [{ label: "National ID",      value: ocrData.nationalId,      match: true, conf: fieldConf.nationalIdNumber }] : []),
-    ...(ocrData.documentNumber && ocrData.documentNumber !== ocrData.nationalId
-                                ? [{ label: "Document no.",     value: ocrData.documentNumber,  match: true, conf: fieldConf.documentNumber }] : []),
-    ...(ocrData.dateOfBirth     ? [{ label: "Date of birth",    value: ocrData.dateOfBirth,     match: true, conf: fieldConf.dateOfBirth }] : []),
-    ...(genderLabel             ? [{ label: "Gender",           value: genderLabel,             match: true, conf: fieldConf.gender }] : []),
-    ...(ocrData.expiryDate      ? [{ label: "Expiry date",      value: ocrData.expiryDate,      match: true, conf: fieldConf.expiryDate }] : []),
-    ...(ocrData.nationality     ? [{ label: "Nationality",      value: ocrData.nationality,     match: true, conf: fieldConf.nationality }] : []),
-    ...(ocrData.address         ? [{ label: "Place of origin",  value: ocrData.address,         match: true }] : []),
-  ] as Array<{ label: string; value: string; match: boolean; conf?: number }>;
-
-  // Checklist — uses real email/phone verified flags from the API
-  const steps = [
-    { label: "Email verified",             ok: app.emailVerified === true },
-    { label: "Phone verified",             ok: app.phoneVerified === true },
-    { label: "ID front uploaded",          ok: !!idDoc },
-    { label: "ID back uploaded",           ok: !!backDoc },
-    { label: "Selfie uploaded",            ok: !!selfieDoc },
-    { label: "Proof of address uploaded",  ok: !!addressDoc },
-    { label: "OCR read successful",        ok: app.ocrConfidence >= 70 },
-    ...(mrz?.found
-      ? [{ label: "MRZ check digits valid",  ok: mrz.checkDigitScore === 100 }]
-      : []),
-    ...(extractedAddress?.formatted
-      ? [{ label: "Address extracted",       ok: true }]
-      : []),
-    { label: "Face match passed",          ok: app.faceMatchScore >= 75 },
-    { label: "Liveness passed",            ok: app.livenessScore >= 70 },
-    { label: "No flagged issues",          ok: app.flags.length === 0 },
-  ];
-
-  const passCount    = steps.filter((s) => s.ok).length;
-  const allPass      = passCount === steps.length;
-  const hasIssues    = app.flags.length > 0;
-  // Final only when a HUMAN decided (reviewer set): AI auto-decisions stay
-  // overridable, and "additional docs requested" must NOT lock the buttons —
-  // the broker still needs to decide once the documents arrive.
-  const isReviewed   = (app.status === "approved" || app.status === "rejected") && !!app.reviewer;
-
-  const scoreColor    = (v: number) => v >= 85 ? "text-pine"  : v >= 70 ? "text-amber"  : "text-rose";
-  const scoreBarColor = (v: number) => v >= 85 ? "bg-pine"    : v >= 70 ? "bg-amber"    : "bg-rose";
-
-  const handleApprove = () => {
-    approveMutation.mutate(
-      { applicationId: app.id, notes: reviewNotes.trim() || undefined },
-      { onSuccess: () => { setShowApproveConfirm(false); onApprove(); } },
-    );
-  };
-
-  const handleReject = () => {
-    if (!rejectReason.trim()) return;
-    rejectMutation.mutate(
-      { applicationId: app.id, reason: rejectReason.trim(), notes: reviewNotes.trim() || undefined },
-      { onSuccess: () => { setShowRejectDialog(false); onReject(); } },
-    );
-  };
-
-  return (
-    <div className="flex flex-col h-full overflow-hidden">
-
-      {/* ── Section 1: Identity header ── */}
-      <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border shrink-0">
-        <Initials name={app.name} />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-sm leading-none">{app.name}</span>
-            <KycStatusBadge status={app.status} />
-            <TierBadge tier={app.tierRequested} />
-          </div>
-          <div className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-1">
-            <span>{docTypeLabel[app.docType]}</span>
-            {app.phone && <><span className="opacity-30">·</span><span>{app.phone}</span></>}
-            {app.city  && <><span className="opacity-30">·</span><span>{app.city}</span></>}
-            <span className="opacity-30">·</span>
-            <span>Submitted {relativeTime(app.submittedAt)}</span>
-            {app.reviewer && (
-              <><span className="opacity-30">·</span><span className="italic">Reviewed by {app.reviewer}</span></>
-            )}
-          </div>
-        </div>
-        <button
-          onClick={onClose}
-          className="w-8 h-8 rounded-[3px] hover:bg-muted/60 flex items-center justify-center text-muted-foreground shrink-0 transition-colors"
-          aria-label="Close"
-        >
-          <XCircle className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* ── Section 2: Risk signals strip ── */}
-      <div className={`flex items-center flex-wrap gap-x-5 gap-y-1.5 px-5 py-2 border-b shrink-0 ${hasIssues ? "bg-amber/5 border-amber/20" : "border-border bg-muted/10"}`}>
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">Signals</span>
-
-        <div className="flex items-center gap-1.5">
-          <ScanLine className="w-3 h-3 text-muted-foreground shrink-0" />
-          <span className="text-xs text-muted-foreground">OCR</span>
-          <div className="w-14 h-1 bg-muted rounded-full overflow-hidden mx-0.5">
-            <div className={`h-full ${scoreBarColor(app.ocrConfidence)} rounded-full`} style={{ width: `${app.ocrConfidence}%` }} />
-          </div>
-          <span className={`text-xs font-semibold tabular-nums ${scoreColor(app.ocrConfidence)}`}>{app.ocrConfidence}%</span>
-        </div>
-
-        <span className="text-border text-xs">·</span>
-
-        <div className="flex items-center gap-1.5">
-          <Camera className="w-3 h-3 text-muted-foreground shrink-0" />
-          <span className="text-xs text-muted-foreground">Face</span>
-          <div className="w-14 h-1 bg-muted rounded-full overflow-hidden mx-0.5">
-            <div className={`h-full ${scoreBarColor(app.faceMatchScore)} rounded-full`} style={{ width: `${app.faceMatchScore}%` }} />
-          </div>
-          <span className={`text-xs font-semibold tabular-nums ${scoreColor(app.faceMatchScore)}`}>{app.faceMatchScore}%</span>
-        </div>
-
-        {app.livenessScore > 0 && (
-          <>
-            <span className="text-border text-xs">·</span>
-            <div className="flex items-center gap-1.5">
-              <Fingerprint className="w-3 h-3 text-muted-foreground shrink-0" />
-              <span className="text-xs text-muted-foreground">Live</span>
-              <div className="w-14 h-1 bg-muted rounded-full overflow-hidden mx-0.5">
-                <div className={`h-full ${scoreBarColor(app.livenessScore)} rounded-full`} style={{ width: `${app.livenessScore}%` }} />
-              </div>
-              <span className={`text-xs font-semibold tabular-nums ${scoreColor(app.livenessScore)}`}>{app.livenessScore}%</span>
-            </div>
-          </>
-        )}
-
-        {mrz?.found && (
-          <>
-            <span className="text-border text-xs">·</span>
-            <span
-              className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                mrz.checkDigitScore === 100 ? "bg-pine/10 text-pine" : "bg-amber/10 text-amber"
-              }`}
-              title={`Machine-readable zone parsed — ${mrz.checkDigitScore}% of check digits valid`}
-            >
-              <BadgeCheck className="w-3 h-3" /> MRZ {mrz.checkDigitScore === 100 ? "verified" : `${mrz.checkDigitScore}%`}
-            </span>
-          </>
-        )}
-
-        {app.flags.length > 0 && (
-          <>
-            <span className="text-border text-xs">·</span>
-            {app.flags.map((f) => (
-              <span key={f} className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber/10 text-amber">
-                <AlertTriangle className="w-3 h-3" /> {f.replace(/_/g, " ")}
-              </span>
-            ))}
-          </>
-        )}
-
-        <div className={`ml-auto text-[11px] font-medium shrink-0 ${allPass ? "text-pine" : "text-muted-foreground"}`}>
-          {passCount}/{steps.length} checks
-        </div>
-      </div>
-
-      {/* ── Section 3: Document viewer + Info panel ── */}
-      <div className="flex flex-col sm:flex-row flex-1 min-h-0 overflow-y-auto sm:overflow-hidden">
-
-        {/* Left: Document viewer */}
-        <div className="w-full sm:w-64 xl:w-72 shrink-0 border-b sm:border-b-0 sm:border-r border-border flex flex-col">
-          <div className="flex border-b border-border px-3 pt-0.5 shrink-0">
-            {(["front", ...(hasBack ? ["back" as const] : []), "selfie", ...(hasAddress ? ["address" as const] : [])] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setDocTab(t as any)}
-                className={`relative py-2.5 px-3 text-xs font-medium transition-colors ${
-                  docTab === t ? "text-pine" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t === "front" ? "ID Front" : t === "back" ? "ID Back" : t === "selfie" ? "Selfie" : "Address Doc"}
-                {docTab === t && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-pine rounded-full" />}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex-1 bg-muted/20 flex flex-col gap-3 p-4 min-h-0 overflow-hidden">
-            <div className="w-full aspect-[3/2] rounded-md border border-border bg-card flex flex-col items-center justify-center gap-2 relative overflow-hidden shrink-0">
-              {isDetailLoading ? (
-                <div className="w-full h-full bg-muted/40 animate-pulse flex items-center justify-center">
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" />
-                </div>
-              ) : isDetailError ? (
-                <div className="flex flex-col items-center justify-center gap-2 p-4 text-center">
-                  <AlertTriangle className="w-6 h-6 text-amber" />
-                  <span className="text-xs text-muted-foreground">Failed to load document</span>
-                </div>
-              ) : currentDocUrl ? (
-                <img
-                  src={currentDocUrl}
-                  alt={docTab === "selfie" ? "Selfie" : docTab === "back" ? "ID Back" : "ID Front"}
-                  className="w-full h-full object-contain"
-                  onError={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    img.style.display = "none";
-                    img.nextElementSibling?.classList.remove("hidden");
-                  }}
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center gap-2">
-                  {docTab === "selfie" ? (
-                    <>
-                      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                        <User className="w-8 h-8 text-muted-foreground" />
-                      </div>
-                      <span className="text-xs text-muted-foreground">Selfie not uploaded</span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-14 h-9 rounded border-2 border-muted-foreground/20 flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-muted-foreground/40" />
-                      </div>
-                      <span className="text-xs text-muted-foreground">Document not uploaded</span>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {currentDocUrl && !isDetailLoading && (
-              <div className="flex items-center gap-1.5 shrink-0">
-                <a
-                  href={currentDocUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-7 px-2.5 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1 transition-colors"
-                >
-                  <ExternalLink className="w-3 h-3" /> Open full size
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right: Checklist / OCR / Notes */}
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-          <div className="flex border-b border-border px-5 shrink-0">
-            {(["checklist", "ocr", "notes"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setInfoTab(t)}
-                className={`relative py-2.5 px-3 text-xs font-medium transition-colors ${
-                  infoTab === t ? "text-pine" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t === "checklist"
-                  ? `Checklist · ${passCount}/${steps.length}`
-                  : t === "ocr"
-                  ? "OCR Data"
-                  : "Notes"}
-                {infoTab === t && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-pine rounded-full" />}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            {infoTab === "checklist" && (
-              <ul className="divide-y divide-border px-5">
-                {steps.map((s, i) => (
-                  <li key={i} className="flex items-center gap-3 py-2.5">
-                    {s.ok
-                      ? <CheckCircle2 className="w-4 h-4 text-pine shrink-0" />
-                      : <XCircle className="w-4 h-4 text-muted-foreground/50 shrink-0" />}
-                    <span className={`text-sm flex-1 ${s.ok ? "text-foreground" : "text-muted-foreground"}`}>
-                      {s.label}
-                    </span>
-                    <span className={`text-[11px] font-medium shrink-0 ${s.ok ? "text-pine" : "text-muted-foreground"}`}>
-                      {s.ok ? "Pass" : "–"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {infoTab === "ocr" && (
-              <div className="px-5 pb-4">
-                {isDetailLoading ? (
-                  <div className="space-y-3 pt-3">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className="h-8 rounded bg-muted animate-pulse" />
-                    ))}
-                  </div>
-                ) : ocrFields.length === 0 ? (
-                  <div className="py-8 flex flex-col items-center gap-2 text-center">
-                    <ScanLine className="w-8 h-8 text-muted-foreground/30" />
-                    <p className="text-xs text-muted-foreground">No OCR data extracted yet.</p>
-                    <p className="text-[11px] text-muted-foreground/60">OCR runs automatically during KYC processing.</p>
-                  </div>
-                ) : (
-                  <>
-                    {mrz?.found && (
-                      <div className={`mt-3 flex items-center gap-2 rounded-[3px] border px-3 py-2 ${
-                        mrz.checkDigitScore === 100
-                          ? "border-pine/25 bg-pine/5"
-                          : "border-amber/25 bg-amber/5"
-                      }`}>
-                        <BadgeCheck className={`w-4 h-4 shrink-0 ${mrz.checkDigitScore === 100 ? "text-pine" : "text-amber"}`} />
-                        <span className="text-xs text-muted-foreground">
-                          {mrz.checkDigitScore === 100
-                            ? "Machine-readable zone parsed — all ICAO check digits valid."
-                            : `Machine-readable zone parsed — ${mrz.checkDigitScore}% of check digits valid.`}
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="divide-y divide-border">
-                      {ocrFields.map((f) => (
-                        <div key={f.label} className="flex items-start justify-between gap-4 py-2.5">
-                          <span className="text-xs text-muted-foreground shrink-0 pt-0.5">{f.label}</span>
-                          <div className="flex items-center gap-1.5 text-right min-w-0">
-                            <span className="text-sm font-medium break-words min-w-0">{f.value}</span>
-                            {typeof f.conf === "number" && (
-                              <span
-                                className={`text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full shrink-0 ${
-                                  f.conf >= 85 ? "bg-pine/10 text-pine" : f.conf >= 60 ? "bg-amber/10 text-amber" : "bg-rose/10 text-rose"
-                                }`}
-                                title="Extraction confidence"
-                              >
-                                {f.conf}%
-                              </span>
-                            )}
-                            {f.match
-                              ? <CheckCircle2 className="w-3.5 h-3.5 text-pine shrink-0" />
-                              : <span title="Mismatch with registered name"><AlertTriangle className="w-3.5 h-3.5 text-amber shrink-0" /></span>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Residential address extracted from the proof-of-residency document */}
-                    {extractedAddress?.formatted && (
-                      <div className="mt-4 rounded-[3px] border border-border bg-muted/20 p-3">
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            Residential address
-                          </span>
-                          {typeof extractedAddress.confidence === "number" && (
-                            <span className="ml-auto text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground" title="Extraction confidence">
-                              {extractedAddress.confidence}%
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-sm font-medium leading-relaxed">{extractedAddress.formatted}</div>
-                        {(extractedAddress.city || extractedAddress.district) && (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {[extractedAddress.city, extractedAddress.district]
-                              .filter((v, i, a) => v && a.indexOf(v) === i)
-                              .join(" · ")}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-
-            {infoTab === "notes" && (
-              <div className="p-5 space-y-3">
-                {app.notes && (
-                  <div className="rounded-[3px] bg-muted/30 border border-border p-3 text-sm text-muted-foreground">
-                    <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1">Previous notes</span>
-                    {app.notes}
-                  </div>
-                )}
-                <textarea
-                  className="w-full h-28 rounded-[3px] border border-border bg-transparent p-3 text-sm resize-none focus:outline-none focus:border-pine/50 placeholder:text-muted-foreground/50"
-                  placeholder="Add internal review notes…"
-                  value={reviewNotes}
-                  onChange={(e) => setReviewNotes(e.target.value)}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Section 4: Decision footer ── */}
-      {!isReviewed && !superAdmin ? (
-        <div className="flex items-center gap-2 px-5 py-3 border-t border-border bg-background shrink-0">
-          <button
-            onClick={onRequestDocs}
-            className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5 transition-colors"
-          >
-            <FilePlus className="w-3.5 h-3.5" /> Request docs
-          </button>
-          <button
-            onClick={handleCsdDownload}
-            disabled={csdDownloading}
-            title="Download the pre-filled RBM CSD Securities Account Opening form"
-            className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 flex items-center gap-1.5 transition-colors disabled:opacity-50"
-          >
-            {csdDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-            CSD form
-          </button>
-          <div className="flex-1" />
-          <button
-            onClick={() => setShowRejectDialog(true)}
-            disabled={rejectMutation.isPending}
-            className="h-8 px-4 rounded-[3px] border border-rose/30 text-rose text-xs font-medium hover:bg-rose/8 flex items-center gap-1.5 transition-colors disabled:opacity-50"
-          >
-            <XCircle className="w-3.5 h-3.5" /> Reject
-          </button>
-          <button
-            onClick={() => setShowApproveConfirm(true)}
-            disabled={approveMutation.isPending}
-            className="h-8 px-4 rounded-[3px] bg-pine text-primary-foreground text-xs font-medium hover:bg-pine/90 flex items-center gap-1.5 transition-colors disabled:opacity-50"
-          >
-            <ShieldCheck className="w-3.5 h-3.5" /> Approve
-          </button>
-        </div>
-      ) : app.status === "additional_docs" ? (
-        <div className="flex items-center justify-center gap-2 px-5 py-3 border-t border-border bg-amber/5 shrink-0">
-          <FilePlus className="w-3.5 h-3.5 text-amber" />
-          <span className="text-xs text-muted-foreground">
-            Additional documents requested.
-            {app.reviewer && <> · Requested by <strong>{app.reviewer}</strong></>}
-          </span>
-        </div>
-      ) : (
-        <div className="flex items-center gap-2 px-5 py-3 border-t border-border bg-muted/20 shrink-0">
-          <span className="text-xs text-muted-foreground flex-1">
-            Application {app.status === "approved" ? "approved" : "rejected"}.
-            {app.reviewer && <> · Reviewed by <strong>{app.reviewer}</strong></>}
-            {app.reviewedAt && <> · {fmtDate(app.reviewedAt)}</>}
-          </span>
-          {app.status === "approved" && (
-            <button
-              onClick={handleCsdDownload}
-              disabled={csdDownloading}
-              title="Download the pre-filled RBM CSD Securities Account Opening form"
-              className="h-8 px-3 rounded-[3px] bg-pine text-primary-foreground text-xs font-medium hover:bg-pine/90 flex items-center gap-1.5 transition-colors disabled:opacity-50 shrink-0"
-            >
-              {csdDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-              CSD form
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* ── Approve confirmation dialog ── */}
-      {showApproveConfirm && (
-        <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowApproveConfirm(false)}>
-          <div className="bg-card border border-border rounded-lg p-6 w-96 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold text-sm mb-1">Approve KYC Application</h3>
-            <p className="text-xs text-muted-foreground mb-4">
-              Approve <strong>{app.name}</strong>'s identity verification? This will allow them to trade on the platform.
-            </p>
-            {approveMutation.isError && (
-              <div className="mb-3 text-xs text-rose bg-rose/10 rounded px-3 py-2">
-                Failed to approve: {(approveMutation.error as Error)?.message ?? "Unknown error"}
-              </div>
-            )}
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowApproveConfirm(false)}
-                className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleApprove}
-                disabled={approveMutation.isPending}
-                className="h-8 px-4 rounded-[3px] bg-pine text-primary-foreground text-xs font-medium hover:bg-pine/90 flex items-center gap-1.5 disabled:opacity-50"
-              >
-                {approveMutation.isPending ? (
-                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Approving…</>
-                ) : (
-                  <><ShieldCheck className="w-3.5 h-3.5" /> Confirm Approve</>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Reject dialog ── */}
-      {showRejectDialog && (
-        <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowRejectDialog(false)}>
-          <div className="bg-card border border-border rounded-lg p-6 w-96 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold text-sm mb-1">Reject KYC Application</h3>
-            <p className="text-xs text-muted-foreground mb-3">
-              Reject <strong>{app.name}</strong>'s identity verification. A reason is required.
-            </p>
-            <textarea
-              className="w-full h-20 rounded-[3px] border border-border bg-transparent p-3 text-sm resize-none focus:outline-none focus:border-rose/50 placeholder:text-muted-foreground/50 mb-3"
-              placeholder="Reason for rejection (required)…"
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              autoFocus
-            />
-            {rejectMutation.isError && (
-              <div className="mb-3 text-xs text-rose bg-rose/10 rounded px-3 py-2">
-                Failed to reject: {(rejectMutation.error as Error)?.message ?? "Unknown error"}
-              </div>
-            )}
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowRejectDialog(false)}
-                className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReject}
-                disabled={rejectMutation.isPending || !rejectReason.trim()}
-                className="h-8 px-4 rounded-[3px] bg-rose text-white text-xs font-medium hover:bg-rose/90 flex items-center gap-1.5 disabled:opacity-50"
-              >
-                {rejectMutation.isPending ? (
-                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Rejecting…</>
-                ) : (
-                  "Confirm Reject"
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

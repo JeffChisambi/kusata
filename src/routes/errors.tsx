@@ -1,16 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   AlertOctagon, AlertTriangle, AlertCircle, Info, CheckCircle2,
-  Smartphone, Monitor, Server, ShieldCheck, ChevronDown, ChevronUp, Loader2,
+  Smartphone, Monitor, Server, ShieldCheck, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Loader2,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { requireSuperAdmin } from "@/lib/auth";
 
 export const Route = createFileRoute("/errors")({
   head: () => ({ meta: [{ title: "System Errors — Pine Admin" }] }),
+  beforeLoad: () => requireSuperAdmin(),
   component: ErrorsPage,
 });
+
+const PAGE_SIZE = 50;
 
 type ErrorEvent = {
   id: string;
@@ -54,26 +58,35 @@ function ErrorsPage() {
   const [source, setSource] = useState<string>("");
   const [severity, setSeverity] = useState<string>("");
   const [status, setStatus] = useState<string>("OPEN");
+  const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  // Any filter change starts back at the first page.
+  useEffect(() => { setPage(1); }, [source, severity, status]);
 
   const statsQ = useQuery({
     queryKey: ["errors", "stats"],
     queryFn: () => api.get<{ open: number; bySeverity: Record<string, number>; bySource: Record<string, number> }>("/v1/admin/errors/stats"),
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 
   const listQ = useQuery({
-    queryKey: ["errors", "list", source, severity, status],
+    queryKey: ["errors", "list", source, severity, status, page],
     queryFn: () => {
       const p = new URLSearchParams();
       if (source) p.set("source", source);
       if (severity) p.set("severity", severity);
       if (status) p.set("status", status);
-      p.set("limit", "100");
+      p.set("page", String(page));
+      p.set("limit", String(PAGE_SIZE));
       return api.get<{ events: ErrorEvent[]; total: number }>(`/v1/admin/errors?${p.toString()}`);
     },
     refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
+  const total = listQ.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const resolveM = useMutation({
     mutationFn: (id: string) => api.patch(`/v1/admin/errors/${id}/resolve`, {}),
@@ -205,6 +218,32 @@ function ErrorsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Paging */}
+      {!listQ.isLoading && total > 0 && (
+        <div className="flex items-center justify-between px-1 py-3 text-[11px] text-muted-foreground">
+          <span>
+            Page {page} of {totalPages} · {total.toLocaleString()} error{total === 1 ? "" : "s"}
+            {listQ.isFetching && <Loader2 className="inline w-3 h-3 ml-2 animate-spin" />}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => { setPage((p) => Math.max(1, p - 1)); setExpanded(null); }}
+              disabled={page <= 1}
+              className="h-7 px-2 rounded-[3px] border border-border hover:bg-muted/40 disabled:opacity-40 inline-flex items-center gap-1"
+            >
+              <ChevronLeft className="w-3 h-3" /> Prev
+            </button>
+            <button
+              onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); setExpanded(null); }}
+              disabled={page >= totalPages}
+              className="h-7 px-2 rounded-[3px] border border-border hover:bg-muted/40 disabled:opacity-40 inline-flex items-center gap-1"
+            >
+              Next <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -1,11 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Clock3,
   Download,
@@ -27,6 +29,8 @@ export const Route = createFileRoute("/orders/")({
   }),
   component: OrdersPage,
 });
+
+const PAGE_SIZE = 50;
 
 const fmtMoney = (n: number) =>
   `MK ${n.toLocaleString("en-MW", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
@@ -242,18 +246,27 @@ function TreasuryOrderTable({ investments }: { investments: TreasuryInvestment[]
 
 function OrdersPage() {
   const [sideFilter, setSideFilter] = useState<"ALL" | OrderSide | "TREASURY">("ALL");
+  const [page, setPage] = useState(1);
   const [notice, setNotice] = useState("");
   const refreshOrders = useRefreshOrders();
   const isTreasury = sideFilter === "TREASURY";
 
-  // Fetch from the real API — pass side filter as a query param
-  const { data, isLoading, isError, error } = useOrders(
-    sideFilter === "ALL" || isTreasury ? {} : { side: sideFilter as OrderSide },
-  );
+  // A filter change starts back at the first page.
+  useEffect(() => { setPage(1); }, [sideFilter]);
+
+  // Fetch from the real API — pass side filter + page as query params
+  const { data, isLoading, isError, error, isFetching } = useOrders({
+    ...(sideFilter === "ALL" || isTreasury ? {} : { side: sideFilter as OrderSide }),
+    page,
+    limit: PAGE_SIZE,
+  });
   const treasury = useTreasuryInvestments();
 
   const orders = data?.orders ?? [];
   const total = isTreasury ? (treasury.data?.investments?.length ?? 0) : (data?.total ?? 0);
+  const totalPages = data?.totalPages ?? 1;
+  const pageStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const pageEnd = Math.min(page * PAGE_SIZE, total);
 
   const showNotice = (msg: string) => { setNotice(msg); window.setTimeout(() => setNotice(""), 2800); };
   const orderViewLabel = sideFilter === "ALL" ? "All orders" : `${sideFilter === "BUY" ? "Buy" : "Sell"} orders`;
@@ -291,8 +304,13 @@ function OrdersPage() {
           >
             <RefreshCw className="h-3.5 w-3.5" /> Refresh
           </button>
-          <button onClick={() => exportOrders(orders)} className="flex h-10 items-center gap-2 rounded-[3px] border border-border px-3 text-sm text-muted-foreground hover:bg-muted/40">
-            <Download className="h-3.5 w-3.5" /> Export
+          <button
+            onClick={() => exportOrders(orders)}
+            disabled={isTreasury || orders.length === 0}
+            title="Downloads the orders shown on this page as CSV"
+            className="flex h-10 items-center gap-2 rounded-[3px] border border-border px-3 text-sm text-muted-foreground hover:bg-muted/40 disabled:opacity-40"
+          >
+            <Download className="h-3.5 w-3.5" /> Export page
           </button>
         </div>
       </div>
@@ -323,9 +341,39 @@ function OrdersPage() {
         ) : (
           <OrderTable orders={orders} />
         )}
-        <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
-          <span>Showing <span className="font-medium text-foreground">{isTreasury ? (treasury.data?.investments?.length ?? 0) : orders.length}</span> of {total} {isTreasury ? "treasury orders" : "orders"}</span>
-          <span className="hidden sm:inline">Auto-refreshes every 15s</span>
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3 text-xs text-muted-foreground">
+          {isTreasury ? (
+            <span>Showing <span className="font-medium text-foreground">{treasury.data?.investments?.length ?? 0}</span> of {total} treasury orders</span>
+          ) : (
+            <>
+              <span>
+                {total === 0 ? "No orders" : <>Showing <span className="font-medium text-foreground">{pageStart}–{pageEnd}</span> of {total.toLocaleString()} orders</>}
+                {isFetching && !isLoading && <Loader2 className="inline h-3 w-3 ml-2 animate-spin" />}
+              </span>
+              <div className="flex items-center gap-3">
+                <span className="hidden sm:inline">Auto-refreshes every 15s</span>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page <= 1}
+                      className="h-7 px-2 rounded-[3px] border border-border text-[11px] hover:bg-muted/40 disabled:opacity-40 inline-flex items-center gap-1"
+                    >
+                      <ChevronLeft className="w-3 h-3" /> Prev
+                    </button>
+                    <span className="text-[11px]">Page {page} of {totalPages}</span>
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages}
+                      className="h-7 px-2 rounded-[3px] border border-border text-[11px] hover:bg-muted/40 disabled:opacity-40 inline-flex items-center gap-1"
+                    >
+                      Next <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </Card>
 

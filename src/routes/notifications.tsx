@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
-  Bell, Send, Clock, CheckCircle2, AlertTriangle,
+  Bell, Send, CheckCircle2, AlertTriangle,
   Smartphone, Mail, MessageSquare, Megaphone, Plus,
   XCircle, Circle, Loader2,
 } from "lucide-react";
 import { Card } from "@/components/broker-shell";
-import { useNotificationsList, useNotificationStats, useBroadcastNotification } from "@/hooks/useNotifications";
+import {
+  useNotificationsList, useBroadcastNotification,
+  useMarkNotificationRead, useMarkAllNotificationsRead,
+} from "@/hooks/useNotifications";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
@@ -33,7 +36,8 @@ type Notif = {
   message: string;
   sentAt: string;
   read: boolean;
-  recipients: number;
+  /** Only present when the API reports a recipient count (e.g. broadcasts). */
+  recipients?: number;
 };
 
 /** Broker-authored categories vs. platform-generated ones. */
@@ -51,8 +55,7 @@ function relativeTime(iso: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function fmtNum(n: number | undefined | null) {
-  if (n == null) return "0";
+function fmtNum(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return n.toLocaleString();
@@ -109,48 +112,43 @@ function mapChannel(raw: string): Channel {
   return "push";
 }
 
+function mapServerItems(rawData: unknown): Notif[] {
+  if (!rawData) return [];
+  let raw: any[] = [];
+  if (Array.isArray(rawData)) raw = rawData;
+  else {
+    const d = rawData as Record<string, unknown>;
+    if (Array.isArray(d.notifications)) raw = d.notifications;
+    else if (Array.isArray(d.data)) raw = d.data;
+  }
+  return raw.map((n: any) => ({
+    id: String(n.id),
+    type: mapNotifType(n.type ?? n.category ?? "INFORMATIONAL"),
+    channel: mapChannel(n.channel ?? "IN_APP"),
+    category: (n.category ?? "SYSTEM") as string,
+    title: n.title ?? "Notification",
+    message: n.body ?? n.message ?? "",
+    sentAt: n.sentAt ?? n.createdAt ?? new Date().toISOString(),
+    read: n.status === "READ" || !!n.readAt,
+    recipients: typeof n.recipients === "number" ? n.recipients : undefined,
+  }));
+}
+
 /* ─────────────────────────── page ─────────────────────────── */
 
 function NotificationsPage() {
   const { data: rawData, isLoading } = useNotificationsList();
-  const { data: stats } = useNotificationStats();
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
 
-  // The API returns { notifications: [...] } where each item has backend field names.
-  // Map them to the component's Notif shape.
-  const serverItems: Notif[] = (() => {
-    if (!rawData) return [];
-    let raw: any[] = [];
-    if (Array.isArray(rawData)) raw = rawData;
-    else {
-      const d = rawData as Record<string, unknown>;
-      if (Array.isArray(d.notifications)) raw = d.notifications;
-      else if (Array.isArray(d.data)) raw = d.data;
-    }
-    return raw.map((n: any) => ({
-      id: n.id ?? crypto.randomUUID(),
-      type: mapNotifType(n.type ?? n.category ?? "INFORMATIONAL"),
-      channel: mapChannel(n.channel ?? "IN_APP"),
-      category: (n.category ?? "SYSTEM") as string,
-      title: n.title ?? "Notification",
-      message: n.body ?? n.message ?? "",
-      sentAt: n.sentAt ?? n.createdAt ?? new Date().toISOString(),
-      read: n.status === "READ" || n.status === "DELIVERED" || !!n.readAt,
-      recipients: n.recipients ?? 1,
-    }));
-  })();
+  // The server is the source of truth — read state is persisted via the
+  // mark-read endpoints and comes back on the next (invalidated) fetch.
+  const items = useMemo(() => mapServerItems(rawData), [rawData]);
 
-  const [items, setItems] = useState<Notif[]>([]);
   const [compose, setCompose] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   // Category separation: broker-authored announcements vs system-generated.
   const [categoryTab, setCategoryTab] = useState<"all" | "broker" | "system">("all");
-
-  // Sync local state when server data arrives
-  useEffect(() => {
-    if (serverItems.length > 0) {
-      setItems(serverItems);
-    }
-  }, [rawData]);
 
   const unread = items.filter((n) => !n.read).length;
   const byCategory =
@@ -167,22 +165,17 @@ function NotificationsPage() {
     return diff < 24 * 60 * 60 * 1000;
   }).length;
 
-  // "Scheduled" count from stats if available
-  const scheduled = (() => {
-    if (!stats) return 0;
-    const pending = stats.byStatus?.find((s) => s.status === "scheduled" || s.status === "pending");
-    return pending?.count ?? 0;
-  })();
-
-  const markAllRead = () => setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-  const markRead = (id: string) => setItems((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+  const onRead = (n: Notif) => {
+    if (n.read || markRead.isPending) return;
+    markRead.mutate(n.id);
+  };
 
   return (
     <>
       <div className="pt-6 space-y-5">
 
         {/* Summary strip */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <SummaryCard
             icon={Bell}
             label="Unread"
@@ -195,12 +188,6 @@ function NotificationsPage() {
             label="Sent today"
             value={sentToday}
             sub="notifications dispatched"
-          />
-          <SummaryCard
-            icon={Clock}
-            label="Scheduled"
-            value={scheduled}
-            sub="pending delivery"
           />
         </div>
 
@@ -231,9 +218,11 @@ function NotificationsPage() {
               </div>
               {unread > 0 && (
                 <button
-                  onClick={markAllRead}
-                  className="text-[12px] text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+                  onClick={() => markAllRead.mutate()}
+                  disabled={markAllRead.isPending}
+                  className="text-[12px] text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap flex items-center gap-1 disabled:opacity-50"
                 >
+                  {markAllRead.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
                   Mark all read
                 </button>
               )}
@@ -267,18 +256,28 @@ function NotificationsPage() {
               </button>
             ))}
           </div>
+          {markAllRead.isError && (
+            <p className="mb-3 text-xs text-rose">Failed to mark all as read. Please try again.</p>
+          )}
           {isLoading ? (
             <div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>
           ) : visible.length === 0 ? (
             <div className="py-16 text-center">
               <CheckCircle2 className="w-8 h-8 text-pine mx-auto mb-3" />
               <p className="text-sm font-medium">All caught up</p>
-              <p className="text-xs text-muted-foreground mt-1">No unread notifications</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {filter === "unread" ? "No unread notifications" : "No notifications yet"}
+              </p>
             </div>
           ) : (
             <ul className="divide-y divide-border -mx-5">
               {visible.map((n) => (
-                <NotifItem key={n.id} notif={n} onRead={markRead} />
+                <NotifItem
+                  key={n.id}
+                  notif={n}
+                  onRead={onRead}
+                  marking={markRead.isPending && markRead.variables === n.id}
+                />
               ))}
             </ul>
           )}
@@ -316,7 +315,7 @@ function SummaryCard({
 
 /* ─────────────────────────── feed item ─────────────────────────── */
 
-function NotifItem({ notif: n, onRead }: { notif: Notif; onRead: (id: string) => void }) {
+function NotifItem({ notif: n, onRead, marking }: { notif: Notif; onRead: (n: Notif) => void; marking: boolean }) {
   const tc = typeConfig[n.type] ?? typeConfig.info;
   const cc = channelConfig[n.channel] ?? channelConfig.push;
   const TypeIcon = tc.icon;
@@ -324,8 +323,9 @@ function NotifItem({ notif: n, onRead }: { notif: Notif; onRead: (id: string) =>
 
   return (
     <li
-      className={`flex items-start gap-4 px-5 py-4 transition-colors cursor-pointer hover:bg-muted/30 ${!n.read ? "bg-muted/10" : ""}`}
-      onClick={() => onRead(n.id)}
+      className={`flex items-start gap-4 px-5 py-4 transition-colors ${!n.read ? "bg-muted/10 cursor-pointer hover:bg-muted/30" : ""}`}
+      onClick={() => onRead(n)}
+      title={!n.read ? "Click to mark as read" : undefined}
     >
       {/* Type icon */}
       <div className="w-8 h-8 flex items-center justify-center shrink-0 mt-0.5">
@@ -338,25 +338,29 @@ function NotifItem({ notif: n, onRead }: { notif: Notif; onRead: (id: string) =>
           <span className={`text-[13px] font-medium leading-snug ${!n.read ? "text-foreground" : "text-muted-foreground"}`}>
             {n.title}
           </span>
-          {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-pine shrink-0" />}
+          {!n.read && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tc.dotCls}`} />}
         </div>
         <p className="text-[12px] text-muted-foreground leading-relaxed">{n.message}</p>
         <div className="flex items-center gap-3 mt-2">
           <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-[3px] ${cc.cls}`}>
             <ChanIcon className="w-3 h-3" /> {cc.label}
           </span>
-          <span className="text-[11px] text-muted-foreground">
-            {fmtNum(n.recipients)} {n.recipients === 1 ? "recipient" : "recipients"}
-          </span>
+          {n.recipients != null && (
+            <span className="text-[11px] text-muted-foreground">
+              {fmtNum(n.recipients)} {n.recipients === 1 ? "recipient" : "recipients"}
+            </span>
+          )}
           <span className="text-[11px] text-muted-foreground">{relativeTime(n.sentAt)}</span>
         </div>
       </div>
 
       {/* Unread dot / read indicator */}
       <div className="shrink-0 mt-1.5">
-        {!n.read
-          ? <Circle className="w-3 h-3 fill-pine text-pine" />
-          : <Circle className="w-3 h-3 text-border" />}
+        {marking
+          ? <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+          : !n.read
+            ? <Circle className="w-3 h-3 fill-pine text-pine" />
+            : <Circle className="w-3 h-3 text-border" />}
       </div>
     </li>
   );

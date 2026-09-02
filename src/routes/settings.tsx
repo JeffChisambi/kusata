@@ -6,6 +6,7 @@ import {
   Loader2, KeyRound, Copy, Check, RefreshCw, Monitor,
 } from "lucide-react";
 import { useCurrentUser } from "@/lib/auth";
+import { noSearchParams } from "@/lib/utils";
 import {
   getPermission, requestPermission, isEnabled, setEnabled,
   type NotifPermission,
@@ -28,7 +29,7 @@ export const Route = createFileRoute("/settings")({
       { name: "description", content: "Manage your broker account settings, password, and preferences." },
     ],
   }),
-  validateSearch: () => ({}),
+  validateSearch: noSearchParams,
   component: SettingsPage,
 });
 

@@ -62,7 +62,7 @@ export function useSupportTickets(filters: { status?: SupportStatus; awaitingAdm
     queryKey: queryKeys.support.list(filters),
     queryFn: () => api.get<SupportListResponse>(`/v1/admin/support?${qs}`),
     refetchInterval: 20_000,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     staleTime: 10_000,
   });
@@ -82,8 +82,9 @@ export function useSupportStats() {
   return useQuery<SupportStats>({
     queryKey: queryKeys.support.stats(),
     queryFn: () => api.get<SupportStats>('/v1/admin/support/stats'),
-    refetchInterval: 30_000,
-    refetchIntervalInBackground: true,
+    // Drives the sidebar badge only — a minute is plenty.
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
   });
 }
 

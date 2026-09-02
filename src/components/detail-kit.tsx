@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ChevronRight, Download, ExternalLink, FileText, Loader2 } from "lucide-react";
+import { ChevronRight, ExternalLink, FileText, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -186,11 +186,16 @@ export function DocRow({
       <div className="w-9 h-9 rounded-[3px] bg-rose/10 text-rose flex items-center justify-center shrink-0 overflow-hidden">
         {thumbUrl ? <img src={thumbUrl} alt="" className="w-full h-full object-cover" /> : <FileText className="w-4 h-4" />}
       </div>
-      <button onClick={onView} className="flex-1 min-w-0 text-left" disabled={!onView}>
-        <div className="text-sm font-medium truncate hover:text-pine transition-colors">{name}</div>
+      <button
+        onClick={onView}
+        className={`flex-1 min-w-0 text-left ${onView ? "cursor-pointer" : "cursor-default"}`}
+        disabled={!onView}
+      >
+        <div className={`text-sm font-medium truncate transition-colors ${onView ? "hover:text-pine" : ""}`}>{name}</div>
         {meta && <div className="text-[11px] text-muted-foreground truncate">{meta}</div>}
       </button>
-      {downloadUrl ? (
+      {/* Only render the open-in-new-tab affordance when there is a file to open. */}
+      {downloadUrl && (
         <a
           href={downloadUrl} target="_blank" rel="noopener noreferrer"
           className="w-7 h-7 rounded-[3px] flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
@@ -198,10 +203,6 @@ export function DocRow({
         >
           <ExternalLink className="w-3.5 h-3.5" />
         </a>
-      ) : (
-        <span className="w-7 h-7 rounded-[3px] flex items-center justify-center text-muted-foreground/40 shrink-0">
-          <Download className="w-3.5 h-3.5" />
-        </span>
       )}
     </div>
   );

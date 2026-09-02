@@ -3,8 +3,7 @@ import { useState } from "react";
 import { Eye, EyeOff, ShieldCheck, KeyRound, Smartphone, Copy, CheckCircle2 } from "lucide-react";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
-import type { LoginResponse, MfaSetupResponse } from "@/lib/auth";
-import { getCurrentUser } from "@/lib/auth";
+import type { MfaSetupResponse } from "@/lib/auth";
 
 const loginSearchSchema = z.object({
   /** Set by /activate after a successful account activation. */
@@ -85,7 +84,6 @@ function LoginPage() {
       } else {
         await verifyMfa(mfaToken, mfaCode);
       }
-      const user = getCurrentUser();
       navigate({ to: '/' });
     } catch (err: any) {
       setError(err?.message || "Invalid code. Please try again.");
@@ -120,7 +118,6 @@ function LoginPage() {
   };
 
   const handleFinish = () => {
-    const user = getCurrentUser();
     navigate({ to: '/' });
   };
 
@@ -177,9 +174,7 @@ function LoginPage() {
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[13px] font-medium text-white">Password</label>
-                  </div>
+                  <label className="block text-[13px] font-medium text-white mb-1.5">Password</label>
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}

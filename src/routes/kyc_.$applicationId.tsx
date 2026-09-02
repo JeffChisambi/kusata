@@ -9,6 +9,7 @@ import {
   Breadcrumb, Panel, Ring, Field, DocRow, InitialsAvatar, LoadingBlock,
 } from "@/components/detail-kit";
 import { useCurrentUser, isSuperAdmin } from "@/lib/auth";
+import { DOC_REQUEST_OPTIONS } from "@/lib/kyc-docs";
 import {
   useKycApplication, useApproveKyc, useRejectKyc, useRequestAdditionalDocs,
   useCsdData, useSaveCsdData, downloadCsdForm,
@@ -112,6 +113,9 @@ function KycReviewPage() {
   const [showApprove, setShowApprove] = useState(false);
   const [showRequestDocs, setShowRequestDocs] = useState(false);
   const [docsMessage, setDocsMessage] = useState("");
+  const [docsRequested, setDocsRequested] = useState<string[]>([]);
+  const toggleDocRequested = (val: string) =>
+    setDocsRequested((s) => (s.includes(val) ? s.filter((v) => v !== val) : [...s, val]));
 
   const app = data?.application;
   const docs: KycDocument[] = useMemo(() => data?.documents ?? [], [data]);
@@ -142,9 +146,34 @@ function KycReviewPage() {
   const goBack = () => navigate({ to: "/kyc" });
   const handleApprove = () => approveMutation.mutate({ applicationId, notes: reviewNotes.trim() || undefined }, { onSuccess: () => { setShowApprove(false); goBack(); } });
   const handleReject = () => { if (!rejectReason.trim()) return; rejectMutation.mutate({ applicationId, reason: rejectReason.trim(), notes: reviewNotes.trim() || undefined }, { onSuccess: () => { setShowReject(false); goBack(); } }); };
-  const handleRequestDocs = () => requestDocsMutation.mutate({ applicationId, requiredDocuments: [], message: docsMessage.trim() || undefined }, { onSuccess: () => { setShowRequestDocs(false); goBack(); } });
+  const handleRequestDocs = () => {
+    if (docsRequested.length === 0) return;
+    requestDocsMutation.mutate(
+      { applicationId, requiredDocuments: docsRequested, message: docsMessage.trim() || undefined },
+      { onSuccess: () => { setShowRequestDocs(false); goBack(); } },
+    );
+  };
 
-  if (isLoading) return <div className="max-w-[1400px] mx-auto"><LoadingBlock /></div>;
+  // Keep the breadcrumb/header frame while the application loads so drilling
+  // in from the queue doesn't blank the page.
+  if (isLoading) {
+    return (
+      <div className="max-w-[1400px] mx-auto pb-24">
+        <Breadcrumb items={[{ label: "Dashboard", to: "/" }, { label: "KYC", to: "/kyc" }, { label: "Application" }]} />
+        <div className="flex items-center gap-3 mb-5">
+          <button onClick={goBack} className="w-9 h-9 rounded-[4px] border border-border flex items-center justify-center text-muted-foreground hover:bg-muted/50" aria-label="Back">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div className="w-10 h-10 rounded-full bg-muted animate-pulse" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-48 rounded bg-muted animate-pulse" />
+            <div className="h-3 w-32 rounded bg-muted animate-pulse" />
+          </div>
+        </div>
+        <LoadingBlock />
+      </div>
+    );
+  }
   if (isError || !app) {
     return (
       <div className="max-w-2xl mx-auto py-20 text-center">
@@ -316,11 +345,31 @@ function KycReviewPage() {
       )}
       {showRequestDocs && (
         <Dialog title="Request additional documents" onClose={() => setShowRequestDocs(false)}>
+          <p className="text-xs text-muted-foreground mb-2">
+            Select the documents <strong>{applicantName}</strong> must resubmit to continue verification.
+          </p>
+          <div className="space-y-1 mb-3">
+            {DOC_REQUEST_OPTIONS.map((opt) => (
+              <label key={opt.value} className="flex items-center gap-2.5 py-1.5 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={docsRequested.includes(opt.value)}
+                  onChange={() => toggleDocRequested(opt.value)}
+                  className="w-4 h-4 rounded accent-pine"
+                />
+                <span className="text-sm group-hover:text-foreground transition-colors">{opt.label}</span>
+              </label>
+            ))}
+          </div>
           <p className="text-xs text-muted-foreground mb-2">Message to the applicant (optional):</p>
           <textarea className="w-full h-20 rounded-[4px] border border-border bg-transparent p-2.5 text-sm resize-none focus:outline-none focus:border-pine/50 mb-3"
             placeholder="e.g. Please upload a clearer photo of the ID back" value={docsMessage} onChange={(e) => setDocsMessage(e.target.value)} />
+          {requestDocsMutation.isError && (
+            <p className="text-xs text-rose mb-3">Failed: {(requestDocsMutation.error as Error)?.message ?? "Unknown error"}</p>
+          )}
           <DialogActions onCancel={() => setShowRequestDocs(false)} confirmLabel="Send request" confirmIcon={<FilePlus className="w-3.5 h-3.5" />}
-            confirmClass="bg-pine text-primary-foreground hover:bg-pine/90" pending={requestDocsMutation.isPending} onConfirm={handleRequestDocs} />
+            confirmClass="bg-pine text-primary-foreground hover:bg-pine/90" confirmDisabled={docsRequested.length === 0}
+            pending={requestDocsMutation.isPending} onConfirm={handleRequestDocs} />
         </Dialog>
       )}
     </div>

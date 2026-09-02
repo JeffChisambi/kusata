@@ -1,18 +1,18 @@
 import {
-  useState, useRef, useEffect, useContext, useCallback, createContext,
+  useState, useRef, useEffect, useLayoutEffect, useContext, useCallback, useMemo, createContext,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { Link, useNavigate, useLocation } from "@tanstack/react-router";
+import { Link, useNavigate, useLocation, useElementScrollRestoration } from "@tanstack/react-router";
 import { useCurrentUser, logout, isSuperAdmin } from "@/lib/auth";
 import { useKycQueue } from "@/hooks/useKyc";
 import { useUnreadNotificationCount } from "@/hooks/useNotifications";
 import { useUnreadSupportCount } from "@/hooks/useSupport";
 import { useNotificationDelivery } from "@/hooks/useNotificationDelivery";
 import {
-  Users, ShieldCheck, FileCheck2,
-  ChevronDown, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight,
-  CircleUser, Clock, Sun, Moon, Bell, Check, LogOut,
+  Users, FileCheck2,
+  ChevronDown, ChevronsLeft, ChevronsRight,
+  Clock, Sun, Moon, Bell, Check, LogOut,
   ClipboardList, Settings2, Search, Newspaper, Landmark, LifeBuoy, Palette,
   Building2, ScrollText, AlertOctagon,
 } from "lucide-react";
@@ -35,14 +35,12 @@ function NineDotsIcon({ className }: { className?: string }) {
 
 // ─── Broker nav — scoped subset of the admin nav ───────────────────────────────
 
-export type NavChild = { label: string; href?: string; badge?: string | number };
 export type NavGroup = {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
-  href?: string;
+  href: string;
   section: string;
   badge?: string | number;
-  children?: NavChild[];
   /** Only visible to SUPER_ADMIN staff — broker admins never see these. */
   superAdminOnly?: boolean;
 };
@@ -58,7 +56,6 @@ export const brokerNav: NavGroup[] = [
 
   // ── TRADING ──
   { section: "TRADING", icon: ClipboardList, label: "Orders", href: "/orders" },
-  { section: "TRADING", icon: ShieldCheck, label: "Auth & Security", href: "/coming-soon", superAdminOnly: true },
 
   // ── PLATFORM (super admin only) ──
   { section: "PLATFORM", icon: Building2, label: "Brokers", href: "/brokers", superAdminOnly: true },
@@ -75,27 +72,51 @@ export const brokerNav: NavGroup[] = [
 
 export const brokerSectionOrder = ["OVERVIEW", "CLIENTS", "TRADING", "PLATFORM", "ACCOUNT"];
 
-const TIME_RANGES = [
-  { label: "Last 1 hour",   value: "1h",  short: "Last 1h"  },
-  { label: "Last 6 hours",  value: "6h",  short: "Last 6h"  },
-  { label: "Last 12 hours", value: "12h", short: "Last 12h" },
-  { label: "Last 24 hours", value: "24h", short: "Last 24h" },
-  { label: "Last 7 days",   value: "7d",  short: "Last 7d"  },
-  { label: "Last 30 days",  value: "30d", short: "Last 30d" },
-  { label: "Last 90 days",  value: "90d", short: "Last 90d" },
+// ─── Dashboard time range ─────────────────────────────────────────────────────
+// The topbar range picker feeds the dashboard charts (daily buckets from the
+// backend), so the options are whole-day windows.
+
+export type DashboardRange = "7d" | "14d" | "30d" | "90d";
+const TIME_RANGES: Array<{ label: string; value: DashboardRange; short: string; days: number }> = [
+  { label: "Last 7 days",   value: "7d",  short: "Last 7d",  days: 7 },
+  { label: "Last 14 days",  value: "14d", short: "Last 14d", days: 14 },
+  { label: "Last 30 days",  value: "30d", short: "Last 30d", days: 30 },
+  { label: "Last 90 days",  value: "90d", short: "Last 90d", days: 90 },
 ];
+const DEFAULT_RANGE: DashboardRange = "7d";
+
+const DashboardRangeContext = createContext<{
+  range: DashboardRange;
+  days: number;
+  setRange: (r: DashboardRange) => void;
+}>({ range: DEFAULT_RANGE, days: 7, setRange: () => {} });
+
+/** The topbar's selected time window — consumed by the dashboard charts. */
+export function useDashboardRange() {
+  return useContext(DashboardRangeContext);
+}
 
 // ─── Module-level collapsed cache ─────────────────────────────────────────────
 // Persists across client-side navigations so the sidebar never flashes open.
 let _collapsedCache: boolean | null = null;
 
+const SIDEBAR_KEY = "pine-broker-sidebar-collapsed";
+const SIDEBAR_W = { collapsed: "4.5rem", expanded: "17rem" } as const;
+
+/** Mirror the collapsed state onto <html> so the pre-paint script and CSS agree. */
+function applySidebarAttr(collapsed: boolean) {
+  const root = document.documentElement;
+  root.setAttribute("data-sidebar", collapsed ? "collapsed" : "expanded");
+  root.style.setProperty("--pine-sidebar-w", collapsed ? SIDEBAR_W.collapsed : SIDEBAR_W.expanded);
+}
+
 // ─── Title context ─────────────────────────────────────────────────────────────
-// The shell is now a single persistent layout (rendered once in __root), so
-// pages can no longer pass a `title` prop. Static titles are derived from the
-// path via defaultTitleFor(); pages that need a dynamic title (e.g. an order's
-// id) set it imperatively with useDashboardTitle(). `forPath` scopes the
-// override to the route that set it, so a stale title never bleeds across a
-// section switch.
+// The shell is a single persistent layout (rendered once in __root), so pages
+// can no longer pass a `title` prop. Static titles are derived from the path
+// via defaultTitleFor(); pages that need a dynamic title (e.g. an order's id)
+// set it imperatively with useDashboardTitle(). `forPath` scopes the override
+// to the route that set it, so a stale title never bleeds across a section
+// switch.
 type TitleState = { title: string | null; forPath: string | null };
 const DashboardTitleContext = createContext<
   TitleState & { setTitle: (title: string | null, forPath: string) => void }
@@ -106,9 +127,19 @@ export function DashboardTitleProvider({ children }: { children: ReactNode }) {
   const setTitle = useCallback((title: string | null, forPath: string) => {
     setState({ title, forPath });
   }, []);
+  const titleValue = useMemo(() => ({ ...state, setTitle }), [state, setTitle]);
+
+  const [range, setRange] = useState<DashboardRange>(DEFAULT_RANGE);
+  const rangeValue = useMemo(
+    () => ({ range, setRange, days: TIME_RANGES.find((r) => r.value === range)?.days ?? 7 }),
+    [range],
+  );
+
   return (
-    <DashboardTitleContext.Provider value={{ ...state, setTitle }}>
-      {children}
+    <DashboardTitleContext.Provider value={titleValue}>
+      <DashboardRangeContext.Provider value={rangeValue}>
+        {children}
+      </DashboardRangeContext.Provider>
     </DashboardTitleContext.Provider>
   );
 }
@@ -133,12 +164,16 @@ const STATIC_TITLES: Record<string, string> = {
   "/treasury": "Treasury",
   "/brokers": "Brokers",
   "/audit": "Audit Log",
+  "/errors": "System Errors",
 };
 
 function defaultTitleFor(pathname: string): string {
   if (STATIC_TITLES[pathname]) return STATIC_TITLES[pathname];
   if (pathname.startsWith("/orders/")) return "Orders";
   if (pathname.startsWith("/brokers/")) return "Brokers";
+  if (pathname.startsWith("/users/")) return "User Management";
+  if (pathname.startsWith("/kyc/")) return "KYC";
+  if (pathname.startsWith("/support/")) return "Support";
   return "";
 }
 
@@ -147,7 +182,7 @@ function activeLabelFor(pathname: string): string {
   const exact = brokerNav.find((n) => n.href === pathname);
   if (exact) return exact.label;
   const nested = brokerNav.find(
-    (n) => n.href && n.href !== "/" && pathname.startsWith(n.href + "/"),
+    (n) => n.href !== "/" && pathname.startsWith(n.href + "/"),
   );
   return nested?.label ?? "";
 }
@@ -165,39 +200,47 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
   // Deliver desktop notifications for new alerts, app-wide, from one place.
   useNotificationDelivery();
 
-  const [open, setOpen] = useState<Record<string, boolean>>({});
-  // Seed from the module-level cache so that on client-side navigations — where
-  // this shell remounts — the sidebar renders at its correct width on the very
-  // first frame instead of flashing from 0 → full width (the section-switch
-  // "glitch"). On the initial SSR/first load the cache is still null, so we
-  // keep the hidden-until-measured behaviour that avoids a hydration mismatch.
+  // Seed from the module-level cache so that on client-side navigations the
+  // sidebar renders at its correct width on the very first frame. On the
+  // initial SSR/hydration pass the cache is null: the width then comes from
+  // the --pine-sidebar-w CSS var the pre-paint <head> script set from
+  // localStorage, and the layout effect below adopts the real value before
+  // the browser paints — so the sidebar never pops.
   const [collapsed, setCollapsed] = useState<boolean | null>(() => _collapsedCache);
   const [transitionReady, setTransitionReady] = useState(false);
 
-  useEffect(() => {
-    // If we've navigated before, the cache is already set — use it immediately.
+  useLayoutEffect(() => {
     if (_collapsedCache === null) {
-      _collapsedCache = window.localStorage.getItem("pine-broker-sidebar-collapsed") === "1";
+      const attr = document.documentElement.getAttribute("data-sidebar");
+      _collapsedCache = attr
+        ? attr === "collapsed"
+        : window.localStorage.getItem(SIDEBAR_KEY) === "1";
+      applySidebarAttr(_collapsedCache);
     }
     setCollapsed(_collapsedCache);
     // Enable CSS transition only after the sidebar has painted at its real size.
-    requestAnimationFrame(() => requestAnimationFrame(() => setTransitionReady(true)));
+    const raf = requestAnimationFrame(() => requestAnimationFrame(() => setTransitionReady(true)));
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   const toggleCollapse = () => {
     setCollapsed((c) => {
       const next = !(c ?? false);
       _collapsedCache = next;
-      window.localStorage.setItem("pine-broker-sidebar-collapsed", next ? "1" : "0");
+      window.localStorage.setItem(SIDEBAR_KEY, next ? "1" : "0");
+      applySidebarAttr(next);
       return next;
     });
   };
 
+  // The window never scrolls — this inner div does — so restore its scroll
+  // position per location instead of relying on window scroll restoration.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useElementScrollRestoration({ id: "dashboard-scroll", getElement: () => scrollRef.current });
+
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <BrokerSidebar
-        open={open}
-        setOpen={setOpen}
         activeLabel={activeLabel}
         collapsed={collapsed}
         transitionReady={transitionReady}
@@ -205,10 +248,12 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       />
       <main className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
         <BrokerTopbar title={title} />
-        <div className="flex-1 min-h-0 overflow-y-auto px-8 pb-10 scrollbar-thin-gray">
-          {/* Keyed by path so the content cross-fades on every section switch,
-              giving a smooth transition instead of an abrupt swap. */}
-          <div key={pathname} className="space-y-6 animate-in fade-in duration-300 ease-out">
+        <div
+          ref={scrollRef}
+          data-scroll-restoration-id="dashboard-scroll"
+          className="flex-1 min-h-0 overflow-y-auto px-8 pb-10 scrollbar-thin-gray"
+        >
+          <div className="space-y-6 animate-in fade-in duration-150 ease-out">
             {children}
           </div>
         </div>
@@ -220,10 +265,8 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
 function BrokerSidebar({
-  open, setOpen, activeLabel, collapsed, transitionReady, onToggleCollapse,
+  activeLabel, collapsed, transitionReady, onToggleCollapse,
 }: {
-  open: Record<string, boolean>;
-  setOpen: (v: Record<string, boolean>) => void;
   activeLabel: string;
   collapsed: boolean | null;
   transitionReady: boolean;
@@ -240,27 +283,33 @@ function BrokerSidebar({
   // PLATFORM section (and other superAdminOnly items) is SUPER_ADMIN only.
   const user = useCurrentUser();
   const superAdmin = isSuperAdmin(user);
-  const visibleNav = brokerNav.filter((item) => !item.superAdminOnly || superAdmin);
 
-  // Merge live badge counts into the static nav definition.
-  const navWithBadges = visibleNav.map((item) => {
-    if (item.label === 'KYC') {
-      return { ...item, badge: pendingKycCount > 0 ? pendingKycCount : undefined };
-    }
-    if (item.label === 'Support') {
-      return { ...item, badge: awaitingSupportCount > 0 ? awaitingSupportCount : undefined };
-    }
-    return item;
-  });
+  // Merge live badge counts into the static nav definition. Memoised so poll
+  // ticks that return the same numbers don't rebuild the nav tree.
+  const navWithBadges = useMemo(() => {
+    const visible = brokerNav.filter((item) => !item.superAdminOnly || superAdmin);
+    return visible.map((item) => {
+      if (item.label === 'KYC') {
+        return { ...item, badge: pendingKycCount > 0 ? pendingKycCount : undefined };
+      }
+      if (item.label === 'Support') {
+        return { ...item, badge: awaitingSupportCount > 0 ? awaitingSupportCount : undefined };
+      }
+      return item;
+    });
+  }, [superAdmin, pendingKycCount, awaitingSupportCount]);
 
   const isCollapsed = collapsed === true;
   return (
     <aside
-      className="relative shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border overflow-visible"
+      className={`relative shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border ${
+        collapsed === null ? "overflow-hidden" : "overflow-visible"
+      }`}
       style={{
-        width: collapsed === null ? 0 : isCollapsed ? "4.5rem" : "17rem",
+        width: collapsed === null
+          ? `var(--pine-sidebar-w, ${SIDEBAR_W.expanded})`
+          : isCollapsed ? SIDEBAR_W.collapsed : SIDEBAR_W.expanded,
         transition: transitionReady ? "width 300ms ease-in-out" : "none",
-        visibility: collapsed === null ? "hidden" : "visible",
       }}
     >
       {/* Header */}
@@ -302,8 +351,6 @@ function BrokerSidebar({
                     key={item.label}
                     item={item}
                     active={item.label === activeLabel}
-                    isOpen={!!open[item.label]}
-                    onToggle={() => setOpen({ ...open, [item.label]: !open[item.label] })}
                     collapsed={isCollapsed}
                   />
                 ))}
@@ -384,67 +431,29 @@ function UserFooter({ collapsed }: { collapsed: boolean }) {
 // ─── NavItem ──────────────────────────────────────────────────────────────────
 
 function BrokerNavItem({
-  item, active, isOpen, onToggle, collapsed,
+  item, active, collapsed,
 }: {
-  item: NavGroup; active: boolean; isOpen: boolean; onToggle: () => void; collapsed: boolean;
+  item: NavGroup; active: boolean; collapsed: boolean;
 }) {
   const Icon = item.icon;
-  const hasChildren = !!item.children?.length;
   const liRef = useRef<HTMLLIElement>(null);
   const [flyoutTop, setFlyoutTop] = useState<number | null>(null);
-  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const cancelHide = () => {
-    if (hideTimeoutRef.current) { clearTimeout(hideTimeoutRef.current); hideTimeoutRef.current = null; }
-  };
-  const scheduleHide = () => {
-    cancelHide();
-    setFlyoutTop(null);
-  };
-
-  /* ── Collapsed: icon only + portal flyout ── */
+  /* ── Collapsed: icon only + portal tooltip flyout ── */
   if (collapsed) {
     const cls = `relative w-full flex items-center justify-center p-2.5 rounded-[4px] transition-colors ${active ? "bg-muted" : "hover:bg-muted"}`;
     const flyout = flyoutTop !== null
       ? createPortal(
           <div
-            className="fixed z-[200] pl-3"
+            className="fixed z-[200] pl-3 pointer-events-none"
             style={{ top: flyoutTop, left: "4.5rem" }}
-            onMouseEnter={cancelHide}
-            onMouseLeave={scheduleHide}
           >
-            {hasChildren ? (
-              <div className="bg-[#1a1a1a] rounded-[6px] shadow-2xl overflow-hidden min-w-[160px]">
-                <div className="px-3.5 py-2.5 border-b border-white/10">
-                  <span className="text-[12px] font-semibold text-white leading-none">{item.label}</span>
-                  {item.badge != null && (
-                    <span className="ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/10 text-white/60 leading-none">{item.badge}</span>
-                  )}
-                </div>
-                <ul className="py-1 max-h-72 overflow-y-auto">
-                  {item.children!.map((c) => (
-                    <li key={c.label}>
-                      <Link
-                        to={c.href ?? "/coming-soon"}
-                        className="w-full flex items-center gap-2 px-3.5 py-[7px] text-[12px] text-white/60 hover:text-white hover:bg-white/8 transition-colors text-left"
-                      >
-                        <span className="flex-1 truncate">{c.label}</span>
-                        {c.badge != null && (
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-white/10 text-white/50 leading-none shrink-0">{c.badge}</span>
-                        )}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <div className="bg-[#1a1a1a] rounded-[6px] shadow-2xl px-3 py-1.5 flex items-center gap-2">
-                <span className="text-[13px] font-medium text-white leading-none whitespace-nowrap">{item.label}</span>
-                {item.badge != null && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/15 text-white/70 leading-none shrink-0">{item.badge}</span>
-                )}
-              </div>
-            )}
+            <div className="bg-[#1a1a1a] rounded-[6px] shadow-2xl px-3 py-1.5 flex items-center gap-2">
+              <span className="text-[13px] font-medium text-white leading-none whitespace-nowrap">{item.label}</span>
+              {item.badge != null && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/15 text-white/70 leading-none shrink-0">{item.badge}</span>
+              )}
+            </div>
           </div>,
           document.body,
         )
@@ -453,13 +462,13 @@ function BrokerNavItem({
     return (
       <li
         ref={liRef}
-        onMouseEnter={() => { cancelHide(); const r = liRef.current?.getBoundingClientRect(); if (r) setFlyoutTop(r.top); }}
-        onMouseLeave={scheduleHide}
+        onMouseEnter={() => { const r = liRef.current?.getBoundingClientRect(); if (r) setFlyoutTop(r.top); }}
+        onMouseLeave={() => setFlyoutTop(null)}
       >
         <div className="relative">
-          {item.href
-            ? <Link to={item.href} className={cls}><Icon className={`w-[18px] h-[18px] ${active ? "text-foreground" : "text-muted-foreground"}`} /></Link>
-            : <button className={cls}><Icon className={`w-[18px] h-[18px] ${active ? "text-foreground" : "text-muted-foreground"}`} /></button>}
+          <Link to={item.href} className={cls}>
+            <Icon className={`w-[18px] h-[18px] ${active ? "text-foreground" : "text-muted-foreground"}`} />
+          </Link>
           {item.badge != null && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-muted-foreground" />}
         </div>
         {flyout}
@@ -467,68 +476,24 @@ function BrokerNavItem({
     );
   }
 
-  /* ── Expanded: icon + label with left-border active indicator ── */
+  /* ── Expanded: icon + label ── */
   const rowCls = `relative w-full flex items-center gap-2.5 px-3 py-[7px] rounded-[4px] text-[13px] font-[450] transition-colors ${
     active
       ? "bg-muted text-foreground font-medium"
       : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
   }`;
 
-  const rowContent = (icon: React.ReactNode, label: string, badge?: string | number, chevron?: React.ReactNode) => (
-    <>
-      {icon}
-      <span className="flex-1 text-left truncate">{label}</span>
-      {badge != null && (
-        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none bg-muted text-muted-foreground">
-          {badge}
-        </span>
-      )}
-      {chevron}
-    </>
-  );
-
   return (
     <li>
-      {hasChildren ? (
-        <button onClick={onToggle} className={rowCls}>
-          {rowContent(
-            <Icon className={`w-4 h-4 shrink-0 ${active ? "text-foreground" : "text-muted-foreground"}`} />,
-            item.label, item.badge,
-            isOpen ? <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" /> : <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />,
-          )}
-        </button>
-      ) : item.href ? (
-        <Link to={item.href} className={rowCls}>
-          {rowContent(<Icon className={`w-4 h-4 shrink-0 ${active ? "text-foreground" : "text-muted-foreground"}`} />, item.label, item.badge)}
-        </Link>
-      ) : (
-        <button className={rowCls}>
-          {rowContent(<Icon className="w-4 h-4 shrink-0 text-muted-foreground" />, item.label, item.badge)}
-        </button>
-      )}
-
-      {hasChildren && isOpen && (
-        <ul className="mt-1 ml-4 space-y-0.5 pb-1">
-          {item.children!.map((c, idx) => {
-            const isLast = idx === item.children!.length - 1;
-            return (
-              <li key={c.label} className="relative pl-[26px]">
-                <div className="pointer-events-none absolute left-[5px] top-0 h-[calc(50%+1px)] w-[14px] border-l-[1.5px] border-b-[1.5px] border-border rounded-bl-[4px]" />
-                {!isLast && <div className="pointer-events-none absolute left-[5px] top-1/2 bottom-0 w-[1.5px] bg-border" />}
-                <Link
-                  to={c.href ?? "/coming-soon"}
-                  className="w-full flex items-center gap-2 pr-2 py-[7px] text-[12px] transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-[3px] text-left"
-                >
-                  <span className="flex-1 truncate">{c.label}</span>
-                  {c.badge != null && (
-                    <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full leading-none shrink-0">{c.badge}</span>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <Link to={item.href} className={rowCls}>
+        <Icon className={`w-4 h-4 shrink-0 ${active ? "text-foreground" : "text-muted-foreground"}`} />
+        <span className="flex-1 text-left truncate">{item.label}</span>
+        {item.badge != null && (
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none bg-muted text-muted-foreground">
+            {item.badge}
+          </span>
+        )}
+      </Link>
     </li>
   );
 }
@@ -537,11 +502,13 @@ function BrokerNavItem({
 
 function BrokerTopbar({ title }: { title: string }) {
   const unreadCount = useUnreadNotificationCount();
+  const navigate = useNavigate();
   const [dark, setDark] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [range, setRange] = useState("24h");
+  const { range, setRange } = useDashboardRange();
   const [rangeOpen, setRangeOpen] = useState(false);
   const rangeRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     if (!rangeOpen) return;
@@ -556,10 +523,15 @@ function BrokerTopbar({ title }: { title: string }) {
   // people sharing a browser (or one person with admin + broker accounts)
   // never overwrite each other's dark-mode choice. The legacy global key is
   // read once as a migration fallback, never written again.
+  //
+  // The pre-paint <head> script in __root.tsx resolves the same key and adds
+  // the `dark` class before first paint; this layout effect adopts that value
+  // into React state before the browser paints, so the toggle icon and the
+  // page theme never flip after load.
   const themeUser = useCurrentUser();
   const themeKey = themeUser?.id ? `pine-theme:${themeUser.id}` : "pine-theme";
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const stored = localStorage.getItem(themeKey) ?? localStorage.getItem("pine-theme");
     const initialDark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
     setDark(initialDark);
@@ -574,21 +546,30 @@ function BrokerTopbar({ title }: { title: string }) {
     else { root.classList.remove("dark"); localStorage.setItem(themeKey, "light"); }
   }, [dark, mounted, themeKey]);
 
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = query.trim();
+    navigate({ to: "/users", search: q ? { q } : {} });
+  };
+
   return (
     <header className="flex items-center gap-4 px-8 py-4 bg-background sticky top-0 z-10 border-b border-border">
       <div className="shrink-0 min-w-0">
         <div className="text-lg font-semibold">{title}</div>
       </div>
-      <div className="flex-1 min-w-0 mx-6">
+      <form className="flex-1 min-w-0 mx-6" onSubmit={submitSearch} role="search">
         <div className="relative">
           <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
-            type="text"
-            placeholder="Search clients, orders, KYC, support…"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search users by name, email or phone — press Enter"
+            aria-label="Search users"
             className="w-full h-10 pl-11 pr-4 rounded-[4px] bg-muted/60 border border-transparent focus:outline-none focus:border-pine/40 text-sm"
           />
         </div>
-      </div>
+      </form>
       <div className="flex items-center gap-2">
         {/* Time range picker */}
         <div ref={rangeRef} className="relative hidden md:block">
@@ -599,7 +580,7 @@ function BrokerTopbar({ title }: { title: string }) {
             }`}
           >
             <Clock className={`w-4 h-4 ${rangeOpen ? "text-pine" : "text-muted-foreground"}`} />
-            {TIME_RANGES.find((r) => r.value === range)?.short ?? "Last 24h"}
+            {TIME_RANGES.find((r) => r.value === range)?.short ?? "Last 7d"}
             <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform duration-150 ${rangeOpen ? "rotate-180" : ""}`} />
           </button>
           {rangeOpen && (
@@ -626,7 +607,7 @@ function BrokerTopbar({ title }: { title: string }) {
                 })}
               </div>
               <div className="px-3.5 py-2.5 border-t border-border bg-muted/30">
-                <p className="text-[11px] text-muted-foreground">Applies to all dashboard metrics</p>
+                <p className="text-[11px] text-muted-foreground">Applies to the overview charts</p>
               </div>
             </div>
           )}

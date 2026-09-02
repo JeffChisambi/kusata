@@ -127,7 +127,33 @@ function UserDetailPage() {
     act("delete", async () => { await deleteUser.mutateAsync(userId); showToast("User deleted"); navigate({ to: "/users" }); });
   };
 
-  if (isLoading) return <div className="max-w-[1400px] mx-auto"><LoadingBlock /></div>;
+  // Keep the breadcrumb/header frame while the workspace loads so drilling in
+  // from the list doesn't blank the page.
+  if (isLoading) {
+    return (
+      <div className="max-w-[1400px] mx-auto pb-16">
+        <div className="flex items-center justify-between gap-3">
+          <Breadcrumb items={[{ label: "Dashboard", to: "/" }, { label: "Users", to: "/users" }, { label: "User" }]} />
+          <button
+            onClick={() => navigate({ to: "/users" })}
+            className="h-8 px-3 rounded-[4px] border border-border text-xs text-muted-foreground hover:bg-muted/50 flex items-center gap-1.5 mb-5"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Back
+          </button>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-[6px] bg-card border border-border p-4 animate-pulse">
+              <div className="w-8 h-8 rounded-md bg-muted mb-3" />
+              <div className="h-3 w-20 rounded bg-muted mb-2" />
+              <div className="h-5 w-28 rounded bg-muted" />
+            </div>
+          ))}
+        </div>
+        <LoadingBlock />
+      </div>
+    );
+  }
 
   const statusBadge = frozen
     ? { cls: "bg-amber/10 text-amber", label: "Frozen" }
@@ -188,8 +214,34 @@ function UserDetailPage() {
             </div>
 
             <div className="mt-4 space-y-2 text-left">
-              <div className="flex items-center gap-2.5 text-sm"><Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" /><span className="truncate">{ws?.email || "—"}</span></div>
-              <div className="flex items-center gap-2.5 text-sm"><Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" /><span className="truncate">{ws?.phone || "—"}</span></div>
+              <div className="flex items-center gap-2.5 text-sm">
+                <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate flex-1">{ws?.email || "—"}</span>
+                {ws?.email && (
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(ws.email!); showToast("Email copied"); }}
+                    className="text-muted-foreground hover:text-foreground shrink-0"
+                    title="Copy email"
+                    aria-label="Copy email"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2.5 text-sm">
+                <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate flex-1">{ws?.phone || "—"}</span>
+                {ws?.phone && (
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(ws.phone); showToast("Phone copied"); }}
+                    className="text-muted-foreground hover:text-foreground shrink-0"
+                    title="Copy phone"
+                    aria-label="Copy phone"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
             </div>
 
             <button

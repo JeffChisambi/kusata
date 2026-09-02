@@ -109,12 +109,37 @@ function OrderDetailPage() {
         : `Order ${order.id.slice(0, 8)}…`,
   );
 
+  // Keep the header frame (back button + id) while the order loads so drilling
+  // in from the blotter doesn't blank the page.
   if (isLoading) {
     return (
       <>
-        <div className="flex flex-col items-center gap-4 pt-24 text-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Loading order details…</p>
+        <div className="flex items-center gap-3 pt-2">
+          <button
+            onClick={() => navigate({ to: "/orders" })}
+            className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Back to orders"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <span className="font-mono text-lg font-semibold text-muted-foreground">{orderId.slice(0, 8)}</span>
+          <span className="h-5 w-16 rounded-full bg-muted animate-pulse" />
+        </div>
+        <div className="grid gap-4 pt-2 lg:grid-cols-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="rounded-[3px] border border-border bg-card p-5 animate-pulse space-y-3">
+              <div className="h-2.5 w-24 rounded bg-muted" />
+              {Array.from({ length: 6 }).map((_, j) => (
+                <div key={j} className="flex justify-between">
+                  <div className="h-3 w-20 rounded bg-muted" />
+                  <div className="h-3 w-28 rounded bg-muted" />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-center gap-2 pt-4 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading order details…
         </div>
       </>
     );

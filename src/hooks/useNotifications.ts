@@ -23,7 +23,7 @@ export function useNotificationsList(filters: NotificationFilters = {}) {
     // Keep the list live so the dashboard receives new notifications without a
     // manual refresh, and refresh immediately when the tab regains focus.
     refetchInterval: 20_000,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     staleTime: 10_000,
   });
@@ -36,8 +36,31 @@ export function useNotificationStats() {
       byStatus: Array<{ status: string; count: number }>;
       byChannel: Array<{ channel: string; count: number }>;
     }>('/v1/admin/notifications/stats'),
-    refetchInterval: 30_000,
+    // Drives the topbar badge only — a minute is plenty.
+    refetchInterval: 60_000,
     refetchIntervalInBackground: false,
+  });
+}
+
+/** Mark one notification (within the caller's broker scope) as read. */
+export function useMarkNotificationRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.patch(`/v1/admin/notifications/${id}/read`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+    },
+  });
+}
+
+/** Mark every unread notification within the caller's broker scope as read. */
+export function useMarkAllNotificationsRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.patch<{ updated: number }>('/v1/admin/notifications/read-all'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+    },
   });
 }
 

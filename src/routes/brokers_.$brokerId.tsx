@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   Building2, Loader2, X, Check, AlertTriangle, CreditCard, Users, KeyRound,
@@ -49,7 +49,25 @@ function BrokerDetailPage() {
     setTimeout(() => setToast(null), 2500);
   };
 
-  if (isLoading) return <div className="pt-6"><LoadingBlock /></div>;
+  // Keep the breadcrumb frame while the broker loads so drilling in from the
+  // list doesn't blank the page.
+  if (isLoading) {
+    return (
+      <div className="pt-6 space-y-5">
+        <Breadcrumb items={[{ label: "Brokers", to: "/brokers" }, { label: "Broker" }]} />
+        <Card>
+          <div className="flex items-center gap-4 animate-pulse">
+            <div className="w-12 h-12 rounded-full bg-muted" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 w-48 rounded bg-muted" />
+              <div className="h-3 w-64 rounded bg-muted" />
+            </div>
+          </div>
+        </Card>
+        <LoadingBlock />
+      </div>
+    );
+  }
   if (isError || !broker) {
     return (
       <div className="pt-6">
@@ -958,6 +976,7 @@ function ApiConfigModal({ brokerId, config, onClose, onFlash }: {
 /* ── Investors ────────────────────────────────────────────────────────────── */
 
 function InvestorsPanel({ brokerId }: { brokerId: string }) {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const limit = 20;
   const { data, isLoading, isError } = useBrokerUsers(brokerId, { page, limit });
@@ -975,7 +994,7 @@ function InvestorsPanel({ brokerId }: { brokerId: string }) {
   return (
     <Panel
       title="Investors"
-      subtitle={data ? `${data.total.toLocaleString()} investors registered with this broker.` : "Investors registered with this broker."}
+      subtitle={data ? `${data.total.toLocaleString()} investors registered with this broker · click a row to open the investor.` : "Investors registered with this broker."}
       bodyClassName="!p-0"
     >
       {isLoading ? (
@@ -1003,10 +1022,14 @@ function InvestorsPanel({ brokerId }: { brokerId: string }) {
               </thead>
               <tbody>
                 {(data?.users ?? []).map((u) => (
-                  <tr key={u.id} className="border-b border-border last:border-0 hover:bg-muted/20">
+                  <tr
+                    key={u.id}
+                    onClick={() => navigate({ to: "/users/$userId", params: { userId: u.id } })}
+                    className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                  >
                     <td className="pl-5 py-3">
                       <div className="min-w-0">
-                        <div className="font-medium text-[13px] truncate">{u.firstName} {u.lastName}</div>
+                        <div className="font-medium text-[13px] truncate hover:text-pine transition-colors">{u.firstName} {u.lastName}</div>
                         <div className="text-[11px] text-muted-foreground truncate">{u.email || "—"}</div>
                       </div>
                     </td>

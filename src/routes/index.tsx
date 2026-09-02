@@ -1,36 +1,19 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
-
-function useCssVar(...vars: string[]) {
-  const read = () =>
-    vars.map((v) =>
-      getComputedStyle(document.documentElement).getPropertyValue(v).trim()
-    );
-  const [values, setValues] = useState<string[]>(() =>
-    typeof document !== "undefined" ? read() : vars.map(() => "")
-  );
-  useEffect(() => {
-    setValues(read());
-    const obs = new MutationObserver(() => setValues(read()));
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    return () => obs.disconnect();
-  }, []);
-  return values;
-}
-
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
   Users,
   FileCheck2,
   Wallet,
   Headphones,
   TrendingUp,
-  TrendingDown,
   Clock,
   ArrowUpRight,
+  ArrowDownRight,
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  ChevronRight,
+  Loader2,
+  X,
 } from "lucide-react";
 import {
   AreaChart,
@@ -42,13 +25,18 @@ import {
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
+  Legend,
 } from "recharts";
-import { Card } from "@/components/broker-shell";
+import { Card, useDashboardRange } from "@/components/broker-shell";
 import { useDashboardStats, useDashboardCharts, useDashboardFinancials } from "@/hooks/useDashboard";
 import { useKycQueue } from "@/hooks/useKyc";
+import { useOrders, type Order } from "@/hooks/useOrders";
+import { useSupportTickets, useSupportStats } from "@/hooks/useSupport";
 import {
-  usePendingWithdrawals, useApproveWithdrawal, useRejectWithdrawal,
+  usePendingWithdrawals, useApproveWithdrawal, useRejectWithdrawal, type PendingWithdrawal,
 } from "@/hooks/useWithdrawals";
+import { useCurrentUser, isSuperAdmin } from "@/lib/auth";
+import { noSearchParams } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -60,9 +48,41 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
-  validateSearch: () => ({}),
+  validateSearch: noSearchParams,
   component: BrokerDashboard,
 });
+
+// ─── Theme colours for recharts ───────────────────────────────────────────────
+// recharts needs concrete colour strings, so read the theme's CSS variables
+// once per dashboard render and re-read when the `dark` class toggles. One
+// observer for the whole page — the charts receive the resolved palette.
+
+const CHART_VARS = ["--pine", "--border", "--muted-foreground", "--card", "--foreground", "--amber", "--sky"] as const;
+
+type ChartColors = {
+  pine: string; border: string; mutedFg: string; card: string; fg: string; amber: string; sky: string;
+};
+
+function readChartColors(): ChartColors {
+  const style = getComputedStyle(document.documentElement);
+  const [pine, border, mutedFg, card, fg, amber, sky] = CHART_VARS.map((v) => style.getPropertyValue(v).trim());
+  return { pine, border, mutedFg, card, fg, amber, sky };
+}
+
+const EMPTY_COLORS: ChartColors = { pine: "", border: "", mutedFg: "", card: "", fg: "", amber: "", sky: "" };
+
+function useChartColors(): ChartColors {
+  const [colors, setColors] = useState<ChartColors>(() =>
+    typeof document !== "undefined" ? readChartColors() : EMPTY_COLORS,
+  );
+  useEffect(() => {
+    setColors(readChartColors());
+    const obs = new MutationObserver(() => setColors(readChartColors()));
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+  return colors;
+}
 
 // ─── Formatting helpers ───────────────────────────────────────────────────────
 
@@ -104,6 +124,14 @@ function relativeTime(iso: string) {
   return `${Math.floor(h / 24)} days ago`;
 }
 
+/** Axis label for a daily bucket — weekday for a week, "d MMM" for longer. */
+function dayLabel(iso: string, days: number) {
+  const d = new Date(iso);
+  return days <= 7
+    ? d.toLocaleDateString("en-US", { weekday: "short" })
+    : d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
 // ─── Custom icons ─────────────────────────────────────────────────────────────
 
 function TradeVolumeIcon({ className }: { className?: string }) {
@@ -126,41 +154,46 @@ function TradeVolumeIcon({ className }: { className?: string }) {
 }
 
 // ─── KPI cards ────────────────────────────────────────────────────────────────
+// Only real figures are shown: a badge appears when the API provides a delta
+// (new sign-ups today, orders today); nothing is fabricated for the rest.
 
 function KpiGrid() {
   const { data: stats, isLoading } = useDashboardStats();
 
-  const kpis = [
+  const kpis: Array<{
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+    value: React.ReactNode;
+    /** Real delta badge; `trend` adds the arrow only when it is a movement. */
+    delta?: string;
+    trend?: "up";
+    sub: string;
+  }> = [
     {
       icon: Users,
       label: "Active Clients",
       value: isLoading ? "—" : (stats?.activeUsers ?? 0).toLocaleString(),
-      delta: isLoading ? "" : `+${stats?.todayNewUsers ?? 0} today`,
-      trend: "up" as "up" | "down" | "flat",
+      delta: isLoading || !stats?.todayNewUsers ? undefined : `+${stats.todayNewUsers} today`,
+      trend: "up",
       sub: isLoading ? "" : `out of ${(stats?.totalUsers ?? 0).toLocaleString()} registered`,
     },
     {
       icon: FileCheck2,
       label: "Pending KYC",
       value: isLoading ? "—" : (stats?.pendingKyc ?? 0).toString(),
-      delta: "needs review",
-      trend: "flat" as "up" | "down" | "flat",
-      sub: "avg. 4h to resolve",
+      sub: "applications awaiting a decision",
     },
     {
       icon: TradeVolumeIcon,
       label: "Trade Volume (today)",
       value: isLoading ? "—" : <Money value={Number(stats?.todayVolume ?? 0)} />,
-      delta: isLoading ? "" : `${stats?.todayOrders ?? 0} orders`,
-      trend: "up" as "up" | "down" | "flat",
+      delta: isLoading ? undefined : `${stats?.todayOrders ?? 0} orders`,
       sub: "orders executed today",
     },
     {
       icon: Wallet,
       label: "Client Cash",
       value: isLoading ? "—" : <Money value={Number(stats?.totalWalletBalance ?? 0)} />,
-      delta: "live",
-      trend: "up" as "up" | "down" | "flat",
       sub: "uninvested wallet balances only",
     },
   ];
@@ -169,10 +202,6 @@ function KpiGrid() {
     <div className="flex gap-4">
       {kpis.map((k) => {
         const Icon = k.icon;
-        const trendColor = "text-muted-foreground";
-        const trendIconColor =
-          k.trend === "up" ? "text-pine" : k.trend === "down" ? "text-rose" : "text-amber";
-        const TrendIcon = k.trend === "up" ? TrendingUp : k.trend === "down" ? TrendingDown : Clock;
         return (
           <div
             key={k.label}
@@ -183,10 +212,9 @@ function KpiGrid() {
                 <Icon className="w-4.5 h-4.5" />
               </div>
               {k.delta && (
-                <span
-                  className={`inline-flex items-center gap-1 text-[11px] font-medium ${trendColor}`}
-                >
-                  <TrendIcon className={`w-3 h-3 ${trendIconColor}`} /> {k.delta}
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                  {k.trend === "up" && <TrendingUp className="w-3 h-3 text-pine" />}
+                  {k.delta}
                 </span>
               )}
             </div>
@@ -225,14 +253,14 @@ function FinancialOverview() {
             title="Sum of all investors' uninvested wallet balances. Cash only — excludes stock positions."
           >
             <span className="text-xs text-muted-foreground">Client Cash</span>
-            <span className="text-sm font-bold font-mono">{money(fin?.clientAssets.clientCash)}</span>
+            <span className="text-sm font-bold font-mono">{money(fin?.clientAssets?.clientCash)}</span>
           </div>
           <div
             className="flex items-baseline justify-between"
             title="Market value of all client stock holdings at the latest close. Not cash."
           >
             <span className="text-xs text-muted-foreground">Portfolio Value</span>
-            <span className="text-sm font-bold font-mono">{money(fin?.clientAssets.portfolioValue)}</span>
+            <span className="text-sm font-bold font-mono">{money(fin?.clientAssets?.portfolioValue)}</span>
           </div>
           <div
             className="flex items-baseline justify-between pt-2.5 border-t border-border"
@@ -240,7 +268,7 @@ function FinancialOverview() {
           >
             <span className="text-xs font-medium text-foreground">Total Investor Assets</span>
             <span className="text-base font-bold font-mono text-pine">
-              {money(fin?.clientAssets.totalInvestorAssets)}
+              {money(fin?.clientAssets?.totalInvestorAssets)}
             </span>
           </div>
         </div>
@@ -258,7 +286,7 @@ function FinancialOverview() {
           >
             <span className="text-xs text-muted-foreground">Trading Commissions</span>
             <span className="text-base font-bold font-mono text-pine">
-              {money(fin?.brokerRevenue.tradingCommissions)}
+              {money(fin?.brokerRevenue?.tradingCommissions)}
             </span>
           </div>
           <div
@@ -267,23 +295,23 @@ function FinancialOverview() {
           >
             <span className="text-xs text-muted-foreground">Statutory Levies (pass-through)</span>
             <span className="text-sm font-medium font-mono text-muted-foreground">
-              {money(fin?.statutory.leviesCollected)}
+              {money(fin?.statutory?.leviesCollected)}
             </span>
           </div>
           <div
             className="flex items-baseline justify-between pt-2.5 border-t border-border"
-            title={`Pine's platform commission: ${fin?.platformFees.ratePct ?? 0}% of each commission you earn, frozen per trade. Settled monthly.`}
+            title={`Pine's platform commission: ${fin?.platformFees?.ratePct ?? 0}% of each commission you earn, frozen per trade. Settled monthly.`}
           >
             <span className="text-xs text-muted-foreground">
-              Owed to Pine (this month{fin ? ` · ${fin.platformFees.ratePct}%` : ""})
+              Owed to Pine (this month{fin ? ` · ${fin.platformFees?.ratePct}%` : ""})
             </span>
             <span className="text-sm font-bold font-mono text-amber">
-              {money(fin?.platformFees.owedThisMonth)}
+              {money(fin?.platformFees?.owedThisMonth)}
             </span>
           </div>
           <div className="flex items-baseline justify-between" title="Based on your commissions this month; last month's figure for comparison.">
             <span className="text-[11px] text-muted-foreground/70">
-              on {money(fin?.platformFees.commissionsThisMonth)} earned this month · last month owed {money(fin?.platformFees.owedLastMonth)}
+              on {money(fin?.platformFees?.commissionsThisMonth)} earned this month · last month owed {money(fin?.platformFees?.owedLastMonth)}
             </span>
           </div>
         </div>
@@ -300,17 +328,17 @@ function FinancialOverview() {
             title="Deposit processing fees recorded on completed deposits, under Settings → Fees & Charges. Reported separately from trading commissions."
           >
             <span className="text-xs text-muted-foreground">Processing Fees</span>
-            <span className="text-base font-bold font-mono">{money(fin?.paymentCosts.processingFees)}</span>
+            <span className="text-base font-bold font-mono">{money(fin?.paymentCosts?.processingFees)}</span>
           </div>
           <div
             className="flex items-baseline justify-between pt-2.5 border-t border-border"
             title="Withdrawal requests waiting for your approval. Funds stay in the client's wallet (held) until you approve."
           >
             <span className="text-xs text-muted-foreground">
-              Pending Withdrawals{isLoading ? "" : ` (${fin?.pendingWithdrawals.count ?? 0})`}
+              Pending Withdrawals{isLoading ? "" : ` (${fin?.pendingWithdrawals?.count ?? 0})`}
             </span>
-            <span className={`text-sm font-bold font-mono ${(fin?.pendingWithdrawals.count ?? 0) > 0 ? "text-amber" : ""}`}>
-              {money(fin?.pendingWithdrawals.amount)}
+            <span className={`text-sm font-bold font-mono ${(fin?.pendingWithdrawals?.count ?? 0) > 0 ? "text-amber" : ""}`}>
+              {money(fin?.pendingWithdrawals?.amount)}
             </span>
           </div>
         </div>
@@ -319,134 +347,170 @@ function FinancialOverview() {
   );
 }
 
-function ClientGrowthChart() {
-  const [pine, border, mutedFg, card, fg] = useCssVar(
-    "--pine", "--border", "--muted-foreground", "--card", "--foreground"
+// ─── Charts ───────────────────────────────────────────────────────────────────
+// One fetch (per selected range) feeds every chart; each chart is memoised so
+// the theme observer / poll ticks only re-render when its inputs change.
+
+type ChartPoint = {
+  day: string;
+  clients: number;
+  volume: number;
+  deposits: number;
+  withdrawals: number;
+  revenue: number;
+};
+
+type ChartProps = { data: ChartPoint[]; loading: boolean; days: number; colors: ChartColors };
+
+function ChartState({ loading, empty }: { loading: boolean; empty: boolean }) {
+  return (
+    <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground">
+      {loading ? "Loading…" : empty ? "No data available" : null}
+    </div>
   );
-  const { data: charts, isLoading } = useDashboardCharts(7);
+}
 
-  const data = (charts ?? []).map((d) => ({
-    day: new Date(d.date).toLocaleDateString("en-US", { weekday: "short" }),
-    clients: d.activeUsers,
-  }));
+const tooltipStyle = (c: ChartColors) => ({
+  background: c.card,
+  border: `1px solid ${c.border}`,
+  borderRadius: 10,
+  fontSize: 12,
+});
 
+const ClientGrowthChart = memo(function ClientGrowthChart({ data, loading, days, colors: c }: ChartProps) {
   return (
     <Card
       title="Client Activity"
-      subtitle="Active client count — last 7 days"
+      subtitle={`Active client count — last ${days} days`}
       className="xl:col-span-2"
     >
-      {isLoading ? (
-        <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground">
-          Loading…
-        </div>
-      ) : data.length === 0 ? (
-        <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground">
-          No data available
-        </div>
+      {loading || data.length === 0 ? (
+        <ChartState loading={loading} empty={data.length === 0} />
       ) : (
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={data} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
             <defs>
               <linearGradient id="brokerClientGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={pine} stopOpacity={0.25} />
-                <stop offset="100%" stopColor={pine} stopOpacity={0} />
+                <stop offset="0%" stopColor={c.pine} stopOpacity={0.25} />
+                <stop offset="100%" stopColor={c.pine} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke={border} />
-            <XAxis
-              dataKey="day"
-              tick={{ fontSize: 11, fill: mutedFg }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: mutedFg }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <Tooltip
-              contentStyle={{
-                background: card,
-                border: `1px solid ${border}`,
-                borderRadius: 10,
-                fontSize: 12,
-              }}
-              labelStyle={{ color: fg }}
-            />
-            <Area
-              type="monotone"
-              dataKey="clients"
-              stroke={pine}
-              strokeWidth={2}
-              fill="url(#brokerClientGrad)"
-              dot={false}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke={c.border} />
+            <XAxis dataKey="day" tick={{ fontSize: 11, fill: c.mutedFg }} axisLine={false} tickLine={false} minTickGap={16} />
+            <YAxis tick={{ fontSize: 11, fill: c.mutedFg }} axisLine={false} tickLine={false} allowDecimals={false} />
+            <Tooltip contentStyle={tooltipStyle(c)} labelStyle={{ color: c.fg }} />
+            <Area type="monotone" dataKey="clients" name="Active clients" stroke={c.pine} strokeWidth={2} fill="url(#brokerClientGrad)" dot={false} />
           </AreaChart>
         </ResponsiveContainer>
       )}
     </Card>
   );
-}
+});
 
-function TradeVolumeChart() {
-  const [pine, border, mutedFg, card] = useCssVar(
-    "--pine", "--border", "--muted-foreground", "--card"
-  );
-  const { data: charts, isLoading } = useDashboardCharts(7);
-
-  const data = (charts ?? []).map((d) => ({
-    day: new Date(d.date).toLocaleDateString("en-US", { weekday: "short" }),
-    volume: parseFloat(d.volume),
-  }));
-
+const TradeVolumeChart = memo(function TradeVolumeChart({ data, loading, days, colors: c }: ChartProps) {
   return (
-    <Card title="Trade Volume" subtitle="Daily MWK volume — last 7 days">
-      {isLoading ? (
-        <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground">
-          Loading…
-        </div>
-      ) : data.length === 0 ? (
-        <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground">
-          No data available
-        </div>
+    <Card title="Trade Volume" subtitle={`Daily MWK volume — last ${days} days`}>
+      {loading || data.length === 0 ? (
+        <ChartState loading={loading} empty={data.length === 0} />
       ) : (
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={data} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={border} strokeWidth={1} />
-            <XAxis
-              dataKey="day"
-              tick={{ fontSize: 11, fill: mutedFg }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: mutedFg }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(v) => fmtMoney(v).replace("MK ", "")}
-            />
-            <Tooltip
-              contentStyle={{
-                background: card,
-                border: `1px solid ${border}`,
-                borderRadius: 10,
-                fontSize: 12,
-              }}
-              formatter={(v: number) => [fmtMoney(v), "Volume"]}
-            />
-            <Bar
-              dataKey="volume"
-              fill={pine}
-              radius={[4, 4, 0, 0]}
-              activeBar={{ fill: pine, fillOpacity: 0.75 }}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke={c.border} strokeWidth={1} />
+            <XAxis dataKey="day" tick={{ fontSize: 11, fill: c.mutedFg }} axisLine={false} tickLine={false} minTickGap={16} />
+            <YAxis tick={{ fontSize: 11, fill: c.mutedFg }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtMoney(v).replace("MK ", "")} />
+            <Tooltip contentStyle={tooltipStyle(c)} formatter={(v: number) => [fmtMoney(v), "Volume"]} />
+            <Bar dataKey="volume" fill={c.pine} radius={[4, 4, 0, 0]} activeBar={{ fill: c.pine, fillOpacity: 0.75 }} />
           </BarChart>
         </ResponsiveContainer>
       )}
     </Card>
   );
+});
+
+const DepositsWithdrawalsChart = memo(function DepositsWithdrawalsChart({ data, loading, days, colors: c }: ChartProps) {
+  return (
+    <Card title="Deposits vs Withdrawals" subtitle={`Completed client cash movements — last ${days} days`}>
+      {loading || data.length === 0 ? (
+        <ChartState loading={loading} empty={data.length === 0} />
+      ) : (
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={data} margin={{ top: 4, right: 4, left: -28, bottom: 0 }} barGap={2}>
+            <CartesianGrid strokeDasharray="3 3" stroke={c.border} strokeWidth={1} />
+            <XAxis dataKey="day" tick={{ fontSize: 11, fill: c.mutedFg }} axisLine={false} tickLine={false} minTickGap={16} />
+            <YAxis tick={{ fontSize: 11, fill: c.mutedFg }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtMoney(v).replace("MK ", "")} />
+            <Tooltip contentStyle={tooltipStyle(c)} formatter={(v: number, name: string) => [fmtMoney(v), name]} />
+            <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, color: c.mutedFg }} />
+            <Bar dataKey="deposits" name="Deposits" fill={c.pine} radius={[4, 4, 0, 0]} activeBar={{ fill: c.pine, fillOpacity: 0.75 }} />
+            <Bar dataKey="withdrawals" name="Withdrawals" fill={c.amber} radius={[4, 4, 0, 0]} activeBar={{ fill: c.amber, fillOpacity: 0.75 }} />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </Card>
+  );
+});
+
+const RevenueChart = memo(function RevenueChart({ data, loading, days, colors: c, label }: ChartProps & { label: string }) {
+  return (
+    <Card title={label} subtitle={`Daily MWK earned on executed trades — last ${days} days`}>
+      {loading || data.length === 0 ? (
+        <ChartState loading={loading} empty={data.length === 0} />
+      ) : (
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={data} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+            <defs>
+              <linearGradient id="brokerRevenueGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={c.sky} stopOpacity={0.25} />
+                <stop offset="100%" stopColor={c.sky} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={c.border} />
+            <XAxis dataKey="day" tick={{ fontSize: 11, fill: c.mutedFg }} axisLine={false} tickLine={false} minTickGap={16} />
+            <YAxis tick={{ fontSize: 11, fill: c.mutedFg }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtMoney(v).replace("MK ", "")} />
+            <Tooltip contentStyle={tooltipStyle(c)} labelStyle={{ color: c.fg }} formatter={(v: number) => [fmtMoney(v), label]} />
+            <Area type="monotone" dataKey="revenue" name={label} stroke={c.sky} strokeWidth={2} fill="url(#brokerRevenueGrad)" dot={false} />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
+    </Card>
+  );
+});
+
+function DashboardCharts() {
+  const { days } = useDashboardRange();
+  const colors = useChartColors();
+  const { data: charts, isLoading } = useDashboardCharts(days);
+  // Platform staff see Pine's cut of every commission; brokers see their own.
+  const superAdmin = isSuperAdmin(useCurrentUser());
+  const revenueLabel = superAdmin ? "Platform fees" : "Commissions";
+
+  const data = useMemo<ChartPoint[]>(
+    () => (charts ?? []).map((d) => ({
+      day: dayLabel(d.date, days),
+      clients: d.activeUsers,
+      volume: parseFloat(d.volume) || 0,
+      deposits: parseFloat(d.deposits) || 0,
+      withdrawals: parseFloat(d.withdrawals) || 0,
+      revenue: parseFloat(d.revenue) || 0,
+    })),
+    [charts, days],
+  );
+
+  const common = { data, loading: isLoading, days, colors };
+  return (
+    <>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <ClientGrowthChart {...common} />
+        <TradeVolumeChart {...common} />
+      </div>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <DepositsWithdrawalsChart {...common} />
+        <RevenueChart {...common} label={revenueLabel} />
+      </div>
+    </>
+  );
 }
+
+// ─── KYC queue ────────────────────────────────────────────────────────────────
 
 function KycQueue() {
   const { data, isLoading } = useKycQueue({ limit: 5 });
@@ -481,9 +545,11 @@ function KycQueue() {
       ) : (
         <div className="space-y-1">
           {items.map((row) => (
-            <div
+            <Link
               key={row.id}
-              className="flex items-center gap-3 py-2.5 border-b border-border last:border-0"
+              to="/kyc/$applicationId"
+              params={{ applicationId: row.id }}
+              className="flex items-center gap-3 py-2.5 border-b border-border last:border-0 -mx-2 px-2 rounded-[3px] hover:bg-muted/30 transition-colors"
             >
               <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
                 <span className="text-[11px] font-semibold text-muted-foreground">
@@ -502,7 +568,7 @@ function KycQueue() {
               <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground w-24 shrink-0">
                 {StatusIcon(row.status)} {row.status}
               </span>
-            </div>
+            </Link>
           ))}
         </div>
       )}
@@ -510,33 +576,104 @@ function KycQueue() {
   );
 }
 
+// ─── Recent orders (snapshot of the latest 5) ─────────────────────────────────
+
+const ORDER_STATUS_CLS: Record<Order["status"], string> = {
+  READY: "bg-amber/10 text-amber",
+  PARTIAL: "bg-amber/10 text-amber",
+  PENDING: "bg-muted text-muted-foreground",
+  EXECUTED: "bg-pine/10 text-pine",
+  SETTLED: "bg-pine/10 text-pine",
+  REJECTED: "bg-rose/10 text-rose",
+  CANCELLED: "bg-muted text-muted-foreground",
+};
+
 function RecentOrders() {
-  const navigate = useNavigate();
+  const { data, isLoading } = useOrders({ limit: 5 });
+  const orders = (data?.orders ?? []).slice(0, 5);
 
   return (
     <Card
       title="Orders"
-      subtitle="Client order activity and trade instructions"
+      subtitle="Latest client trade instructions"
       action={
         <Link
           data-testid="link-view-all-orders"
           to="/orders"
           className="text-[12px] text-pine hover:underline flex items-center gap-1"
         >
-          View all <ArrowUpRight className="w-3.5 h-3.5" />
+          View all{typeof data?.total === "number" ? ` (${data.total.toLocaleString()})` : ""} <ArrowUpRight className="w-3.5 h-3.5" />
         </Link>
       }
     >
-      <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-        <div className="text-sm text-muted-foreground">No recent orders to display.</div>
-        <button
-          onClick={() => navigate({ to: "/orders" })}
-          className="inline-flex items-center gap-1.5 text-[12px] text-pine hover:underline"
-        >
-          Go to order blotter <ChevronRight className="w-3.5 h-3.5" />
-        </button>
-      </div>
+      {isLoading ? (
+        <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+      ) : orders.length === 0 ? (
+        <div className="py-8 text-center text-sm text-muted-foreground">No orders yet.</div>
+      ) : (
+        <div className="space-y-1">
+          {orders.map((o) => {
+            const SideIcon = o.side === "BUY" ? ArrowUpRight : ArrowDownRight;
+            return (
+              <Link
+                key={o.id}
+                to="/orders/$orderId"
+                params={{ orderId: o.id }}
+                className="flex items-center gap-3 py-2.5 border-b border-border last:border-0 -mx-2 px-2 rounded-[3px] hover:bg-muted/30 transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                  <SideIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-medium text-foreground truncate">
+                    {o.side} {o.quantity.toLocaleString("en-MW")} × {o.ticker}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground truncate">
+                    {o.client} · {relativeTime(o.received)}
+                  </div>
+                </div>
+                <span className="font-mono text-xs font-semibold shrink-0"><Money value={o.value} /></span>
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${ORDER_STATUS_CLS[o.status]}`}>
+                  {o.status === "READY" && o.backendStatus === "SUBMITTED" ? "AWAITING" : o.status}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </Card>
+  );
+}
+
+// ─── Pending withdrawals ──────────────────────────────────────────────────────
+
+type WithdrawalDecision =
+  | { kind: "approve"; w: PendingWithdrawal }
+  | { kind: "reject"; w: PendingWithdrawal };
+
+function ConfirmDialog({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <div
+        className="relative w-full max-w-md rounded-[4px] bg-card border border-border p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold">{title}</h3>
+          <button onClick={onClose} className="w-7 h-7 rounded-[3px] hover:bg-muted/60 flex items-center justify-center text-muted-foreground" aria-label="Close">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -544,25 +681,38 @@ function PendingWithdrawalsCard() {
   const { data, isLoading } = usePendingWithdrawals();
   const approve = useApproveWithdrawal();
   const reject = useRejectWithdrawal();
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [decision, setDecision] = useState<WithdrawalDecision | null>(null);
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; tone: "ok" | "err" } | null>(null);
   const allRows = data?.withdrawals ?? [];
   const SNAPSHOT = 5;
   const rows = allRows.slice(0, SNAPSHOT);
   const overflow = allRows.length - rows.length;
+  const busy = approve.isPending || reject.isPending;
 
-  const onApprove = async (id: string, name: string, amount: number) => {
-    if (!confirm(`Approve withdrawal of ${fmtMoney(amount)} for ${name}?\n\nThis debits their wallet and completes the payout.`)) return;
-    setBusyId(id);
-    try { await approve.mutateAsync(id); } catch (e: any) { alert(e?.message ?? "Approval failed"); }
-    setBusyId(null);
+  const showToast = (msg: string, tone: "ok" | "err" = "ok") => {
+    setToast({ msg, tone });
+    setTimeout(() => setToast(null), 3000);
   };
-  const onReject = async (id: string, name: string) => {
-    const reason = prompt(`Reject ${name}'s withdrawal — reason (shown to the client):`);
-    if (reason === null) return;
-    setBusyId(id);
-    try { await reject.mutateAsync({ transactionId: id, reason: reason || undefined }); }
-    catch (e: any) { alert(e?.message ?? "Rejection failed"); }
-    setBusyId(null);
+  const open = (d: WithdrawalDecision) => { setDecision(d); setReason(""); setError(null); };
+  const close = () => { if (!busy) setDecision(null); };
+
+  const confirm = async () => {
+    if (!decision) return;
+    setError(null);
+    try {
+      if (decision.kind === "approve") {
+        await approve.mutateAsync(decision.w.transactionId);
+        showToast(`Approved ${fmtMoney(decision.w.amount)} for ${decision.w.user.name}`);
+      } else {
+        await reject.mutateAsync({ transactionId: decision.w.transactionId, reason: reason.trim() || undefined });
+        showToast(`Rejected ${decision.w.user.name}'s withdrawal`);
+      }
+      setDecision(null);
+    } catch (e: any) {
+      setError(e?.message ?? (decision.kind === "approve" ? "Approval failed" : "Rejection failed"));
+    }
   };
 
   return (
@@ -577,6 +727,12 @@ function PendingWithdrawalsCard() {
         ) : undefined
       }
     >
+      {toast && (
+        <div className={`fixed top-4 right-4 z-[70] rounded-[4px] px-3.5 py-2 text-xs font-medium border shadow-lg ${
+          toast.tone === "ok" ? "bg-pine/10 text-pine border-pine/30" : "bg-rose/10 text-rose border-rose/30"
+        }`}>{toast.msg}</div>
+      )}
+
       {isLoading ? (
         <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
       ) : rows.length === 0 ? (
@@ -586,7 +742,13 @@ function PendingWithdrawalsCard() {
           {rows.map((w) => (
             <div key={w.transactionId} className="flex items-center gap-3 py-2.5 border-b border-border last:border-0">
               <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium text-foreground truncate">{w.user.name}</div>
+                <Link
+                  to="/users/$userId"
+                  params={{ userId: w.user.id }}
+                  className="text-[13px] font-medium text-foreground truncate block hover:text-pine transition-colors"
+                >
+                  {w.user.name}
+                </Link>
                 <div className="text-[11px] text-muted-foreground">
                   {relativeTime(w.requestedAt)} · wallet <Money value={w.walletBalance} />
                 </div>
@@ -594,15 +756,15 @@ function PendingWithdrawalsCard() {
               <span className="font-mono text-sm font-semibold shrink-0"><Money value={w.amount} /></span>
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
-                  onClick={() => onApprove(w.transactionId, w.user.name, w.amount)}
-                  disabled={busyId === w.transactionId}
+                  onClick={() => open({ kind: "approve", w })}
+                  disabled={busy}
                   className="h-7 px-2.5 rounded-[3px] bg-pine text-primary-foreground text-[11px] font-medium hover:bg-pine/90 disabled:opacity-50"
                 >
                   Approve
                 </button>
                 <button
-                  onClick={() => onReject(w.transactionId, w.user.name)}
-                  disabled={busyId === w.transactionId}
+                  onClick={() => open({ kind: "reject", w })}
+                  disabled={busy}
                   className="h-7 px-2.5 rounded-[3px] border border-border text-[11px] font-medium text-muted-foreground hover:bg-rose/10 hover:text-rose disabled:opacity-50"
                 >
                   Reject
@@ -617,25 +779,116 @@ function PendingWithdrawalsCard() {
           )}
         </div>
       )}
+
+      {decision && (
+        <ConfirmDialog
+          title={decision.kind === "approve" ? "Approve withdrawal" : "Reject withdrawal"}
+          onClose={close}
+        >
+          <p className="text-xs text-muted-foreground mb-3">
+            {decision.kind === "approve" ? (
+              <>
+                Approve the withdrawal of <strong className="text-foreground">{fmtExact(decision.w.amount)}</strong> for{" "}
+                <strong className="text-foreground">{decision.w.user.name}</strong>? This debits their wallet and completes the payout.
+              </>
+            ) : (
+              <>
+                Reject <strong className="text-foreground">{decision.w.user.name}</strong>'s withdrawal of{" "}
+                <strong className="text-foreground">{fmtExact(decision.w.amount)}</strong>? The held funds return to their available balance.
+              </>
+            )}
+          </p>
+          {decision.kind === "reject" && (
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              placeholder="Reason (optional — shown to the client)"
+              className="w-full px-3 py-2.5 rounded-[3px] border border-border bg-transparent text-sm resize-none focus:outline-none focus:border-pine/40 mb-3"
+            />
+          )}
+          {error && <p className="text-xs text-rose mb-3">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <button onClick={close} disabled={busy} className="h-8 px-3 rounded-[3px] border border-border text-xs text-muted-foreground hover:bg-muted/40 disabled:opacity-50">
+              Cancel
+            </button>
+            <button
+              onClick={confirm}
+              disabled={busy}
+              className={`h-8 px-4 rounded-[3px] text-xs font-medium flex items-center gap-1.5 disabled:opacity-50 ${
+                decision.kind === "approve" ? "bg-pine text-primary-foreground hover:bg-pine/90" : "bg-rose text-white hover:bg-rose/90"
+              }`}
+            >
+              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : decision.kind === "approve" ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+              {decision.kind === "approve" ? "Confirm approve" : "Confirm reject"}
+            </button>
+          </div>
+        </ConfirmDialog>
+      )}
     </Card>
   );
 }
 
+// ─── Support tickets (open, snapshot of 5) ────────────────────────────────────
+
 function SupportTickets() {
+  const { data, isLoading } = useSupportTickets({ status: "OPEN" });
+  const { data: stats } = useSupportStats();
+  const tickets = (data?.tickets ?? []).slice(0, 5);
+  const awaiting = stats?.awaitingAdmin ?? 0;
+
   return (
     <Card
       title="Support Tickets"
-      subtitle="Open & escalated cases"
+      subtitle="Open cases"
       action={
-        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-          <AlertTriangle className="w-3.5 h-3.5" /> No escalations
-        </span>
+        <div className="flex items-center gap-3">
+          {stats && (
+            <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${awaiting > 0 ? "text-amber" : "text-muted-foreground"}`}>
+              {awaiting > 0 ? <AlertTriangle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              {awaiting > 0 ? `${awaiting} awaiting reply` : "No replies due"}
+            </span>
+          )}
+          <Link to="/support" className="text-[12px] text-pine hover:underline flex items-center gap-1">
+            View all{typeof data?.total === "number" ? ` (${data.total.toLocaleString()})` : ""} <ArrowUpRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       }
     >
-      <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
-        <Headphones className="w-6 h-6 text-muted-foreground/40" />
-        <div className="text-sm text-muted-foreground">No open tickets</div>
-      </div>
+      {isLoading ? (
+        <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+      ) : tickets.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-8 gap-2 text-center">
+          <Headphones className="w-6 h-6 text-muted-foreground/40" />
+          <div className="text-sm text-muted-foreground">No open tickets</div>
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {tickets.map((t) => (
+            <Link
+              key={t.ticketId}
+              to="/support/$ticketId"
+              params={{ ticketId: t.ticketId }}
+              className="flex items-center gap-3 py-2.5 border-b border-border last:border-0 -mx-2 px-2 rounded-[3px] hover:bg-muted/30 transition-colors"
+            >
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                <Headphones className="w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-medium text-foreground truncate">{t.subject}</div>
+                <div className="text-[11px] text-muted-foreground truncate">
+                  {t.user?.name ?? "Unknown user"} · {t.reference} · {relativeTime(t.lastMessageAt)}
+                </div>
+              </div>
+              {t.awaitingAdmin ? (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber/10 text-amber shrink-0">Reply due</span>
+              ) : (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">{t.statusLabel}</span>
+              )}
+            </Link>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }
@@ -653,16 +906,19 @@ function BrokerDashboard() {
       {/* Financial overview: client assets vs broker revenue vs payment costs */}
       <FinancialOverview />
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-        <ClientGrowthChart />
-        <TradeVolumeChart />
-      </div>
+      {/* Charts — all driven by the topbar time range */}
+      <DashboardCharts />
 
       {/* KYC + withdrawals row */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <KycQueue />
         <PendingWithdrawalsCard />
+      </div>
+
+      {/* Orders + support row */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <RecentOrders />
+        <SupportTickets />
       </div>
     </>
   );
