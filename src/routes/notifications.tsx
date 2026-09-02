@@ -1,21 +1,24 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import {
-  Bell, Send, CheckCircle2, AlertTriangle,
+  Send, CheckCircle2, AlertTriangle, Clock3, MailCheck,
   Smartphone, Mail, MessageSquare, Megaphone, Plus,
-  XCircle, Circle, Loader2,
+  XCircle, Loader2, ChevronLeft, ChevronRight, Inbox,
 } from "lucide-react";
-import { Card } from "@/components/broker-shell";
+import { Card, useDashboardRange } from "@/components/broker-shell";
 import {
   useNotificationsList, useBroadcastNotification,
-  useMarkNotificationRead, useMarkAllNotificationsRead,
+  type NotificationRow,
 } from "@/hooks/useNotifications";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({
     meta: [
-      { title: "Notifications — Pine Broker Admin" },
-      { name: "description", content: "System notifications and alerts." },
+      { title: "Client Notifications — Pine Broker Admin" },
+      {
+        name: "description",
+        content: "Delivery record of every notification sent to your investors.",
+      },
     ],
   }),
   component: NotificationsPage,
@@ -24,24 +27,26 @@ export const Route = createFileRoute("/notifications")({
 /* ─────────────────────────── types ─────────────────────────── */
 
 type Channel = "push" | "email" | "sms" | "broadcast";
-type NotifType = "alert" | "info" | "success" | "warning";
 
-type Notif = {
+/** One outbound delivery — a message this broker sent TO an investor. */
+type Delivery = {
   id: string;
-  type: NotifType;
   channel: Channel;
   /** Backend category — ANNOUNCEMENT/MARKETING are broker-authored; others are system-generated. */
   category: string;
   title: string;
   message: string;
   sentAt: string;
-  read: boolean;
-  /** Only present when the API reports a recipient count (e.g. broadcasts). */
-  recipients?: number;
+  /** Raw backend delivery status (QUEUED / SENT / DELIVERED / READ / FAILED). */
+  status: string;
+  recipientId: string | null;
+  recipientName: string;
 };
 
 /** Broker-authored categories vs. platform-generated ones. */
 const BROKER_CATEGORIES = new Set(["ANNOUNCEMENT", "MARKETING"]);
+
+const PAGE_SIZE = 50;
 
 /* ─────────────────────────── helpers ─────────────────────────── */
 
@@ -55,27 +60,41 @@ function relativeTime(iso: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function fmtNum(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString();
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleString("en-GB", {
+    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+  });
 }
 
 /* ─────────────────────────── config maps ─────────────────────────── */
-
-const typeConfig: Record<NotifType, { icon: React.ComponentType<{ className?: string }>; iconCls: string; dotCls: string }> = {
-  alert:   { icon: AlertTriangle, iconCls: "text-muted-foreground", dotCls: "bg-rose" },
-  warning: { icon: AlertTriangle, iconCls: "text-muted-foreground", dotCls: "bg-amber" },
-  success: { icon: CheckCircle2,  iconCls: "text-muted-foreground", dotCls: "bg-pine" },
-  info:    { icon: Bell,          iconCls: "text-muted-foreground", dotCls: "bg-sky" },
-};
 
 const channelConfig: Record<Channel, { icon: React.ComponentType<{ className?: string }>; label: string; cls: string }> = {
   push:      { icon: Smartphone,    label: "Push",      cls: "text-sky border border-sky/30" },
   email:     { icon: Mail,          label: "Email",     cls: "text-violet-500 border border-violet-500/30" },
   sms:       { icon: MessageSquare, label: "SMS",       cls: "text-amber border border-amber/30" },
-  broadcast: { icon: Megaphone,     label: "Broadcast", cls: "text-pine border border-pine/30" },
+  broadcast: { icon: Megaphone,     label: "In-app",    cls: "text-pine border border-pine/30" },
 };
+
+/**
+ * Delivery states, read as "did this reach the client?" — READ is a delivery
+ * fact (the client opened it), never something the dashboard may change.
+ */
+const STATUS_META: Record<string, { label: string; cls: string; icon: React.ComponentType<{ className?: string }> }> = {
+  QUEUED:    { label: "Queued",    cls: "text-muted-foreground border-border",    icon: Clock3 },
+  SENT:      { label: "Sent",      cls: "text-sky border-sky/30",                 icon: Send },
+  DELIVERED: { label: "Delivered", cls: "text-pine border-pine/30",               icon: CheckCircle2 },
+  READ:      { label: "Opened",    cls: "text-pine border-pine/30",               icon: MailCheck },
+  FAILED:    { label: "Failed",    cls: "text-rose border-rose/30",               icon: AlertTriangle },
+};
+
+const STATUS_FILTERS = ["", "QUEUED", "SENT", "DELIVERED", "READ", "FAILED"] as const;
+const CHANNEL_FILTERS: Array<[string, string]> = [
+  ["", "All channels"],
+  ["IN_APP", "In-app"],
+  ["PUSH", "Push"],
+  ["EMAIL", "Email"],
+  ["SMS", "SMS"],
+];
 
 // Real recipient targets — map to the backend broadcast's `targetRole` filter
 // (undefined = all active users). Only options the backend can actually honour.
@@ -93,146 +112,112 @@ const CHANNEL_MAP: Record<Channel, string> = {
   broadcast: "IN_APP",
 };
 
-/* ─────────────────────────── API → UI mappers ─────────────────────────── */
-
-function mapNotifType(raw: string): NotifType {
-  const lower = raw.toLowerCase();
-  if (lower.includes("alert") || lower.includes("critical") || lower.includes("security")) return "alert";
-  if (lower.includes("warn")) return "warning";
-  if (lower.includes("success") || lower.includes("approved")) return "success";
-  return "info";
-}
+/* ─────────────────────────── API → UI mapper ─────────────────────────── */
 
 function mapChannel(raw: string): Channel {
   const lower = raw.toLowerCase();
   if (lower.includes("push")) return "push";
   if (lower.includes("email")) return "email";
   if (lower.includes("sms")) return "sms";
-  if (lower.includes("broadcast")) return "broadcast";
-  return "push";
+  return "broadcast";
 }
 
-function mapServerItems(rawData: unknown): Notif[] {
-  if (!rawData) return [];
-  let raw: any[] = [];
-  if (Array.isArray(rawData)) raw = rawData;
-  else {
-    const d = rawData as Record<string, unknown>;
-    if (Array.isArray(d.notifications)) raw = d.notifications;
-    else if (Array.isArray(d.data)) raw = d.data;
-  }
-  return raw.map((n: any) => ({
+function mapDelivery(n: NotificationRow): Delivery {
+  const name = n.user ? `${n.user.firstName} ${n.user.lastName}`.trim() : "";
+  return {
     id: String(n.id),
-    type: mapNotifType(n.type ?? n.category ?? "INFORMATIONAL"),
     channel: mapChannel(n.channel ?? "IN_APP"),
-    category: (n.category ?? "SYSTEM") as string,
+    category: n.category ?? "SYSTEM",
     title: n.title ?? "Notification",
-    message: n.body ?? n.message ?? "",
-    sentAt: n.sentAt ?? n.createdAt ?? new Date().toISOString(),
-    read: n.status === "READ" || !!n.readAt,
-    recipients: typeof n.recipients === "number" ? n.recipients : undefined,
-  }));
+    message: n.body ?? "",
+    sentAt: n.sentAt ?? n.createdAt,
+    status: (n.status ?? "SENT").toUpperCase(),
+    recipientId: n.user?.id ?? n.userId ?? null,
+    recipientName: name || "Unknown client",
+  };
 }
 
 /* ─────────────────────────── page ─────────────────────────── */
 
 function NotificationsPage() {
-  const { data: rawData, isLoading } = useNotificationsList();
-  const markRead = useMarkNotificationRead();
-  const markAllRead = useMarkAllNotificationsRead();
-
-  // The server is the source of truth — read state is persisted via the
-  // mark-read endpoints and comes back on the next (invalidated) fetch.
-  const items = useMemo(() => mapServerItems(rawData), [rawData]);
+  const { days, dateFrom } = useDashboardRange();
 
   const [compose, setCompose] = useState(false);
-  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [status, setStatus] = useState<string>("");
+  const [channel, setChannel] = useState<string>("");
   // Category separation: broker-authored announcements vs system-generated.
   const [categoryTab, setCategoryTab] = useState<"all" | "broker" | "system">("all");
+  const [page, setPage] = useState(1);
 
-  const unread = items.filter((n) => !n.read).length;
-  const byCategory =
+  // Any filter — including the topbar time range — starts back at page 1.
+  useEffect(() => { setPage(1); }, [status, channel, categoryTab, dateFrom]);
+
+  const { data, isLoading, isFetching } = useNotificationsList({
+    status: status || undefined,
+    channel: channel || undefined,
+    dateFrom,
+    page,
+    limit: PAGE_SIZE,
+  });
+
+  const items = useMemo(
+    () => (data?.notifications ?? []).map(mapDelivery),
+    [data],
+  );
+
+  const visible =
     categoryTab === "broker"
       ? items.filter((n) => BROKER_CATEGORIES.has(n.category))
       : categoryTab === "system"
         ? items.filter((n) => !BROKER_CATEGORIES.has(n.category))
         : items;
-  const visible = filter === "unread" ? byCategory.filter((n) => !n.read) : byCategory;
 
-  // Derive "sent today" from items (sentAt within last 24h)
-  const sentToday = items.filter((n) => {
-    const diff = Date.now() - new Date(n.sentAt).getTime();
-    return diff < 24 * 60 * 60 * 1000;
-  }).length;
+  const total = data?.total ?? 0;
+  const totalPages = data?.totalPages ?? 1;
 
-  const onRead = (n: Notif) => {
-    if (n.read || markRead.isPending) return;
-    markRead.mutate(n.id);
-  };
+  // Delivery health for the messages currently loaded.
+  const delivered = items.filter((n) => n.status === "DELIVERED" || n.status === "READ").length;
+  const failed = items.filter((n) => n.status === "FAILED").length;
 
   return (
     <>
       <div className="pt-6 space-y-5">
 
-        {/* Summary strip */}
-        <div className="grid grid-cols-2 gap-4">
-          <SummaryCard
-            icon={Bell}
-            label="Unread"
-            value={unread}
-            sub="require attention"
-            accent={unread > 0}
-          />
-          <SummaryCard
-            icon={Send}
-            label="Sent today"
-            value={sentToday}
-            sub="notifications dispatched"
-          />
+        {/* Framing — these are the CLIENTS' messages, not the broker's inbox. */}
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-[3px] bg-pine/10 text-pine flex items-center justify-center shrink-0">
+            <Send className="w-4.5 h-4.5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-semibold">Client Notifications</h1>
+            <p className="text-xs text-muted-foreground">
+              A delivery record of every message sent <span className="font-medium text-foreground">to your investors</span> —
+              announcements, receipts and alerts as they landed in each client's app. Use it to answer
+              “did the client actually receive it?”. Nothing here is an inbox: reading state belongs to
+              the client.
+            </p>
+          </div>
+          {isFetching && !isLoading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground shrink-0 mt-1" />}
         </div>
 
-        {/* Feed */}
+        {/* Summary strip */}
+        <div className="grid grid-cols-3 gap-4">
+          <SummaryCard icon={Send} label="Messages sent" value={total} sub={`last ${days} days`} />
+          <SummaryCard icon={CheckCircle2} label="Reached the client" value={delivered} sub="on this page" />
+          <SummaryCard icon={AlertTriangle} label="Failed" value={failed} sub="on this page" accent={failed > 0} />
+        </div>
+
+        {/* Delivery log */}
         <Card
-          title="Notification Feed"
+          title="Delivery log"
+          subtitle={`Newest first · last ${days} days`}
           action={
-            <div className="flex items-center gap-2">
-              {/* Filter toggle */}
-              <div className="flex items-center rounded-[3px] border border-border overflow-hidden text-[12px]">
-                <button
-                  onClick={() => setFilter("all")}
-                  className={`px-3 py-1.5 transition-colors ${filter === "all" ? "bg-pine text-primary-foreground font-medium" : "text-muted-foreground hover:bg-muted/40"}`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setFilter("unread")}
-                  className={`px-3 py-1.5 transition-colors flex items-center gap-1.5 ${filter === "unread" ? "bg-pine text-primary-foreground font-medium" : "text-muted-foreground hover:bg-muted/40"}`}
-                >
-                  Unread
-                  {unread > 0 && (
-                    <span className={`text-[10px] font-bold px-1 rounded-full ${filter === "unread" ? "bg-white/20" : "bg-rose text-white"}`}>
-                      {unread}
-                    </span>
-                  )}
-                </button>
-              </div>
-              {unread > 0 && (
-                <button
-                  onClick={() => markAllRead.mutate()}
-                  disabled={markAllRead.isPending}
-                  className="text-[12px] text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap flex items-center gap-1 disabled:opacity-50"
-                >
-                  {markAllRead.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
-                  Mark all read
-                </button>
-              )}
-              <button
-                onClick={() => setCompose(true)}
-                className="flex items-center gap-1.5 h-8 px-3 rounded-[3px] bg-pine text-primary-foreground text-[12px] font-medium hover:bg-pine/90 transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" /> Send
-              </button>
-            </div>
+            <button
+              onClick={() => setCompose(true)}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-[3px] bg-pine text-primary-foreground text-[12px] font-medium hover:bg-pine/90 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> Send
+            </button>
           }
         >
           {/* Category separation — broker-authored vs system-generated */}
@@ -256,30 +241,75 @@ function NotificationsPage() {
               </button>
             ))}
           </div>
-          {markAllRead.isError && (
-            <p className="mb-3 text-xs text-rose">Failed to mark all as read. Please try again.</p>
-          )}
+
+          {/* Delivery diagnostics filters */}
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            {STATUS_FILTERS.map((s) => {
+              const active = status === s;
+              return (
+                <button
+                  key={s || "all"}
+                  onClick={() => setStatus(s)}
+                  className={`h-7 rounded-[3px] border px-2.5 text-[11px] transition-colors ${
+                    active ? "border-pine bg-pine/10 text-pine font-medium" : "border-border text-muted-foreground hover:bg-muted/40"
+                  }`}
+                >
+                  {s ? STATUS_META[s]?.label ?? s : "All statuses"}
+                </button>
+              );
+            })}
+            <div className="flex-1" />
+            <select
+              value={channel}
+              onChange={(e) => setChannel(e.target.value)}
+              aria-label="Channel"
+              className="h-7 rounded-[3px] border border-border bg-card px-2 text-[11px] text-muted-foreground focus:outline-none focus:border-pine/40"
+            >
+              {CHANNEL_FILTERS.map(([v, label]) => (
+                <option key={v || "all"} value={v}>{label}</option>
+              ))}
+            </select>
+          </div>
+
           {isLoading ? (
             <div className="py-16 text-center text-sm text-muted-foreground">Loading…</div>
           ) : visible.length === 0 ? (
             <div className="py-16 text-center">
-              <CheckCircle2 className="w-8 h-8 text-pine mx-auto mb-3" />
-              <p className="text-sm font-medium">All caught up</p>
+              <Inbox className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm font-medium">Nothing sent in this window</p>
               <p className="text-xs text-muted-foreground mt-1">
-                {filter === "unread" ? "No unread notifications" : "No notifications yet"}
+                No client notifications match these filters over the last {days} days.
               </p>
             </div>
           ) : (
-            <ul className="divide-y divide-border -mx-5">
-              {visible.map((n) => (
-                <NotifItem
-                  key={n.id}
-                  notif={n}
-                  onRead={onRead}
-                  marking={markRead.isPending && markRead.variables === n.id}
-                />
-              ))}
-            </ul>
+            <>
+              <ul className="divide-y divide-border -mx-5">
+                {visible.map((n) => <DeliveryItem key={n.id} delivery={n} />)}
+              </ul>
+
+              {/* Pagination — a delivery log must never silently truncate. */}
+              <div className="flex items-center justify-between pt-3 -mb-1">
+                <span className="text-[11px] text-muted-foreground">
+                  Page {page} of {totalPages} · {total.toLocaleString()} message{total === 1 ? "" : "s"} in range
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="h-7 px-2 rounded-[3px] border border-border text-[11px] text-muted-foreground hover:bg-muted/40 disabled:opacity-40 inline-flex items-center gap-1"
+                  >
+                    <ChevronLeft className="w-3 h-3" /> Prev
+                  </button>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className="h-7 px-2 rounded-[3px] border border-border text-[11px] text-muted-foreground hover:bg-muted/40 disabled:opacity-40 inline-flex items-center gap-1"
+                  >
+                    Next <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </Card>
       </div>
@@ -300,67 +330,67 @@ function SummaryCard({
   return (
     <div className="flex-1 rounded-[3px] bg-card border border-border p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <div className="w-9 h-9 flex items-center justify-center text-muted-foreground">
+        <div className="w-9 h-9 flex items-center justify-center">
           <Icon className={`w-4.5 h-4.5 ${accent ? "text-rose" : "text-muted-foreground"}`} />
         </div>
         <span className="text-[11px] font-medium text-muted-foreground">{sub}</span>
       </div>
       <div>
         <div className="text-xs text-muted-foreground">{label}</div>
-        <div className="text-xl font-bold leading-tight mt-0.5">{value}</div>
+        <div className="text-xl font-bold leading-tight mt-0.5">{value.toLocaleString()}</div>
       </div>
     </div>
   );
 }
 
-/* ─────────────────────────── feed item ─────────────────────────── */
+/* ─────────────────────────── log row ─────────────────────────── */
 
-function NotifItem({ notif: n, onRead, marking }: { notif: Notif; onRead: (n: Notif) => void; marking: boolean }) {
-  const tc = typeConfig[n.type] ?? typeConfig.info;
+function DeliveryItem({ delivery: n }: { delivery: Delivery }) {
   const cc = channelConfig[n.channel] ?? channelConfig.push;
-  const TypeIcon = tc.icon;
   const ChanIcon = cc.icon;
+  const sm = STATUS_META[n.status] ?? { label: n.status, cls: "text-muted-foreground border-border", icon: Send };
+  const StatusIcon = sm.icon;
 
   return (
-    <li
-      className={`flex items-start gap-4 px-5 py-4 transition-colors ${!n.read ? "bg-muted/10 cursor-pointer hover:bg-muted/30" : ""}`}
-      onClick={() => onRead(n)}
-      title={!n.read ? "Click to mark as read" : undefined}
-    >
-      {/* Type icon */}
-      <div className="w-8 h-8 flex items-center justify-center shrink-0 mt-0.5">
-        <TypeIcon className={`w-4 h-4 ${tc.iconCls}`} />
+    <li className="flex items-start gap-4 px-5 py-4">
+      {/* Recipient leads the row — this is somebody else's message. */}
+      <div className="w-[190px] shrink-0 min-w-0">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">To</div>
+        {n.recipientId ? (
+          <Link
+            to="/users/$userId"
+            params={{ userId: n.recipientId }}
+            className="text-[13px] font-medium text-foreground truncate block hover:text-pine transition-colors"
+          >
+            {n.recipientName}
+          </Link>
+        ) : (
+          <span className="text-[13px] font-medium text-muted-foreground truncate block">{n.recipientName}</span>
+        )}
+        <div className="text-[11px] text-muted-foreground mt-0.5" title={fmtTime(n.sentAt)}>
+          {relativeTime(n.sentAt)}
+        </div>
       </div>
 
-      {/* Content */}
+      {/* Message */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <span className={`text-[13px] font-medium leading-snug ${!n.read ? "text-foreground" : "text-muted-foreground"}`}>
-            {n.title}
-          </span>
-          {!n.read && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tc.dotCls}`} />}
-        </div>
-        <p className="text-[12px] text-muted-foreground leading-relaxed">{n.message}</p>
-        <div className="flex items-center gap-3 mt-2">
+        <div className="text-[13px] font-medium leading-snug truncate">{n.title}</div>
+        <p className="text-[12px] text-muted-foreground leading-relaxed line-clamp-2">{n.message}</p>
+        <div className="flex items-center gap-2 mt-2">
           <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-[3px] ${cc.cls}`}>
             <ChanIcon className="w-3 h-3" /> {cc.label}
           </span>
-          {n.recipients != null && (
-            <span className="text-[11px] text-muted-foreground">
-              {fmtNum(n.recipients)} {n.recipients === 1 ? "recipient" : "recipients"}
-            </span>
-          )}
-          <span className="text-[11px] text-muted-foreground">{relativeTime(n.sentAt)}</span>
+          <span className="text-[11px] text-muted-foreground capitalize">
+            {n.category.toLowerCase().replace(/_/g, " ")}
+          </span>
         </div>
       </div>
 
-      {/* Unread dot / read indicator */}
-      <div className="shrink-0 mt-1.5">
-        {marking
-          ? <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
-          : !n.read
-            ? <Circle className="w-3 h-3 fill-pine text-pine" />
-            : <Circle className="w-3 h-3 text-border" />}
+      {/* Delivery outcome */}
+      <div className="shrink-0">
+        <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-[3px] border ${sm.cls}`}>
+          <StatusIcon className="w-3 h-3" /> {sm.label}
+        </span>
       </div>
     </li>
   );

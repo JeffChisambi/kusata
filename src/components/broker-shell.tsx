@@ -6,15 +6,16 @@ import { createPortal } from "react-dom";
 import { Link, useNavigate, useLocation, useElementScrollRestoration } from "@tanstack/react-router";
 import { useCurrentUser, logout, isSuperAdmin } from "@/lib/auth";
 import { useKycQueue } from "@/hooks/useKyc";
-import { useUnreadNotificationCount } from "@/hooks/useNotifications";
-import { useUnreadSupportCount } from "@/hooks/useSupport";
+import { useUnreadSupportCount, useSupportStats } from "@/hooks/useSupport";
+import { usePendingWithdrawals } from "@/hooks/useWithdrawals";
+import { useSystemErrorStats } from "@/hooks/useSystemErrors";
 import { useNotificationDelivery } from "@/hooks/useNotificationDelivery";
 import {
   Users, FileCheck2,
   ChevronDown, ChevronsLeft, ChevronsRight,
   Clock, Sun, Moon, Bell, Check, LogOut,
   ClipboardList, Settings2, Search, Newspaper, Landmark, LifeBuoy, Palette,
-  Building2, ScrollText, AlertOctagon,
+  Building2, ScrollText, AlertOctagon, Banknote, CheckCircle2,
 } from "lucide-react";
 
 function NineDotsIcon({ className }: { className?: string }) {
@@ -66,15 +67,16 @@ export const brokerNav: NavGroup[] = [
   { section: "PLATFORM", icon: Landmark, label: "Treasury", href: "/treasury", superAdminOnly: true },
 
   // ── ACCOUNT ──
-  { section: "ACCOUNT", icon: Bell, label: "Notifications", href: "/notifications" },
+  { section: "ACCOUNT", icon: Bell, label: "Client Notifications", href: "/notifications" },
   { section: "ACCOUNT", icon: Settings2, label: "Settings", href: "/settings" },
 ];
 
 export const brokerSectionOrder = ["OVERVIEW", "CLIENTS", "TRADING", "PLATFORM", "ACCOUNT"];
 
 // ─── Dashboard time range ─────────────────────────────────────────────────────
-// The topbar range picker feeds the dashboard charts (daily buckets from the
-// backend), so the options are whole-day windows.
+// The topbar range picker feeds every time-scoped view (overview charts, the
+// order blotter, the audit log, system errors and the client notification
+// log), so the options are whole-day windows.
 
 export type DashboardRange = "7d" | "14d" | "30d" | "90d";
 const TIME_RANGES: Array<{ label: string; value: DashboardRange; short: string; days: number }> = [
@@ -85,13 +87,35 @@ const TIME_RANGES: Array<{ label: string; value: DashboardRange; short: string; 
 ];
 const DEFAULT_RANGE: DashboardRange = "7d";
 
+/**
+ * Routes the range picker actually changes. Anywhere else (Settings, Brokers,
+ * Users, Treasury, Mobile themes…) the control is HIDDEN rather than shown but
+ * inert — a filter that silently does nothing is worse than no filter.
+ */
+const RANGE_AWARE_ROUTES = new Set(["/", "/orders", "/audit", "/errors", "/notifications"]);
+
+function isRangeAware(pathname: string): boolean {
+  const p = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+  return RANGE_AWARE_ROUTES.has(p || "/");
+}
+
+/** Start of the window: midnight, `days` days ago. */
+function rangeStart(days: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 const DashboardRangeContext = createContext<{
   range: DashboardRange;
   days: number;
+  /** ISO instant for the start of the window — pass straight to `dateFrom`. */
+  dateFrom: string;
   setRange: (r: DashboardRange) => void;
-}>({ range: DEFAULT_RANGE, days: 7, setRange: () => {} });
+}>({ range: DEFAULT_RANGE, days: 7, dateFrom: rangeStart(7).toISOString(), setRange: () => {} });
 
-/** The topbar's selected time window — consumed by the dashboard charts. */
+/** The topbar's selected time window — consumed by every range-aware page. */
 export function useDashboardRange() {
   return useContext(DashboardRangeContext);
 }
@@ -130,10 +154,10 @@ export function DashboardTitleProvider({ children }: { children: ReactNode }) {
   const titleValue = useMemo(() => ({ ...state, setTitle }), [state, setTitle]);
 
   const [range, setRange] = useState<DashboardRange>(DEFAULT_RANGE);
-  const rangeValue = useMemo(
-    () => ({ range, setRange, days: TIME_RANGES.find((r) => r.value === range)?.days ?? 7 }),
-    [range],
-  );
+  const rangeValue = useMemo(() => {
+    const days = TIME_RANGES.find((r) => r.value === range)?.days ?? 7;
+    return { range, setRange, days, dateFrom: rangeStart(days).toISOString() };
+  }, [range]);
 
   return (
     <DashboardTitleContext.Provider value={titleValue}>
@@ -157,7 +181,7 @@ const STATIC_TITLES: Record<string, string> = {
   "/kyc": "KYC",
   "/orders": "Orders",
   "/settings": "Settings",
-  "/notifications": "Notifications",
+  "/notifications": "Client Notifications",
   "/support": "Support",
   "/mobile-themes": "Mobile Themes",
   "/news": "News",
@@ -247,7 +271,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         onToggleCollapse={toggleCollapse}
       />
       <main className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
-        <BrokerTopbar title={title} />
+        <BrokerTopbar title={title} showRange={isRangeAware(pathname)} />
         <div
           ref={scrollRef}
           data-scroll-restoration-id="dashboard-scroll"
@@ -500,8 +524,7 @@ function BrokerNavItem({
 
 // ─── Topbar ───────────────────────────────────────────────────────────────────
 
-function BrokerTopbar({ title }: { title: string }) {
-  const unreadCount = useUnreadNotificationCount();
+function BrokerTopbar({ title, showRange }: { title: string; showRange: boolean }) {
   const navigate = useNavigate();
   const [dark, setDark] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -518,6 +541,10 @@ function BrokerTopbar({ title }: { title: string }) {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [rangeOpen]);
+
+  // Navigating to a route the range doesn't apply to hides the picker — make
+  // sure an open dropdown doesn't linger behind it.
+  useEffect(() => { if (!showRange) setRangeOpen(false); }, [showRange]);
 
   // Theme preference is PER-USER: keyed by the signed-in account id so two
   // people sharing a browser (or one person with admin + broker accounts)
@@ -571,8 +598,8 @@ function BrokerTopbar({ title }: { title: string }) {
         </div>
       </form>
       <div className="flex items-center gap-2">
-        {/* Time range picker */}
-        <div ref={rangeRef} className="relative hidden md:block">
+        {/* Time range picker — only on the routes it genuinely filters. */}
+        <div ref={rangeRef} className={`relative ${showRange ? "hidden md:block" : "hidden"}`}>
           <button
             onClick={() => setRangeOpen((o) => !o)}
             className={`flex items-center gap-2 px-3 py-2 rounded-[4px] border text-sm transition-colors ${
@@ -607,7 +634,10 @@ function BrokerTopbar({ title }: { title: string }) {
                 })}
               </div>
               <div className="px-3.5 py-2.5 border-t border-border bg-muted/30">
-                <p className="text-[11px] text-muted-foreground">Applies to the overview charts</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Applies to the overview charts, order blotter, audit log, system errors and the
+                  client notification log.
+                </p>
               </div>
             </div>
           )}
@@ -622,21 +652,153 @@ function BrokerTopbar({ title }: { title: string }) {
           {dark ? <Sun className="w-4 h-4 text-muted-foreground" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
         </button>
 
-        {/* Notifications */}
-        <Link
-          to="/notifications"
-          className="w-10 h-10 rounded-[4px] bg-muted/60 flex items-center justify-center relative hover:bg-muted transition-colors"
-          aria-label="Notifications"
-        >
-          <Bell className="w-4 h-4 text-muted-foreground" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-white text-[10px] font-bold flex items-center justify-center leading-none">
-              {unreadCount}
-            </span>
-          )}
-        </Link>
+        {/* Work queue */}
+        <WorkQueueBell />
       </div>
     </header>
+  );
+}
+
+// ─── Work queue bell ──────────────────────────────────────────────────────────
+// The badge counts what THIS ADMIN has to act on — never investors' unread
+// notifications (those belong to the clients' own inboxes and mean nothing
+// here). Everything is assembled from hooks the dashboard already polls, so
+// the popover costs no extra requests.
+
+type QueueItem = {
+  key: string;
+  label: string;
+  detail: string;
+  count: number;
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+function WorkQueueBell() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const superAdmin = isSuperAdmin(useCurrentUser());
+
+  const { data: kyc } = useKycQueue({ status: "PENDING", limit: 1 });
+  const { data: withdrawals } = usePendingWithdrawals();
+  const { data: support } = useSupportStats();
+  // Platform-only endpoint — never fire it for broker admins (403).
+  const { data: errors } = useSystemErrorStats({ enabled: superAdmin });
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const items = useMemo<QueueItem[]>(() => {
+    const openTickets = support?.open ?? 0;
+    const list: QueueItem[] = [
+      {
+        key: "kyc",
+        label: "KYC applications",
+        detail: "waiting for review",
+        count: kyc?.count ?? 0,
+        to: "/kyc",
+        icon: FileCheck2,
+      },
+      {
+        key: "withdrawals",
+        label: "Withdrawal requests",
+        detail: "waiting for approval",
+        count: withdrawals?.withdrawals?.length ?? 0,
+        to: "/",
+        icon: Banknote,
+      },
+      {
+        key: "support",
+        label: "Support tickets",
+        detail: openTickets > 0 ? `awaiting your reply · ${openTickets} open` : "awaiting your reply",
+        count: support?.awaitingAdmin ?? 0,
+        to: "/support",
+        icon: LifeBuoy,
+      },
+    ];
+    if (superAdmin) {
+      list.push({
+        key: "errors",
+        label: "System errors",
+        detail: "still open",
+        count: errors?.open ?? 0,
+        to: "/errors",
+        icon: AlertOctagon,
+      });
+    }
+    return list;
+  }, [kyc?.count, withdrawals?.withdrawals?.length, support?.awaitingAdmin, support?.open, errors?.open, superAdmin]);
+
+  const total = items.reduce((sum, i) => sum + i.count, 0);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={`w-10 h-10 rounded-[4px] flex items-center justify-center relative transition-colors ${
+          open ? "bg-pine/10 text-pine" : "bg-muted/60 hover:bg-muted"
+        }`}
+        aria-label={total > 0 ? `Work queue — ${total} item${total === 1 ? "" : "s"}` : "Work queue"}
+        aria-expanded={open}
+      >
+        <Bell className={`w-4 h-4 ${open ? "text-pine" : "text-muted-foreground"}`} />
+        {total > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-white text-[10px] font-bold flex items-center justify-center leading-none">
+            {total > 99 ? "99+" : total}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1.5 z-50 w-[19rem] bg-card border border-border rounded-[4px] shadow-xl overflow-hidden">
+          <div className="px-3.5 pt-3 pb-2 flex items-center justify-between">
+            <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">NEEDS YOUR ATTENTION</span>
+            {total > 0 && (
+              <span className="text-[10px] font-semibold text-muted-foreground">{total}</span>
+            )}
+          </div>
+          {total === 0 ? (
+            <div className="px-3.5 pb-5 pt-2 text-center">
+              <CheckCircle2 className="w-7 h-7 text-pine mx-auto mb-2" />
+              <p className="text-[13px] font-medium">Nothing needs your attention</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Every queue is clear right now.
+              </p>
+            </div>
+          ) : (
+            <ul className="pb-1.5">
+              {items.filter((i) => i.count > 0).map((item) => {
+                const Icon = item.icon;
+                return (
+                  <li key={item.key}>
+                    <Link
+                      to={item.to}
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-muted transition-colors"
+                    >
+                      <span className="w-7 h-7 shrink-0 rounded-[3px] bg-muted flex items-center justify-center">
+                        <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[13px] font-medium text-foreground truncate">{item.label}</span>
+                        <span className="block text-[11px] text-muted-foreground truncate">{item.detail}</span>
+                      </span>
+                      <span className="text-[11px] font-bold text-foreground tabular-nums shrink-0">{item.count}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

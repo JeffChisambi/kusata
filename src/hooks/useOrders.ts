@@ -163,6 +163,10 @@ function mapOrder(o: BackendOrder): Order {
 export interface OrderFilters {
   status?: string;
   side?: OrderSide;
+  /** ISO instant — orders created at or after this moment (topbar time range). */
+  dateFrom?: string;
+  /** ISO instant — orders created at or before this moment. */
+  dateTo?: string;
   page?: number;
   limit?: number;
 }
@@ -171,6 +175,8 @@ export function useOrders(filters: OrderFilters = {}) {
   const params = new URLSearchParams();
   if (filters.status) params.set('status', filters.status);
   if (filters.side) params.set('side', filters.side);
+  if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
+  if (filters.dateTo) params.set('dateTo', filters.dateTo);
   if (filters.page) params.set('page', String(filters.page));
   if (filters.limit) params.set('limit', String(filters.limit ?? 50));
 

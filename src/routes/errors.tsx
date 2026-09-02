@@ -1,12 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   AlertOctagon, AlertTriangle, AlertCircle, Info, CheckCircle2,
   Smartphone, Monitor, Server, ShieldCheck, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Loader2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { requireSuperAdmin } from "@/lib/auth";
+import { useDashboardRange } from "@/components/broker-shell";
+import {
+  useSystemErrors, useSystemErrorStats, systemErrorKeys,
+  type SystemErrorEvent as ErrorEvent,
+} from "@/hooks/useSystemErrors";
 
 export const Route = createFileRoute("/errors")({
   head: () => ({ meta: [{ title: "System Errors — Pine Admin" }] }),
@@ -15,21 +20,6 @@ export const Route = createFileRoute("/errors")({
 });
 
 const PAGE_SIZE = 50;
-
-type ErrorEvent = {
-  id: string;
-  source: "MOBILE_APP" | "BROKER_DASHBOARD" | "ADMIN_DASHBOARD" | "BACKEND";
-  severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
-  status: "OPEN" | "RESOLVED";
-  message: string;
-  stack: string | null;
-  location: string | null;
-  context: Record<string, unknown> | null;
-  userId: string | null;
-  occurrences: number;
-  firstSeenAt: string;
-  lastSeenAt: string;
-};
 
 const SEVERITY_META: Record<ErrorEvent["severity"], { label: string; cls: string; icon: typeof AlertOctagon; rank: number }> = {
   CRITICAL: { label: "Critical", cls: "bg-rose/10 text-rose border-rose/30", icon: AlertOctagon, rank: 0 },
@@ -60,30 +50,22 @@ function ErrorsPage() {
   const [status, setStatus] = useState<string>("OPEN");
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<string | null>(null);
+  // The topbar time range scopes the list to errors still occurring in the
+  // window (matched on lastSeenAt server-side).
+  const { days, dateFrom } = useDashboardRange();
 
-  // Any filter change starts back at the first page.
-  useEffect(() => { setPage(1); }, [source, severity, status]);
+  // Any filter change — including the time range — starts back at the first page.
+  useEffect(() => { setPage(1); }, [source, severity, status, dateFrom]);
 
-  const statsQ = useQuery({
-    queryKey: ["errors", "stats"],
-    queryFn: () => api.get<{ open: number; bySeverity: Record<string, number>; bySource: Record<string, number> }>("/v1/admin/errors/stats"),
-    refetchInterval: 30_000,
-    refetchIntervalInBackground: false,
-  });
+  const statsQ = useSystemErrorStats();
 
-  const listQ = useQuery({
-    queryKey: ["errors", "list", source, severity, status, page],
-    queryFn: () => {
-      const p = new URLSearchParams();
-      if (source) p.set("source", source);
-      if (severity) p.set("severity", severity);
-      if (status) p.set("status", status);
-      p.set("page", String(page));
-      p.set("limit", String(PAGE_SIZE));
-      return api.get<{ events: ErrorEvent[]; total: number }>(`/v1/admin/errors?${p.toString()}`);
-    },
-    refetchInterval: 30_000,
-    refetchIntervalInBackground: false,
+  const listQ = useSystemErrors({
+    source: source || undefined,
+    severity: severity || undefined,
+    status: status || undefined,
+    dateFrom,
+    page,
+    limit: PAGE_SIZE,
   });
   const total = listQ.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -91,7 +73,7 @@ function ErrorsPage() {
   const resolveM = useMutation({
     mutationFn: (id: string) => api.patch(`/v1/admin/errors/${id}/resolve`, {}),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["errors"] });
+      qc.invalidateQueries({ queryKey: systemErrorKeys.all });
     },
   });
 
@@ -105,7 +87,8 @@ function ErrorsPage() {
     <div className="max-w-[1200px] mx-auto">
       <p className="text-xs text-muted-foreground mb-4">
         Errors captured from every surface — mobile app, dashboards, and the backend — deduplicated and ranked
-        by priority, so issues are visible before anyone reports them.
+        by priority, so issues are visible before anyone reports them. Showing the last {days} days; the
+        severity counts above are open errors across all time.
       </p>
 
       {/* Severity stat cards */}
@@ -161,7 +144,7 @@ function ErrorsPage() {
         <div className="rounded-[6px] border border-border bg-card px-4 py-14 text-center">
           <CheckCircle2 className="w-8 h-8 text-pine mx-auto mb-3" />
           <div className="text-sm font-medium">No {status === "OPEN" ? "open " : ""}errors</div>
-          <div className="text-xs text-muted-foreground mt-1">All quiet across the platform.</div>
+          <div className="text-xs text-muted-foreground mt-1">All quiet across the platform in the last {days} days.</div>
         </div>
       ) : (
         <div className="rounded-[6px] border border-border bg-card divide-y divide-border">

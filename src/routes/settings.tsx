@@ -555,8 +555,8 @@ function DesktopNotificationsRow() {
             : perm === "denied"
               ? "Blocked — allow notifications for this site in your browser settings."
               : on
-                ? "On — you'll get a desktop alert for new notifications on this device."
-                : "Get a desktop alert for new notifications on this device."}
+                ? "On — you'll be alerted on this device when work reaches your queue."
+                : "Get a desktop alert when a KYC application or withdrawal needs you."}
         </div>
       </div>
       {perm === "unsupported" || perm === "denied" ? (

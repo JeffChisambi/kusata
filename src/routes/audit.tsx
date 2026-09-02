@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ScrollText, Loader2, AlertTriangle, Search, ChevronLeft, ChevronRight, X,
 } from "lucide-react";
-import { Card } from "@/components/broker-shell";
+import { Card, useDashboardRange } from "@/components/broker-shell";
 import { requireSuperAdmin } from "@/lib/auth";
 import { useAuditLogs, type AuditLogEntry } from "@/hooks/useAudit";
 
@@ -22,6 +22,10 @@ function fmtTime(iso: string) {
 }
 
 function AuditLogPage() {
+  // The topbar time range is the default window; the explicit From/To inputs
+  // below override it when the reviewer needs a specific period.
+  const { days, dateFrom: rangeFrom } = useDashboardRange();
+
   // Draft inputs vs applied filters — the query only refires on Apply/Enter.
   const [actionDraft, setActionDraft] = useState("");
   const [resourceTypeDraft, setResourceTypeDraft] = useState("");
@@ -30,8 +34,14 @@ function AuditLogPage() {
   const [applied, setApplied] = useState<{ action?: string; resourceType?: string; dateFrom?: string; dateTo?: string }>({});
   const [page, setPage] = useState(1);
 
-  const filters = useMemo(() => ({ ...applied, page, limit: PAGE_SIZE }), [applied, page]);
+  const filters = useMemo(
+    () => ({ ...applied, dateFrom: applied.dateFrom ?? rangeFrom, page, limit: PAGE_SIZE }),
+    [applied, rangeFrom, page],
+  );
   const { data, isLoading, isError, isFetching } = useAuditLogs(filters);
+
+  // Changing the topbar range restarts at the first page.
+  useEffect(() => { setPage(1); }, [rangeFrom]);
 
   const apply = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -64,7 +74,8 @@ function AuditLogPage() {
         <div className="flex-1">
           <h1 className="text-lg font-semibold">Audit Log</h1>
           <p className="text-xs text-muted-foreground">
-            Every administrative action recorded for compliance and review.
+            Every administrative action recorded for compliance and review
+            {applied.dateFrom ? "." : ` — last ${days} days unless a date is set below.`}
           </p>
         </div>
         {isFetching && !isLoading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
@@ -136,7 +147,9 @@ function AuditLogPage() {
         ) : logs.length === 0 ? (
           <div className="py-20 text-center">
             <ScrollText className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">No audit entries{hasFilters ? " match these filters" : " yet"}.</p>
+            <p className="text-sm text-muted-foreground">
+            No audit entries{hasFilters ? " match these filters" : ` in the last ${days} days`}.
+          </p>
           </div>
         ) : (
           <>

@@ -15,7 +15,7 @@ import {
   RefreshCw,
   XCircle,
 } from "lucide-react";
-import { Card } from "@/components/broker-shell";
+import { Card, useDashboardRange } from "@/components/broker-shell";
 import { useOrders, useRefreshOrders, type Order, type DisplayStatus, type OrderSide } from "@/hooks/useOrders";
 import { useCurrentUser, isSuperAdmin } from "@/lib/auth";
 import { useTreasuryInvestments, type TreasuryInvestment } from "@/hooks/useTreasuryAdmin";
@@ -250,13 +250,17 @@ function OrdersPage() {
   const [notice, setNotice] = useState("");
   const refreshOrders = useRefreshOrders();
   const isTreasury = sideFilter === "TREASURY";
+  // The topbar time range scopes the blotter server-side (GET /admin/orders
+  // takes dateFrom), so the picker is never decorative on this page.
+  const { days, dateFrom } = useDashboardRange();
 
-  // A filter change starts back at the first page.
-  useEffect(() => { setPage(1); }, [sideFilter]);
+  // A filter change — including the time range — starts back at the first page.
+  useEffect(() => { setPage(1); }, [sideFilter, dateFrom]);
 
-  // Fetch from the real API — pass side filter + page as query params
+  // Fetch from the real API — pass side filter + range + page as query params
   const { data, isLoading, isError, error, isFetching } = useOrders({
     ...(sideFilter === "ALL" || isTreasury ? {} : { side: sideFilter as OrderSide }),
+    dateFrom,
     page,
     limit: PAGE_SIZE,
   });
@@ -323,7 +327,7 @@ function OrdersPage() {
             ? "Loading orders…"
             : isError
               ? `Error: ${(error as Error)?.message ?? 'Failed to load'}`
-              : `${orders.length} orders shown · click an order to open`
+              : `${orders.length} orders shown · last ${days} days · click an order to open`
         }
       >
         {isTreasury ? (
