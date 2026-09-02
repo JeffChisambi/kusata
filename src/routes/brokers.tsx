@@ -6,6 +6,79 @@ import {
 import { Card } from "@/components/broker-shell";
 import { requireSuperAdmin } from "@/lib/auth";
 import { useBrokersList, useCreateBroker, type BrokerSummary } from "@/hooks/useBrokers";
+import { usePlatformCommission, useUpdatePlatformCommission, useBrokerEarnings, type BrokerEarningsRow } from "@/hooks/usePlatform";
+
+const fmtMK = (n: number) =>
+  n >= 1_000_000 ? `MK ${(n / 1_000_000).toFixed(2)}M` : n >= 1_000 ? `MK ${(n / 1_000).toFixed(1)}K` : `MK ${n.toLocaleString()}`;
+const fmtExact = (n: number) => `MWK ${n.toLocaleString("en-MW", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+
+/**
+ * Pine's platform commission — a percentage of every broker's own trading
+ * commission, frozen per trade at execution. Brokers see what they owe on
+ * their dashboard; Pine tracks each broker's receivable here.
+ */
+function PlatformCommissionCard() {
+  const { data, isLoading } = usePlatformCommission();
+  const update = useUpdatePlatformCommission();
+  const { data: report } = useBrokerEarnings();
+  const [rate, setRate] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { if (data) setRate(String(data.platformCommissionPct)); }, [data]);
+
+  const save = async () => {
+    setErr(null);
+    const n = Number(rate);
+    if (!Number.isFinite(n) || n < 0 || n > 100) { setErr("Rate must be between 0 and 100%."); return; }
+    try { await update.mutateAsync(n); setSaved(true); setTimeout(() => setSaved(false), 2500); }
+    catch (e: any) { setErr(e?.message ?? "Failed to save"); }
+  };
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div className="rounded-[3px] bg-card border border-border p-4 xl:col-span-1">
+        <div className="text-sm font-semibold">Platform Commission</div>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Pine's share of each broker's trading commission. Applied per trade at execution and never changed retroactively.
+        </p>
+        <div className="mt-3 flex items-center gap-2">
+          <div className="relative flex-1">
+            <input
+              type="number" min={0} max={100} step="any" value={rate}
+              onChange={(e) => setRate(e.target.value)}
+              disabled={isLoading}
+              className="w-full h-9 px-3 pr-8 rounded-[3px] bg-background border border-border text-sm font-mono focus:outline-none focus:border-pine/50 focus:ring-1 focus:ring-pine/20"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+          </div>
+          <button
+            onClick={save} disabled={update.isPending || isLoading}
+            className="h-9 px-3.5 rounded-[3px] bg-pine text-primary-foreground text-sm font-medium hover:bg-pine/90 disabled:opacity-60"
+          >
+            {update.isPending ? "Saving…" : saved ? "Saved" : "Save"}
+          </button>
+        </div>
+        {err && <div className="text-[12px] text-rose mt-2">{err}</div>}
+        <div className="text-[11px] text-muted-foreground mt-2">
+          Example: broker earns MK 1,000 on a trade at {rate || 0}% → Pine earns MK {((Number(rate) || 0) * 10).toLocaleString()}.
+        </div>
+      </div>
+      {[
+        { label: "Owed to Pine (this month)", value: report?.totals.owedThisMonth, sub: `from ${report ? new Date(report.periodStart).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—"}` },
+        { label: "Broker commissions (this month)", value: report?.totals.commissionsThisMonth, sub: "what brokers earned across Pine" },
+        { label: "Owed to Pine (lifetime)", value: report?.totals.owedLifetime, sub: "all-time platform receivable" },
+      ].map((s) => (
+        <div key={s.label} className="rounded-[3px] bg-card border border-border p-4 xl:col-span-1 first:xl:col-span-1">
+          <div className="text-xs text-muted-foreground">{s.label}</div>
+          <div className="text-xl font-bold leading-tight mt-0.5 font-mono cursor-help" title={s.value != null ? fmtExact(s.value) : undefined}>
+            {s.value == null ? "—" : fmtMK(s.value)}
+          </div>
+          <div className="text-[11px] text-muted-foreground/60 mt-1">{s.sub}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/brokers")({
   head: () => ({ meta: [{ title: "Brokers — Pine Admin" }] }),
@@ -20,6 +93,7 @@ const fmtDate = (iso: string) =>
 
 function BrokersPage() {
   const { data: brokers, isLoading, isError } = useBrokersList();
+  const { data: earnings } = useBrokerEarnings();
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
 
@@ -64,6 +138,9 @@ function BrokersPage() {
         ))}
       </div>
 
+      {/* Platform commission + receivables */}
+      <PlatformCommissionCard />
+
       {/* Table */}
       <Card className="!p-0 overflow-hidden">
         {isLoading ? (
@@ -89,6 +166,9 @@ function BrokersPage() {
                   <th className="py-2.5 text-left font-medium">Code</th>
                   <th className="py-2.5 text-left font-medium">Status</th>
                   <th className="py-2.5 text-left font-medium">Users</th>
+                  <th className="py-2.5 text-right font-medium" title="Broker's trading commissions this month">Earned (mo)</th>
+                  <th className="py-2.5 text-right font-medium" title="Platform commission the broker owes Pine this month">Owes Pine (mo)</th>
+                  <th className="py-2.5 text-right font-medium" title="All-time platform commission owed">Owes (lifetime)</th>
                   <th className="py-2.5 text-left font-medium">Payments</th>
                   <th className="pr-5 py-2.5 text-left font-medium">Created</th>
                 </tr>
@@ -98,6 +178,7 @@ function BrokersPage() {
                   <BrokerRow
                     key={b.id}
                     broker={b}
+                    earnings={earnings?.brokers.find((e) => e.brokerId === b.id)}
                     onOpen={() => navigate({ to: "/brokers/$brokerId", params: { brokerId: b.id } })}
                   />
                 ))}
@@ -112,7 +193,7 @@ function BrokersPage() {
   );
 }
 
-function BrokerRow({ broker: b, onOpen }: { broker: BrokerSummary; onOpen: () => void }) {
+function BrokerRow({ broker: b, earnings, onOpen }: { broker: BrokerSummary; earnings?: BrokerEarningsRow; onOpen: () => void }) {
   return (
     <tr onClick={onOpen} className="border-b border-border last:border-0 hover:bg-muted/20 cursor-pointer">
       <td className="pl-5 py-3">
@@ -152,6 +233,15 @@ function BrokerRow({ broker: b, onOpen }: { broker: BrokerSummary; onOpen: () =>
         <span className="inline-flex items-center gap-1.5">
           <Users className="w-3.5 h-3.5 text-muted-foreground/60" /> {b.userCount.toLocaleString()}
         </span>
+      </td>
+      <td className="py-3 text-right font-mono text-[12px] cursor-help" title={earnings ? fmtExact(earnings.thisMonth.commissions) : undefined}>
+        {earnings ? fmtMK(earnings.thisMonth.commissions) : "—"}
+      </td>
+      <td className="py-3 text-right font-mono text-[12px] font-semibold text-pine cursor-help" title={earnings ? fmtExact(earnings.thisMonth.owedToPlatform) : undefined}>
+        {earnings ? fmtMK(earnings.thisMonth.owedToPlatform) : "—"}
+      </td>
+      <td className="py-3 text-right font-mono text-[12px] text-muted-foreground cursor-help" title={earnings ? fmtExact(earnings.lifetime.owedToPlatform) : undefined}>
+        {earnings ? fmtMK(earnings.lifetime.owedToPlatform) : "—"}
       </td>
       <td className="py-3">
         {b.paymentConfigured ? (

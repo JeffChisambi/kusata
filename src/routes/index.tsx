@@ -270,6 +270,22 @@ function FinancialOverview() {
               {money(fin?.statutory.leviesCollected)}
             </span>
           </div>
+          <div
+            className="flex items-baseline justify-between pt-2.5 border-t border-border"
+            title={`Pine's platform commission: ${fin?.platformFees.ratePct ?? 0}% of each commission you earn, frozen per trade. Settled monthly.`}
+          >
+            <span className="text-xs text-muted-foreground">
+              Owed to Pine (this month{fin ? ` · ${fin.platformFees.ratePct}%` : ""})
+            </span>
+            <span className="text-sm font-bold font-mono text-amber">
+              {money(fin?.platformFees.owedThisMonth)}
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between" title="Based on your commissions this month; last month's figure for comparison.">
+            <span className="text-[11px] text-muted-foreground/70">
+              on {money(fin?.platformFees.commissionsThisMonth)} earned this month · last month owed {money(fin?.platformFees.owedLastMonth)}
+            </span>
+          </div>
         </div>
       </Card>
 
@@ -453,9 +469,9 @@ function KycQueue() {
       title="KYC Queue"
       subtitle="Recent applications"
       action={
-        <button className="text-[12px] text-pine hover:underline flex items-center gap-1">
+        <Link to="/kyc" className="text-[12px] text-pine hover:underline flex items-center gap-1">
           View all <ArrowUpRight className="w-3.5 h-3.5" />
-        </button>
+        </Link>
       }
     >
       {isLoading ? (
@@ -529,7 +545,10 @@ function PendingWithdrawalsCard() {
   const approve = useApproveWithdrawal();
   const reject = useRejectWithdrawal();
   const [busyId, setBusyId] = useState<string | null>(null);
-  const rows = data?.withdrawals ?? [];
+  const allRows = data?.withdrawals ?? [];
+  const SNAPSHOT = 5;
+  const rows = allRows.slice(0, SNAPSHOT);
+  const overflow = allRows.length - rows.length;
 
   const onApprove = async (id: string, name: string, amount: number) => {
     if (!confirm(`Approve withdrawal of ${fmtMoney(amount)} for ${name}?\n\nThis debits their wallet and completes the payout.`)) return;
@@ -550,6 +569,13 @@ function PendingWithdrawalsCard() {
     <Card
       title="Withdrawal Requests"
       subtitle="Client withdrawals awaiting your decision — funds stay held until approved"
+      action={
+        allRows.length > 0 ? (
+          <span className="text-[11px] font-medium text-muted-foreground">
+            {allRows.length} pending{overflow > 0 ? ` · showing ${SNAPSHOT}` : ""}
+          </span>
+        ) : undefined
+      }
     >
       {isLoading ? (
         <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
@@ -584,6 +610,11 @@ function PendingWithdrawalsCard() {
               </div>
             </div>
           ))}
+          {overflow > 0 && (
+            <div className="pt-2.5 text-[11px] text-muted-foreground text-center">
+              +{overflow} more request{overflow === 1 ? "" : "s"} — approve these first; the list refreshes as you go.
+            </div>
+          )}
         </div>
       )}
     </Card>

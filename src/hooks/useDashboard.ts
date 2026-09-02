@@ -32,7 +32,19 @@ export function useDashboardFinancials() {
         portfolioValue: number;
         totalInvestorAssets: number;
       };
-      brokerRevenue: { tradingCommissions: number };
+      brokerRevenue: { tradingCommissions: number; commissionsThisMonth: number };
+      /** Pine's platform commission the broker owes (percentage of commissions). */
+      platformFees: {
+        ratePct: number;
+        owedThisMonth: number;
+        owedLastMonth: number;
+        owedLifetime: number;
+        commissionsThisMonth: number;
+        commissionsLastMonth: number;
+        tradesThisMonth: number;
+        periodStart: string;
+        periodEnd: string;
+      };
       statutory: { leviesCollected: number };
       paymentCosts: { processingFees: number };
       pendingWithdrawals: { count: number; amount: number };
