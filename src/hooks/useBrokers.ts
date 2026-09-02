@@ -39,6 +39,7 @@ export interface BrokerApiConfig {
   secretSet: boolean;
   metadata: Record<string, unknown> | null;
   isEnabled: boolean;
+  require3ds?: boolean;
   updatedAt: string;
 }
 
@@ -107,6 +108,7 @@ export interface BrokerPaymentConfig {
   settlementAccountName?: string;
   settlementAccountMasked?: string;
   isEnabled?: boolean;
+  require3ds?: boolean;
   updatedAt?: string;
 }
 
@@ -154,6 +156,8 @@ export interface PaymentConfigInput {
   /** Write-only secret — only include when the operator typed a new value. */
   settlementAccountNumber?: string;
   isEnabled?: boolean;
+  /** Refuse deposits the issuer cannot 3-D Secure verify. */
+  require3ds?: boolean;
 }
 
 export interface ApiConfigInput {

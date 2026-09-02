@@ -642,6 +642,7 @@ function PaymentPanel({ brokerId, onFlash }: { brokerId: string; onFlash: (m: st
   const [settlementAccountName, setSettlementAccountName] = useState("");
   const [settlementAccountNumber, setSettlementAccountNumber] = useState("");
   const [isEnabled, setIsEnabled] = useState(false);
+  const [require3ds, setRequire3ds] = useState(false);
   const [seeded, setSeeded] = useState(false);
   const [testResult, setTestResult] = useState<BrokerGatewayTestResult | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
@@ -656,6 +657,7 @@ function PaymentPanel({ brokerId, onFlash }: { brokerId: string; onFlash: (m: st
       setSettlementBankName(config.settlementBankName ?? "");
       setSettlementAccountName(config.settlementAccountName ?? "");
       setIsEnabled(config.isEnabled ?? false);
+      setRequire3ds(config.require3ds ?? false);
       setSeeded(true);
     }
   }, [config, seeded]);
@@ -708,6 +710,7 @@ function PaymentPanel({ brokerId, onFlash }: { brokerId: string; onFlash: (m: st
       settlementBankName: settlementBankName.trim() || undefined,
       settlementAccountName: settlementAccountName.trim() || undefined,
       isEnabled,
+      require3ds,
     };
     // Write-only secrets — only sent when the operator typed a new value, so a
     // blank field can never clear a stored secret.
@@ -868,6 +871,14 @@ function PaymentPanel({ brokerId, onFlash }: { brokerId: string; onFlash: (m: st
             onChange={setIsEnabled}
             label="Payments enabled"
             hint="Turns this broker's merchant account on for their investors"
+          />
+        </div>
+        <div className="flex items-end pb-1">
+          <ToggleRow
+            checked={require3ds}
+            onChange={setRequire3ds}
+            label="Require 3-D Secure"
+            hint="Refuse deposits the cardholder's bank cannot verify. Moves chargeback liability to the issuer — the broker is the merchant of record."
           />
         </div>
       </div>
