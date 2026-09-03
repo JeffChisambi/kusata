@@ -28,6 +28,7 @@ import {
   Legend,
 } from "recharts";
 import { Card, useDashboardRange } from "@/components/broker-shell";
+import { UsersIcon, KycIcon, VolumeIcon, CashIcon } from "@/components/pine-icons";
 import { useDashboardStats, useDashboardCharts, useDashboardFinancials } from "@/hooks/useDashboard";
 import { useKycQueue } from "@/hooks/useKyc";
 import { useOrders, type Order } from "@/hooks/useOrders";
@@ -132,26 +133,6 @@ function dayLabel(iso: string, days: number) {
     : d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
-// ─── Custom icons ─────────────────────────────────────────────────────────────
-
-function TradeVolumeIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={className}
-    >
-      {/* Axes */}
-      <path d="M4 2H2v19a1 1 0 0 0 1 1h19v-2H4V2z" />
-      {/* Bars — thinner widths, rounded tops */}
-      <rect x="6.5" y="12" width="2" height="6" rx="1" />
-      <rect x="9.5" y="7" width="2" height="11" rx="1" />
-      <rect x="13" y="4" width="2" height="14" rx="1" />
-      <rect x="16.5" y="9" width="2" height="9" rx="1" />
-    </svg>
-  );
-}
 
 // ─── KPI cards ────────────────────────────────────────────────────────────────
 // Only real figures are shown: a badge appears when the API provides a delta
@@ -170,7 +151,7 @@ function KpiGrid() {
     sub: string;
   }> = [
     {
-      icon: Users,
+      icon: UsersIcon,
       label: "Active Clients",
       value: isLoading ? "—" : (stats?.activeUsers ?? 0).toLocaleString(),
       delta: isLoading || !stats?.todayNewUsers ? undefined : `+${stats.todayNewUsers} today`,
@@ -178,20 +159,20 @@ function KpiGrid() {
       sub: isLoading ? "" : `out of ${(stats?.totalUsers ?? 0).toLocaleString()} registered`,
     },
     {
-      icon: FileCheck2,
+      icon: KycIcon,
       label: "Pending KYC",
       value: isLoading ? "—" : (stats?.pendingKyc ?? 0).toString(),
       sub: "applications awaiting a decision",
     },
     {
-      icon: TradeVolumeIcon,
+      icon: VolumeIcon,
       label: "Trade Volume (today)",
       value: isLoading ? "—" : <Money value={Number(stats?.todayVolume ?? 0)} />,
       delta: isLoading ? undefined : `${stats?.todayOrders ?? 0} orders`,
       sub: "orders executed today",
     },
     {
-      icon: Wallet,
+      icon: CashIcon,
       label: "Client Cash",
       value: isLoading ? "—" : <Money value={Number(stats?.totalWalletBalance ?? 0)} />,
       sub: "uninvested wallet balances only",

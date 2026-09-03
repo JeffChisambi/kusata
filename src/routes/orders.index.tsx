@@ -16,6 +16,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Card } from "@/components/broker-shell";
+import { PendingIcon, OrdersIcon } from "@/components/pine-icons";
 import { useOrders, useRefreshOrders, type Order, type DisplayStatus, type OrderSide } from "@/hooks/useOrders";
 import { useCurrentUser, isSuperAdmin } from "@/lib/auth";
 import { useTreasuryInvestments, type TreasuryInvestment } from "@/hooks/useTreasuryAdmin";
@@ -86,10 +87,10 @@ function KpiStrip({ orders, total }: { orders: Order[]; total: number }) {
   const executed = orders.filter((o) => o.status === "EXECUTED" || o.status === "SETTLED");
   const executedValue = executed.reduce((sum, order) => sum + order.value, 0);
   const kpis = [
-    { label: "Awaiting execution", value: ready, detail: "ready for the market", icon: Clock3 },
+    { label: "Awaiting execution", value: ready, detail: "ready for the market", icon: PendingIcon },
     { label: "Needs attention", value: rejected, detail: "rejected / cancelled", icon: AlertTriangle },
     { label: "Executed", value: executed.length, detail: `${fmtMoney(executedValue)} total value`, icon: CheckCircle2 },
-    { label: "Total orders", value: total, detail: "across all pages", icon: ClipboardList },
+    { label: "Total orders", value: total, detail: "across all pages", icon: OrdersIcon },
   ];
   return (
     <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">

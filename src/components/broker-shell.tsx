@@ -3,6 +3,10 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import {
+  OverviewIcon, UsersIcon, KycIcon, SupportIcon, OrdersIcon, ErrorIcon,
+  NewsIcon, SecuritiesIcon, NotificationsIcon, SettingsIcon, CashIcon,
+} from "./pine-icons";
 import { Link, useNavigate, useLocation, useElementScrollRestoration } from "@tanstack/react-router";
 import { useCurrentUser, logout, isSuperAdmin } from "@/lib/auth";
 import { useKycQueue } from "@/hooks/useKyc";
@@ -11,32 +15,12 @@ import { usePendingWithdrawals } from "@/hooks/useWithdrawals";
 import { useSystemErrorStats } from "@/hooks/useSystemErrors";
 import { useNotificationDelivery } from "@/hooks/useNotificationDelivery";
 import {
-  Users, FileCheck2,
   ChevronDown, ChevronsLeft, ChevronsRight,
-  Sun, Moon, Bell, LogOut,
-  ClipboardList, Settings2, Newspaper, Landmark, LifeBuoy, Palette,
-  Building2, ScrollText, AlertOctagon, Banknote, CheckCircle2,
+  Sun, Moon, LogOut, Palette,
+  Building2, ScrollText, CheckCircle2,
 } from "lucide-react";
 
-function NineDotsIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" fill="currentColor" className={className} aria-hidden="true">
-      <circle cx="2.5" cy="2.5" r="1.75" />
-      <circle cx="8"   cy="2.5" r="1.75" />
-      <circle cx="13.5" cy="2.5" r="1.75" />
-      <circle cx="2.5" cy="8"   r="1.75" />
-      <circle cx="8"   cy="8"   r="1.75" />
-      <circle cx="13.5" cy="8"   r="1.75" />
-      <circle cx="2.5" cy="13.5" r="1.75" />
-      <circle cx="8"   cy="13.5" r="1.75" />
-      <circle cx="13.5" cy="13.5" r="1.75" />
-    </svg>
-  );
-}
-
-// ─── Broker nav — scoped subset of the admin nav ───────────────────────────────
-
-export type NavGroup = {
+type NavGroup = {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   href: string;
@@ -48,27 +32,27 @@ export type NavGroup = {
 
 export const brokerNav: NavGroup[] = [
   // ── OVERVIEW ──
-  { section: "OVERVIEW", icon: NineDotsIcon, label: "Overview", href: "/" },
+  { section: "OVERVIEW", icon: OverviewIcon, label: "Overview", href: "/" },
 
   // ── CLIENTS ──
-  { section: "CLIENTS", icon: Users, label: "Users", href: "/users" },
-  { section: "CLIENTS", icon: FileCheck2, label: "KYC", href: "/kyc" },
-  { section: "CLIENTS", icon: LifeBuoy, label: "Support", href: "/support" },
+  { section: "CLIENTS", icon: UsersIcon, label: "Users", href: "/users" },
+  { section: "CLIENTS", icon: KycIcon, label: "KYC", href: "/kyc" },
+  { section: "CLIENTS", icon: SupportIcon, label: "Support", href: "/support" },
 
   // ── TRADING ──
-  { section: "TRADING", icon: ClipboardList, label: "Orders", href: "/orders" },
+  { section: "TRADING", icon: OrdersIcon, label: "Orders", href: "/orders" },
 
   // ── PLATFORM (super admin only) ──
   { section: "PLATFORM", icon: Building2, label: "Brokers", href: "/brokers", superAdminOnly: true },
   { section: "PLATFORM", icon: ScrollText, label: "Audit Log", href: "/audit", superAdminOnly: true },
-  { section: "PLATFORM", icon: AlertOctagon, label: "System Errors", href: "/errors", superAdminOnly: true },
-  { section: "PLATFORM", icon: Newspaper, label: "News", href: "/news", superAdminOnly: true },
+  { section: "PLATFORM", icon: ErrorIcon, label: "System Errors", href: "/errors", superAdminOnly: true },
+  { section: "PLATFORM", icon: NewsIcon, label: "News", href: "/news", superAdminOnly: true },
   { section: "PLATFORM", icon: Palette, label: "Mobile Themes", href: "/mobile-themes", superAdminOnly: true },
-  { section: "PLATFORM", icon: Landmark, label: "Treasury", href: "/treasury", superAdminOnly: true },
+  { section: "PLATFORM", icon: SecuritiesIcon, label: "Treasury", href: "/treasury", superAdminOnly: true },
 
   // ── ACCOUNT ──
-  { section: "ACCOUNT", icon: Bell, label: "Client Notifications", href: "/notifications" },
-  { section: "ACCOUNT", icon: Settings2, label: "Settings", href: "/settings" },
+  { section: "ACCOUNT", icon: NotificationsIcon, label: "Client Notifications", href: "/notifications" },
+  { section: "ACCOUNT", icon: SettingsIcon, label: "Settings", href: "/settings" },
 ];
 
 export const brokerSectionOrder = ["OVERVIEW", "CLIENTS", "TRADING", "PLATFORM", "ACCOUNT"];
@@ -615,7 +599,7 @@ function WorkQueueBell() {
         detail: "waiting for review",
         count: kyc?.count ?? 0,
         to: "/kyc",
-        icon: FileCheck2,
+        icon: KycIcon,
       },
       {
         key: "withdrawals",
@@ -623,7 +607,7 @@ function WorkQueueBell() {
         detail: "waiting for approval",
         count: withdrawals?.withdrawals?.length ?? 0,
         to: "/",
-        icon: Banknote,
+        icon: CashIcon,
       },
       {
         key: "support",
@@ -631,7 +615,7 @@ function WorkQueueBell() {
         detail: openTickets > 0 ? `awaiting your reply · ${openTickets} open` : "awaiting your reply",
         count: support?.awaitingAdmin ?? 0,
         to: "/support",
-        icon: LifeBuoy,
+        icon: SupportIcon,
       },
     ];
     if (superAdmin) {
@@ -641,7 +625,7 @@ function WorkQueueBell() {
         detail: "still open",
         count: errors?.open ?? 0,
         to: "/errors",
-        icon: AlertOctagon,
+        icon: ErrorIcon,
       });
     }
     return list;
@@ -659,7 +643,7 @@ function WorkQueueBell() {
         aria-label={total > 0 ? `Work queue — ${total} item${total === 1 ? "" : "s"}` : "Work queue"}
         aria-expanded={open}
       >
-        <Bell className={`w-4 h-4 ${open ? "text-pine" : "text-muted-foreground"}`} />
+        <NotificationsIcon className={`w-4 h-4 ${open ? "text-pine" : "text-muted-foreground"}`} />
         {total > 0 && (
           <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-white text-[10px] font-bold flex items-center justify-center leading-none">
             {total > 99 ? "99+" : total}

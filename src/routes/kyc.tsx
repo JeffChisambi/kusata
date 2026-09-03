@@ -8,6 +8,7 @@ import {
   TrendingUp, TrendingDown, Download,
   RefreshCw, Loader2,
 } from "lucide-react";
+import { KycIcon, PendingIcon } from "@/components/pine-icons";
 import { Card } from "@/components/broker-shell";
 import {
   useKycQueue, useRequestAdditionalDocs, useKycCounts,
@@ -140,8 +141,8 @@ type Tab = {
 };
 
 const TABS: Tab[] = [
-  { key: "all",        label: "All",              icon: ClipboardList },
-  { key: "pending",    label: "Pending Review",   icon: Clock,         apiStatus: "PENDING" },
+  { key: "all",        label: "All",              icon: KycIcon },
+  { key: "pending",    label: "Pending Review",   icon: PendingIcon,   apiStatus: "PENDING" },
   { key: "manual",     label: "Manual Review",    icon: Eye,           apiStatus: "MANUAL_REVIEW" },
   { key: "additional", label: "Additional Docs",  icon: FilePlus,      apiStatus: "ADDITIONAL_DOCS" },
   { key: "approved",   label: "Approved",         icon: CheckCircle2,  apiStatus: "APPROVED" },
@@ -396,7 +397,7 @@ function KycStats({ counts }: { counts?: Record<string, number> }) {
     {
       label: "Pending Review",
       value: pending,
-      icon: Clock,
+      icon: PendingIcon,
       tone: pending > 0 ? "amber" : "pine",
       trend: pending > 0 ? "queue" : "clear",
       up: false,

@@ -8,6 +8,7 @@ import {
 import { Card } from "@/components/broker-shell";
 import { useUsersList, useUpdateUserStatus, useNotifyUser } from "@/hooks/useUsers";
 import { useDashboardStats } from "@/hooks/useDashboard";
+import { UsersIcon, PendingIcon } from "@/components/pine-icons";
 
 const searchSchema = z.object({
   tab: z.string().optional(),
@@ -210,9 +211,9 @@ function UserStats() {
   const fmt = (n: number) => (isLoading ? "—" : n.toLocaleString());
 
   const items = [
-    { icon: Users, label: "Total users", value: fmt(totalUsers), sub: "registered accounts" },
+    { icon: UsersIcon, label: "Total users", value: fmt(totalUsers), sub: "registered accounts" },
     { icon: UserCheck, label: "Active", value: fmt(active), sub: totalUsers ? `${Math.round((active / totalUsers) * 100)}% of total` : "—" },
-    { icon: Clock, label: "Pending KYC", value: fmt(pending), sub: pending > 0 ? "Awaiting review" : "None pending", tone: pending > 0 ? "amber" : "default" },
+    { icon: PendingIcon, label: "Pending KYC", value: fmt(pending), sub: pending > 0 ? "Awaiting review" : "None pending", tone: pending > 0 ? "amber" : "default" },
   ] as const;
 
   return (

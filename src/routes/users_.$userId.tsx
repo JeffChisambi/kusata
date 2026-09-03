@@ -2,10 +2,11 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   ArrowLeft, Mail, Phone, Calendar, Copy, ShieldCheck, Snowflake, Ban, LogOut,
-  Trash2, RefreshCw, Wallet, Landmark, Activity, Smartphone, CheckCircle2, XCircle,
+  Trash2, RefreshCw, Wallet, Activity, Smartphone, CheckCircle2, XCircle,
   ArrowUpRight, ArrowDownRight, FileText, User as UserIcon, CreditCard, Building2,
   BadgeCheck, ExternalLink,
 } from "lucide-react";
+import { CashIcon } from "@/components/pine-icons";
 import {
   Breadcrumb, Panel, RingStatCard, Kpi, SummaryRow, Field, DocRow, InitialsAvatar, LoadingBlock,
 } from "@/components/detail-kit";
@@ -182,7 +183,7 @@ function UserDetailPage() {
       {/* ── Top KPI row (full width) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
         <Kpi icon={<Wallet className="w-4 h-4" />} label="Portfolio value" value={`MWK ${MWK(portfolioValue)}`} tone="pine" sub="holdings at latest market price" />
-        <Kpi icon={<Landmark className="w-4 h-4" />} label="Client cash" value={`MWK ${MWK(cash)}`} sub={`MWK ${MWK(cashAvailable)} available${cashReserved > 0 ? ` · ${MWK(cashReserved)} reserved` : ""}${pendingWithdrawals > 0 ? ` · ${MWK(pendingWithdrawals)} withdrawing` : ""}`} />
+        <Kpi icon={<CashIcon className="w-4 h-4" />} label="Client cash" value={`MWK ${MWK(cash)}`} sub={`MWK ${MWK(cashAvailable)} available${cashReserved > 0 ? ` · ${MWK(cashReserved)} reserved` : ""}${pendingWithdrawals > 0 ? ` · ${MWK(pendingWithdrawals)} withdrawing` : ""}`} />
         <Kpi icon={<Activity className="w-4 h-4" />} label="Total assets" value={`MWK ${MWK(totalWorth)}`} sub="cash + portfolio value" />
         <Kpi icon={<ArrowUpRight className="w-4 h-4" />} label="Total trades" value={trades} sub={`${holdingsCount} open ${holdingsCount === 1 ? "position" : "positions"}`} />
       </div>

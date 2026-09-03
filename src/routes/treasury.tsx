@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  Landmark, Plus, Pencil, Trash2, Eye, EyeOff, Loader2, X, Check, AlertTriangle, ListChecks,
+  Plus, Pencil, Trash2, Eye, EyeOff, Loader2, X, Check, AlertTriangle, ListChecks,
 } from "lucide-react";
+import { SecuritiesIcon } from "@/components/pine-icons";
 import { Card } from "@/components/broker-shell";
 import { requireSuperAdmin } from "@/lib/auth";
 import {
@@ -28,7 +29,7 @@ function TreasuryAdminPage() {
     <div className="space-y-5">
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-[3px] bg-pine/10 text-pine flex items-center justify-center">
-          <Landmark className="w-4.5 h-4.5" />
+          <SecuritiesIcon className="w-4.5 h-4.5" />
         </div>
         <div className="flex-1">
           <h1 className="text-lg font-semibold">Treasury Bills</h1>
@@ -79,7 +80,7 @@ function ProductsTab() {
           <div className="py-14 text-center text-sm text-rose flex flex-col items-center gap-2"><AlertTriangle className="w-6 h-6" /> Failed to load.</div>
         ) : products.length === 0 ? (
           <div className="py-16 text-center">
-            <Landmark className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
+            <SecuritiesIcon className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">No treasury bills yet.</p>
             <button onClick={() => setCreating(true)} className="mt-3 text-sm text-pine font-medium">Add the first one</button>
           </div>
