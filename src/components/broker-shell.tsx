@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import {
   OverviewIcon, UsersIcon, KycIcon, SupportIcon, OrdersIcon, ErrorIcon,
   NewsIcon, SecuritiesIcon, NotificationsIcon, SettingsIcon, CashIcon, BrokersIcon,
+  AuditLogIcon, ExpandIcon, ThemeIcon,
 } from "./pine-icons";
 import { Link, useNavigate, useLocation, useElementScrollRestoration } from "@tanstack/react-router";
 import { useCurrentUser, logout, isSuperAdmin } from "@/lib/auth";
@@ -15,9 +16,7 @@ import { usePendingWithdrawals } from "@/hooks/useWithdrawals";
 import { useSystemErrorStats } from "@/hooks/useSystemErrors";
 import { useNotificationDelivery } from "@/hooks/useNotificationDelivery";
 import {
-  ChevronDown, ChevronsLeft, ChevronsRight,
-  Sun, Moon, LogOut, Palette,
-  ScrollText, CheckCircle2,
+  ChevronDown, LogOut, Palette, CheckCircle2,
 } from "lucide-react";
 
 type NavGroup = {
@@ -44,7 +43,7 @@ export const brokerNav: NavGroup[] = [
 
   // ── PLATFORM (super admin only) ──
   { section: "PLATFORM", icon: BrokersIcon, label: "Brokers", href: "/brokers", superAdminOnly: true },
-  { section: "PLATFORM", icon: ScrollText, label: "Audit Log", href: "/audit", superAdminOnly: true },
+  { section: "PLATFORM", icon: AuditLogIcon, label: "Audit Log", href: "/audit", superAdminOnly: true },
   { section: "PLATFORM", icon: ErrorIcon, label: "System Errors", href: "/errors", superAdminOnly: true },
   { section: "PLATFORM", icon: NewsIcon, label: "News", href: "/news", superAdminOnly: true },
   { section: "PLATFORM", icon: Palette, label: "Mobile Themes", href: "/mobile-themes", superAdminOnly: true },
@@ -330,9 +329,8 @@ function BrokerSidebar({
           className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors ${isCollapsed ? "mx-auto" : "ml-auto"}`}
           title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          {isCollapsed
-            ? <ChevronsRight className="w-4 h-4" />
-            : <ChevronsLeft className="w-4 h-4" />}
+          {/* One glyph, flipped — the same control in both directions. */}
+          <ExpandIcon className={`w-4 h-4 transition-transform ${isCollapsed ? "" : "rotate-180"}`} />
         </button>
       </div>
 
@@ -550,7 +548,7 @@ function ThemeToggle() {
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
       title={dark ? "Light mode" : "Dark mode"}
     >
-      {dark ? <Sun className="w-4 h-4 text-muted-foreground" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
+      <ThemeIcon className="w-4 h-4 text-muted-foreground" />
     </button>
   );
 }

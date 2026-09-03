@@ -2,9 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, useEffect, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import {
-  Clock, FileText, Eye, MoreHorizontal, ChevronDown, AlertTriangle, ScanLine, FilePlus, TrendingUp, TrendingDown, Download, RefreshCw, Loader2,
+  FileText, Eye, MoreHorizontal, ChevronDown, AlertTriangle, ScanLine, FilePlus, TrendingUp, TrendingDown, Loader2,
 } from "lucide-react";
-import { KycIcon, PendingIcon, ExecutedIcon, RejectedIcon, ManualVerifyIcon } from "@/components/pine-icons";
+import { KycIcon, PendingIcon, ExecutedIcon, RejectedIcon, ManualVerifyIcon, RefreshIcon, ExportIcon } from "@/components/pine-icons";
 import { Card } from "@/components/broker-shell";
 import {
   useKycQueue, useRequestAdditionalDocs, useKycCounts,
@@ -254,14 +254,14 @@ function KycPage() {
             className="flex items-center gap-1.5 h-9 px-3 rounded-[3px] border border-border text-sm text-muted-foreground hover:bg-muted/40"
             title="Refresh"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
+            <RefreshIcon className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => exportToCsv(rows, activeTab)}
             disabled={rows.length === 0}
             className="flex items-center gap-1.5 h-9 px-3 rounded-[3px] border border-border text-sm text-muted-foreground hover:bg-muted/40 disabled:opacity-40"
           >
-            <Download className="w-3.5 h-3.5" /> Export
+            <ExportIcon className="w-3.5 h-3.5" /> Export
           </button>
         </div>
       </div>

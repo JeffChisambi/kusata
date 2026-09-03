@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import {
-  User, Lock, Bell, Shield, Eye, EyeOff, CheckCircle2, Percent, ShieldAlert,
-  AlertTriangle, Smartphone, LogOut, ChevronRight, Save,
-  Loader2, KeyRound, Copy, Check, RefreshCw, Monitor,
+  User, Lock, Bell, Shield, Eye, EyeOff, CheckCircle2, Percent, ShieldAlert, AlertTriangle, Smartphone, LogOut, ChevronRight, Save, Loader2, KeyRound, Copy, Check, Monitor,
 } from "lucide-react";
+import { RefreshIcon } from "@/components/pine-icons";
 import { useCurrentUser } from "@/lib/auth";
 import { noSearchParams } from "@/lib/utils";
 import {
@@ -693,7 +692,7 @@ function SessionsSection() {
           disabled={isFetching}
           className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
-          <RefreshCw className={`w-3 h-3 ${isFetching ? "animate-spin" : ""}`} /> Refresh
+          <RefreshIcon className={`w-3 h-3 ${isFetching ? "animate-spin" : ""}`} /> Refresh
         </button>
       </div>
 

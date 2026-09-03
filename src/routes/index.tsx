@@ -1,19 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { memo, useEffect, useMemo, useState } from "react";
 import {
-  Users,
-  FileCheck2,
-  Wallet,
-  Headphones,
-  TrendingUp,
-  Clock,
-  ArrowUpRight,
-  ArrowDownRight,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  Loader2,
-  X,
+  Headphones, TrendingUp, Clock, ArrowUpRight, ArrowDownRight, CheckCircle2, XCircle, AlertTriangle, Loader2, X,
 } from "lucide-react";
 import {
   AreaChart,
@@ -28,7 +16,7 @@ import {
   Legend,
 } from "recharts";
 import { Card, useDashboardRange } from "@/components/broker-shell";
-import { UsersIcon, KycIcon, VolumeIcon, CashIcon } from "@/components/pine-icons";
+import { ActiveUserIcon, KycIcon, VolumeIcon, CashIcon } from "@/components/pine-icons";
 import { useDashboardStats, useDashboardCharts, useDashboardFinancials } from "@/hooks/useDashboard";
 import { useKycQueue } from "@/hooks/useKyc";
 import { useOrders, type Order } from "@/hooks/useOrders";
@@ -151,7 +139,7 @@ function KpiGrid() {
     sub: string;
   }> = [
     {
-      icon: UsersIcon,
+      icon: ActiveUserIcon,
       label: "Active Clients",
       value: isLoading ? "—" : (stats?.activeUsers ?? 0).toLocaleString(),
       delta: isLoading || !stats?.todayNewUsers ? undefined : `+${stats.todayNewUsers} today`,

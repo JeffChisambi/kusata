@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  ArrowDownRight, ArrowUpRight, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Download, Loader2, RefreshCw, XCircle,
+  ArrowDownRight, ArrowUpRight, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Loader2, RefreshCw, XCircle,
 } from "lucide-react";
 import { Card } from "@/components/broker-shell";
-import { PendingIcon, OrdersIcon, NeedsAttentionIcon, ExecutedIcon } from "@/components/pine-icons";
+import { PendingIcon, OrdersIcon, NeedsAttentionIcon, ExecutedIcon, RefreshIcon, ExportIcon } from "@/components/pine-icons";
 import { useOrders, useRefreshOrders, type Order, type DisplayStatus, type OrderSide } from "@/hooks/useOrders";
 import { useCurrentUser, isSuperAdmin } from "@/lib/auth";
 import { useTreasuryInvestments, type TreasuryInvestment } from "@/hooks/useTreasuryAdmin";
@@ -294,7 +294,7 @@ function OrdersPage() {
             onClick={() => { refreshOrders(); showNotice("Refreshing orders…"); }}
             className="flex h-10 items-center gap-2 rounded-[3px] border border-border px-3 text-sm font-medium text-muted-foreground hover:bg-muted"
           >
-            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+            <RefreshIcon className="h-3.5 w-3.5" /> Refresh
           </button>
           <button
             onClick={() => exportOrders(orders)}
@@ -302,7 +302,7 @@ function OrdersPage() {
             title="Downloads the orders shown on this page as CSV"
             className="flex h-10 items-center gap-2 rounded-[3px] border border-border px-3 text-sm text-muted-foreground hover:bg-muted/40 disabled:opacity-40"
           >
-            <Download className="h-3.5 w-3.5" /> Export page
+            <ExportIcon className="h-3.5 w-3.5" /> Export page
           </button>
         </div>
       </div>

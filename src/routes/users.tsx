@@ -2,13 +2,12 @@ import { createFileRoute, useSearch, useNavigate } from "@tanstack/react-router"
 import { useMemo, useState, useEffect, useRef } from "react";
 import { z } from "zod";
 import {
-  Search, Download, Mail, Clock, Users, UserCheck,
-  Ban, Snowflake, ChevronDown, RefreshCw, Loader2, X, AlertTriangle,
+  Search, Download, Mail, Users, Ban, Snowflake, ChevronDown, RefreshCw, Loader2, X, AlertTriangle,
 } from "lucide-react";
 import { Card } from "@/components/broker-shell";
 import { useUsersList, useUpdateUserStatus, useNotifyUser } from "@/hooks/useUsers";
 import { useDashboardStats } from "@/hooks/useDashboard";
-import { UsersIcon, PendingIcon } from "@/components/pine-icons";
+import { UsersIcon, PendingIcon, ActiveUserIcon } from "@/components/pine-icons";
 
 const searchSchema = z.object({
   tab: z.string().optional(),
@@ -212,7 +211,7 @@ function UserStats() {
 
   const items = [
     { icon: UsersIcon, label: "Total users", value: fmt(totalUsers), sub: "registered accounts" },
-    { icon: UserCheck, label: "Active", value: fmt(active), sub: totalUsers ? `${Math.round((active / totalUsers) * 100)}% of total` : "—" },
+    { icon: ActiveUserIcon, label: "Active", value: fmt(active), sub: totalUsers ? `${Math.round((active / totalUsers) * 100)}% of total` : "—" },
     { icon: PendingIcon, label: "Pending KYC", value: fmt(pending), sub: pending > 0 ? "Awaiting review" : "None pending", tone: pending > 0 ? "amber" : "default" },
   ] as const;
 
