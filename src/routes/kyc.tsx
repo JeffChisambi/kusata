@@ -1,8 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState, useEffect, useRef, useLayoutEffect } from "react";
-import { createPortal } from "react-dom";
+import { useMemo, useState, useEffect, useRef } from "react";
 import {
-  FileText, Eye, MoreHorizontal, ChevronDown, AlertTriangle, ScanLine, FilePlus, TrendingUp, TrendingDown, Loader2,
+  FileText, ChevronDown, AlertTriangle, ScanLine, FilePlus, TrendingUp, TrendingDown, Loader2,
 } from "lucide-react";
 import { KycIcon, PendingIcon, ExecutedIcon, RejectedIcon, ManualVerifyIcon, RefreshIcon, ExportIcon } from "@/components/pine-icons";
 import { Card } from "@/components/broker-shell";
@@ -180,7 +179,9 @@ function exportToCsv(rows: KycApplication[], label: string) {
 
 function KycPage() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("pending");
+  // Open on every application, not just the pending ones — a broker
+  // landing on an empty table cannot tell "none pending" from "no data".
+  const [activeTab, setActiveTab] = useState("all");
   const [page, setPage] = useState(1);
   const [requestDocsFor, setRequestDocsFor] = useState<KycApplication | null>(null);
 
@@ -564,36 +565,56 @@ function KycTable({
   onRequestDocs: (a: KycApplication) => void;
   showDetailColumns: boolean;
 }) {
-  const colCount = showDetailColumns ? 10 : 6;
+  const colCount = showDetailColumns ? 8 : 4;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full table-fixed text-sm">
+        {/* Fixed shares so the columns spread across the card instead of
+            bunching left. The applicant needs the most room; the rest are
+            short values. */}
+        <colgroup>
+          {showDetailColumns ? (
+            <>
+              <col className="w-[26%]" />
+              <col className="w-[13%]" />
+              <col className="w-[9%]" />
+              <col className="w-[14%]" />
+              <col className="w-[9%]" />
+              <col className="w-[9%]" />
+              <col className="w-[13%]" />
+              <col className="w-[7%]" />
+            </>
+          ) : (
+            <>
+              <col className="w-[40%]" />
+              <col className="w-[22%]" />
+              <col className="w-[16%]" />
+              <col className="w-[22%]" />
+            </>
+          )}
+        </colgroup>
         <thead>
           <tr className="text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border bg-muted/30">
-            <th className="pl-5 py-2.5 text-left font-medium w-10">#</th>
-            <th className="py-2.5 text-left font-medium">Applicant</th>
+            <th className="pl-5 py-2.5 text-left font-medium">Applicant</th>
             <th className="py-2.5 text-left font-medium">Document</th>
             <th className="py-2.5 text-left font-medium">Tier</th>
-            <th className="py-2.5 text-left font-medium">Status</th>
+            <th className="py-2.5 text-left font-medium last:pr-5">Status</th>
             {showDetailColumns && (
               <>
                 <th className="py-2.5 text-left font-medium">OCR</th>
                 <th className="py-2.5 text-left font-medium">Face</th>
                 <th className="py-2.5 text-left font-medium">Submitted</th>
-                <th className="py-2.5 text-left font-medium">Flags</th>
+                <th className="pr-5 py-2.5 text-left font-medium">Flags</th>
               </>
             )}
-            <th className="pr-5 py-2.5"></th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, idx) => (
+          {rows.map((r) => (
             <KycRow
               key={r.id}
               app={r}
-              idx={idx + 1}
               onSelect={onSelect}
-              onRequestDocs={onRequestDocs}
               showDetailColumns={showDetailColumns}
             />
           ))}
@@ -611,12 +632,10 @@ function KycTable({
 }
 
 function KycRow({
-  app, idx, onSelect, onRequestDocs, showDetailColumns,
+  app, onSelect, showDetailColumns,
 }: {
   app: KycApplication;
-  idx: number;
   onSelect: (a: KycApplication) => void;
-  onRequestDocs: (a: KycApplication) => void;
   showDetailColumns: boolean;
 }) {
   return (
@@ -624,8 +643,7 @@ function KycRow({
       className="border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
       onClick={() => onSelect(app)}
     >
-      <td className="pl-5 py-3 text-[11px] text-muted-foreground font-mono">{idx}</td>
-      <td className="py-3">
+      <td className="pl-5 py-3">
         <div className="flex items-center gap-2.5">
           <Initials name={app.name} />
           <div>
@@ -640,7 +658,7 @@ function KycRow({
       <td className="py-3">
         <TierBadge tier={app.tierRequested} />
       </td>
-      <td className="py-3">
+      <td className={`py-3 ${showDetailColumns ? "" : "pr-5"}`}>
         <KycStatusBadge status={app.status} />
       </td>
       {showDetailColumns && (
@@ -648,7 +666,7 @@ function KycRow({
           <td className="py-3"><ScoreBar value={app.ocrConfidence} /></td>
           <td className="py-3"><ScoreBar value={app.faceMatchScore} /></td>
           <td className="py-3 text-[12px] text-muted-foreground whitespace-nowrap">{relativeTime(app.submittedAt)}</td>
-          <td className="py-3">
+          <td className="pr-5 py-3">
             {app.flags.length > 0 ? (
               <span className="inline-flex items-center gap-1 text-[11px] text-amber font-medium">
                 <AlertTriangle className="w-3 h-3" /> {app.flags.length}
@@ -659,13 +677,6 @@ function KycRow({
           </td>
         </>
       )}
-      <td className="pr-5 py-3" onClick={(e) => e.stopPropagation()}>
-        <RowMenu
-          app={app}
-          onReview={() => onSelect(app)}
-          onRequestDocs={() => onRequestDocs(app)}
-        />
-      </td>
     </tr>
   );
 }
@@ -681,7 +692,7 @@ function Initials({ name }: { name: string }) {
 
 function TierBadge({ tier }: { tier: TierRequested }) {
   return (
-    <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-muted text-foreground">
+    <span className="text-[11px] font-medium text-foreground">
       {tier === "tier2" ? "Tier 2" : "Tier 1"}
     </span>
   );
@@ -689,15 +700,15 @@ function TierBadge({ tier }: { tier: TierRequested }) {
 
 function KycStatusBadge({ status }: { status: KycStatus }) {
   const map: Record<KycStatus, { cls: string; dot: string; label: string }> = {
-    pending:         { cls: "bg-amber/10 text-amber",   dot: "bg-amber",             label: "Pending" },
-    approved:        { cls: "bg-pine/10 text-pine",     dot: "bg-pine",              label: "Approved" },
-    rejected:        { cls: "bg-rose/10 text-rose",     dot: "bg-rose",              label: "Rejected" },
-    additional_docs: { cls: "bg-amber/10 text-amber",   dot: "bg-amber",             label: "Awaiting Docs" },
-    manual:          { cls: "bg-muted text-foreground", dot: "bg-muted-foreground",  label: "Manual Review" },
+    pending:         { cls: "text-amber",           dot: "bg-amber",            label: "Pending" },
+    approved:        { cls: "text-pine",            dot: "bg-pine",             label: "Approved" },
+    rejected:        { cls: "text-rose",            dot: "bg-rose",             label: "Rejected" },
+    additional_docs: { cls: "text-amber",           dot: "bg-amber",            label: "Awaiting Docs" },
+    manual:          { cls: "text-muted-foreground", dot: "bg-muted-foreground", label: "Manual Review" },
   };
   const m = map[status] ?? map.pending;
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full ${m.cls}`}>
+    <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium ${m.cls}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} /> {m.label}
     </span>
   );
@@ -718,125 +729,7 @@ function ScoreBar({ value }: { value: number }) {
 
 /* ─────────────────────────── row menu ─────────────────────────── */
 
-function RowMenu({
-  app, onReview, onRequestDocs,
-}: {
-  app: KycApplication;
-  onReview: () => void;
-  onRequestDocs: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
 
-  // A decision is final only when a HUMAN made it (reviewer set) — the AI
-  // pipeline auto-approves/rejects with no reviewer, and brokers can override.
-  const isReviewed = (app.status === "approved" || app.status === "rejected") && !!app.reviewer;
-
-  // Approve/Reject decisions are made on the full review page (with the
-  // documents in view), so the row menu only opens the review.
-  const items: Array<{ label: string; icon: React.ComponentType<{ className?: string }>; action: () => void; tone?: "rose" }> = [
-    { label: isReviewed ? "View review" : "Review", icon: Eye, action: onReview },
-    ...(!isReviewed ? [{ label: "Request docs", icon: FilePlus, action: onRequestDocs }] : []),
-  ];
-
-  return (
-    <>
-      <button
-        ref={btnRef}
-        onClick={() => setOpen((o) => !o)}
-        className="w-8 h-8 rounded-[3px] hover:bg-muted/60 inline-flex items-center justify-center"
-      >
-        <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-      </button>
-      {open && (
-        <PopoverMenu anchorRef={btnRef} align="right" onClose={() => setOpen(false)}>
-          {items.map((it) => {
-            const Icon = it.icon;
-            return (
-              <button
-                key={it.label}
-                onClick={() => { it.action(); setOpen(false); }}
-                className={`w-full text-left px-3.5 py-2 text-sm flex items-center gap-2.5 transition-colors ${
-                  it.tone === "rose"
-                    ? "text-rose hover:bg-rose/10"
-                    : "text-foreground hover:bg-muted/60"
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5 text-muted-foreground" /> {it.label}
-              </button>
-            );
-          })}
-        </PopoverMenu>
-      )}
-    </>
-  );
-}
-
-/**
- * Portal-rendered dropdown, fixed-positioned from the trigger's bounding
- * rect. RowMenu lives inside a table wrapped in `overflow-x-auto` +
- * `overflow-hidden` (for the card's rounded corners) — an absolutely
- * positioned menu there gets silently clipped on rows near the bottom/edge
- * of that scroll area. Rendering to `document.body` with `position: fixed`
- * escapes all ancestor clipping and stays correctly placed regardless of
- * table scroll.
- */
-function PopoverMenu({
-  anchorRef, align = "right", onClose, children,
-}: {
-  anchorRef: React.RefObject<HTMLElement | null>;
-  align?: "left" | "right";
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left?: number; right?: number } | null>(null);
-
-  useLayoutEffect(() => {
-    const place = () => {
-      const rect = anchorRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      setPos(
-        align === "right"
-          ? { top: rect.bottom + 6, right: window.innerWidth - rect.right }
-          : { top: rect.bottom + 6, left: rect.left },
-      );
-    };
-    place();
-    // Reposition (or close, for scroll) so the menu never drifts from its
-    // trigger if the page scrolls/resizes while it's open.
-    window.addEventListener("resize", place);
-    window.addEventListener("scroll", onClose, true);
-    return () => {
-      window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", onClose, true);
-    };
-  }, [anchorRef, align, onClose]);
-
-  useEffect(() => {
-    const h = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (menuRef.current?.contains(target)) return;
-      if (anchorRef.current?.contains(target)) return;
-      onClose();
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, [anchorRef, onClose]);
-
-  if (!pos) return null;
-
-  return createPortal(
-    <div
-      ref={menuRef}
-      className="fixed z-50 w-44 rounded-[3px] border border-border bg-card shadow-lg py-1 overflow-hidden"
-      style={{ top: pos.top, left: pos.left, right: pos.right }}
-    >
-      {children}
-    </div>,
-    document.body,
-  );
-}
 
 /* ─────────────────────────── request docs dialog ─────────────────────────── */
 

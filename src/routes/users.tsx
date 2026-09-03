@@ -8,6 +8,7 @@ import { Card } from "@/components/broker-shell";
 import { useUsersList, useUpdateUserStatus, useNotifyUser } from "@/hooks/useUsers";
 import { useDashboardStats } from "@/hooks/useDashboard";
 import { UsersIcon, PendingIcon, ActiveUserIcon } from "@/components/pine-icons";
+import { PopoverMenu } from "@/components/popover-menu";
 
 const searchSchema = z.object({
   tab: z.string().optional(),
@@ -250,21 +251,13 @@ function TabDropdown({
   activeCount?: number;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const activeTab = tabs.find((t) => t.key === active);
 
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
+        ref={btnRef}
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-pine transition-colors"
       >
@@ -276,8 +269,10 @@ function TabDropdown({
         )}
         <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
+      {/* Portalled: the table's overflow-x-auto wrapper clipped the menu, so
+          the options below the first were cut off. */}
       {open && (
-        <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[11rem] rounded-[3px] border border-border bg-card shadow-lg overflow-hidden py-1">
+        <PopoverMenu anchorRef={btnRef} align="left" onClose={() => setOpen(false)}>
           {tabs.map((t) => (
             <button
               key={t.key}
@@ -289,9 +284,9 @@ function TabDropdown({
               {t.label}
             </button>
           ))}
-        </div>
+        </PopoverMenu>
       )}
-    </div>
+    </>
   );
 }
 
