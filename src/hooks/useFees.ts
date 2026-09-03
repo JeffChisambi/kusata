@@ -16,7 +16,7 @@ export interface FeeConfig {
   depositFeeDescription: string | null;
   commissionEnabled: boolean;
   commissionTiers: CommissionTier[];
-  statutory: { secLevyPct: number; mseLevyPct: number };
+  statutory: { secLevyPct: number; mseLevyPct: number; withholdingTaxPct: number };
 }
 
 const feeKeys = {
@@ -47,6 +47,9 @@ export function useUpdateFeeConfig() {
       depositFeeDescription?: string;
       commissionEnabled: boolean;
       commissionTiers: CommissionTier[];
+      secLevyPct?: number;
+      mseLevyPct?: number;
+      withholdingTaxPct?: number;
     }) => api.put<FeeConfig>('/v1/admin/fees/config', body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: feeKeys.all });

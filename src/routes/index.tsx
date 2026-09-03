@@ -250,15 +250,8 @@ function FinancialOverview() {
             </span>
           </div>
           <div
-            className="flex items-baseline justify-between"
-            title="Deposit processing fees recorded on completed deposits, under Settings → Fees & Charges."
-          >
-            <span className="text-xs text-muted-foreground">Processing Fees</span>
-            <span className="text-sm font-bold font-mono">{money(fin?.paymentCosts?.processingFees)}</span>
-          </div>
-          <div
             className="flex items-baseline justify-between pt-2.5 border-t border-border"
-            title="SEC + MSE levies collected on trades — statutory pass-through, not your revenue."
+            title="Levies collected on trades at the rates you set in Settings → Fees & Charges. Statutory pass-through — you remit these, they are not your revenue."
           >
             <span className="text-xs text-muted-foreground">Statutory Levies (pass-through)</span>
             <span className="text-sm font-medium font-mono text-muted-foreground">

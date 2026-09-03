@@ -117,6 +117,9 @@ export function FeesSection() {
   const [depositDesc, setDepositDesc] = useState("");
   const [commissionEnabled, setCommissionEnabled] = useState(true);
   const [tiers, setTiers] = useState<TierDraft[]>([]);
+  const [secLevy, setSecLevy] = useState("0.1");
+  const [mseLevy, setMseLevy] = useState("0.1");
+  const [withholding, setWithholding] = useState("0");
   const [saved, setSaved] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -128,6 +131,9 @@ export function FeesSection() {
     setDepositDesc(config.depositFeeDescription ?? "");
     setCommissionEnabled(config.commissionEnabled);
     setTiers(config.commissionTiers.map(toDraft));
+    setSecLevy(String(config.statutory.secLevyPct));
+    setMseLevy(String(config.statutory.mseLevyPct));
+    setWithholding(String(config.statutory.withholdingTaxPct ?? 0));
   }, [config]);
 
   const forbidden = (error as any)?.status === 403;
@@ -148,6 +154,18 @@ export function FeesSection() {
     return null;
   }, [tiers]);
 
+  const levyProblem = useMemo(() => {
+    const rates: Array<[string, string]> = [
+      ["SEC levy", secLevy], ["MSE levy", mseLevy], ["Withholding tax", withholding],
+    ];
+    for (const [label, raw] of rates) {
+      const n = Number(raw);
+      if (raw.trim() === "" || Number.isNaN(n)) return `${label}: enter a rate.`;
+      if (n < 0 || n > 100) return `${label}: must be between 0 and 100%.`;
+    }
+    return null;
+  }, [secLevy, mseLevy, withholding]);
+
   const onSave = async () => {
     setLocalError(null);
     if (commissionEnabled && tiers.length === 0) {
@@ -155,6 +173,7 @@ export function FeesSection() {
       return;
     }
     if (tierProblem) { setLocalError(tierProblem); return; }
+    if (levyProblem) { setLocalError(levyProblem); return; }
     try {
       await update.mutateAsync({
         depositFeeEnabled: depositEnabled,
@@ -163,6 +182,9 @@ export function FeesSection() {
         depositFeeDescription: depositDesc.trim() || undefined,
         commissionEnabled,
         commissionTiers: tiers.map(fromDraft).sort((a, b) => a.minAmount - b.minAmount),
+        secLevyPct: Number(secLevy || 0),
+        mseLevyPct: Number(mseLevy || 0),
+        withholdingTaxPct: Number(withholding || 0),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -273,7 +295,7 @@ export function FeesSection() {
       {/* ── Trading commissions ── */}
       <SectionCard
         title="Trading Commissions"
-        description="Your commission per executed order, by gross order value (price × quantity). Applied identically to buys and sells; recorded on every trade as broker revenue. SEC (0.1%) and MSE (0.1%) levies are statutory and always added on top."
+        description="Your commission per executed order, by gross order value (price × quantity). Applied identically to buys and sells; recorded on every trade as broker revenue. Statutory levies are set separately below and always added on top."
       >
         <div className="space-y-4">
           <Toggle
@@ -355,6 +377,59 @@ export function FeesSection() {
         </div>
       </SectionCard>
 
+      {/* ── Statutory levies ── */}
+      <SectionCard
+        title="Statutory Levies"
+        description="Regulator-set charges added on top of every executed trade. You collect them and remit them — they are never your revenue, and they are reported separately on the overview. Change them only when the regulator does."
+      >
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-5">
+            <LevyField
+              label="SEC levy"
+              hint="Securities & Exchange Commission, on gross trade value"
+              value={secLevy}
+              onChange={setSecLevy}
+            />
+            <LevyField
+              label="MSE levy"
+              hint="Malawi Stock Exchange, on gross trade value"
+              value={mseLevy}
+              onChange={setMseLevy}
+            />
+            <LevyField
+              label="Withholding tax"
+              hint="Capital gains — applied to SELL orders only"
+              value={withholding}
+              onChange={setWithholding}
+            />
+          </div>
+
+          <div className="text-xs text-muted-foreground">
+            A trade of {fmtMWK(previewAmount)} carries{" "}
+            <span className="font-semibold text-foreground">
+              {fmtMWK((previewAmount * (Number(secLevy || 0) + Number(mseLevy || 0))) / 100)}
+            </span>{" "}
+            in levies on a buy
+            {Number(withholding || 0) > 0 && (
+              <>
+                , and{" "}
+                <span className="font-semibold text-foreground">
+                  {fmtMWK((previewAmount * (Number(secLevy || 0) + Number(mseLevy || 0) + Number(withholding || 0))) / 100)}
+                </span>{" "}
+                on a sell
+              </>
+            )}
+            .
+          </div>
+
+          {levyProblem && (
+            <div className="flex items-center gap-2 text-[13px] text-amber">
+              <AlertTriangle className="w-4 h-4 shrink-0" /> {levyProblem}
+            </div>
+          )}
+        </div>
+      </SectionCard>
+
       {/* ── Save ── */}
       {localError && (
         <div className="flex items-center gap-2 text-[13px] text-rose">
@@ -379,5 +454,22 @@ export function FeesSection() {
         </button>
       </div>
     </div>
+  );
+}
+
+/** One statutory rate: a percent input with its own label and explanation. */
+function LevyField({
+  label, hint, value, onChange,
+}: {
+  label: string; hint: string; value: string; onChange: (v: string) => void;
+}) {
+  return (
+    <label className="min-w-[190px]">
+      <div className="text-xs font-medium text-foreground">{label}</div>
+      <div className="mt-1.5">
+        <NumInput value={value} suffix="%" onChange={onChange} className="w-28" />
+      </div>
+      <div className="mt-1.5 text-[11px] text-muted-foreground">{hint}</div>
+    </label>
   );
 }
