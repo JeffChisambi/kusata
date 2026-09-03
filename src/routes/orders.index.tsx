@@ -1,22 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  AlertTriangle,
-  ArrowDownRight,
-  ArrowUpRight,
-  CheckCircle2,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ClipboardList,
-  Clock3,
-  Download,
-  Loader2,
-  RefreshCw,
-  XCircle,
+  ArrowDownRight, ArrowUpRight, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Download, Loader2, RefreshCw, XCircle,
 } from "lucide-react";
 import { Card } from "@/components/broker-shell";
-import { PendingIcon, OrdersIcon } from "@/components/pine-icons";
+import { PendingIcon, OrdersIcon, NeedsAttentionIcon, ExecutedIcon } from "@/components/pine-icons";
 import { useOrders, useRefreshOrders, type Order, type DisplayStatus, type OrderSide } from "@/hooks/useOrders";
 import { useCurrentUser, isSuperAdmin } from "@/lib/auth";
 import { useTreasuryInvestments, type TreasuryInvestment } from "@/hooks/useTreasuryAdmin";
@@ -88,8 +76,8 @@ function KpiStrip({ orders, total }: { orders: Order[]; total: number }) {
   const executedValue = executed.reduce((sum, order) => sum + order.value, 0);
   const kpis = [
     { label: "Awaiting execution", value: ready, detail: "ready for the market", icon: PendingIcon },
-    { label: "Needs attention", value: rejected, detail: "rejected / cancelled", icon: AlertTriangle },
-    { label: "Executed", value: executed.length, detail: `${fmtMoney(executedValue)} total value`, icon: CheckCircle2 },
+    { label: "Needs attention", value: rejected, detail: "rejected / cancelled", icon: NeedsAttentionIcon },
+    { label: "Executed", value: executed.length, detail: `${fmtMoney(executedValue)} total value`, icon: ExecutedIcon },
     { label: "Total orders", value: total, detail: "across all pages", icon: OrdersIcon },
   ];
   return (

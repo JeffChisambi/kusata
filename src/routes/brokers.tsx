@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  Building2, Plus, Loader2, X, Check, AlertTriangle, CreditCard, Users,
+  Plus, Loader2, X, Check, AlertTriangle, CreditCard, Users,
 } from "lucide-react";
+import { BrokersIcon } from "@/components/pine-icons";
 import { Card } from "@/components/broker-shell";
 import { requireSuperAdmin } from "@/lib/auth";
 import { useBrokersList, useCreateBroker, type BrokerSummary } from "@/hooks/useBrokers";
@@ -107,7 +108,7 @@ function BrokersPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-[3px] bg-pine/10 text-pine flex items-center justify-center">
-          <Building2 className="w-4.5 h-4.5" />
+          <BrokersIcon className="w-4.5 h-4.5" />
         </div>
         <div className="flex-1">
           <h1 className="text-lg font-semibold">Brokers</h1>
@@ -151,7 +152,7 @@ function BrokersPage() {
           </div>
         ) : list.length === 0 ? (
           <div className="py-20 text-center">
-            <Building2 className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
+            <BrokersIcon className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">No brokers yet.</p>
             <button onClick={() => setCreating(true)} className="mt-3 text-sm text-pine font-medium">
               Onboard the first broker

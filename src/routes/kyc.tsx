@@ -2,13 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, useEffect, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import {
-  Clock, CheckCircle2, XCircle, FileText,
-  Eye, MoreHorizontal, ChevronDown, AlertTriangle,
-  ScanLine, ClipboardList, FilePlus,
-  TrendingUp, TrendingDown, Download,
-  RefreshCw, Loader2,
+  Clock, FileText, Eye, MoreHorizontal, ChevronDown, AlertTriangle, ScanLine, FilePlus, TrendingUp, TrendingDown, Download, RefreshCw, Loader2,
 } from "lucide-react";
-import { KycIcon, PendingIcon } from "@/components/pine-icons";
+import { KycIcon, PendingIcon, ExecutedIcon, RejectedIcon, ManualVerifyIcon } from "@/components/pine-icons";
 import { Card } from "@/components/broker-shell";
 import {
   useKycQueue, useRequestAdditionalDocs, useKycCounts,
@@ -143,10 +139,10 @@ type Tab = {
 const TABS: Tab[] = [
   { key: "all",        label: "All",              icon: KycIcon },
   { key: "pending",    label: "Pending Review",   icon: PendingIcon,   apiStatus: "PENDING" },
-  { key: "manual",     label: "Manual Review",    icon: Eye,           apiStatus: "MANUAL_REVIEW" },
+  { key: "manual",     label: "Manual Review",    icon: ManualVerifyIcon, apiStatus: "MANUAL_REVIEW" },
   { key: "additional", label: "Additional Docs",  icon: FilePlus,      apiStatus: "ADDITIONAL_DOCS" },
-  { key: "approved",   label: "Approved",         icon: CheckCircle2,  apiStatus: "APPROVED" },
-  { key: "rejected",   label: "Rejected",         icon: XCircle,       apiStatus: "REJECTED" },
+  { key: "approved",   label: "Approved",         icon: ExecutedIcon,  apiStatus: "APPROVED" },
+  { key: "rejected",   label: "Rejected",         icon: RejectedIcon,  apiStatus: "REJECTED" },
   { key: "ocr",        label: "OCR Results",      icon: ScanLine,      clientFilter: (a) => a.ocrConfidence < 85 },
 ];
 
@@ -405,7 +401,7 @@ function KycStats({ counts }: { counts?: Record<string, number> }) {
     {
       label: "Approved",
       value: approved,
-      icon: CheckCircle2,
+      icon: ExecutedIcon,
       tone: "pine",
       trend: total > 0 ? `${Math.round((approved / total) * 100)}%` : "—",
       up: true,
@@ -413,7 +409,7 @@ function KycStats({ counts }: { counts?: Record<string, number> }) {
     {
       label: "Rejected",
       value: rejected,
-      icon: XCircle,
+      icon: RejectedIcon,
       tone: rejected > 0 ? "rose" : "pine",
       trend: total > 0 ? `${Math.round((rejected / total) * 100)}%` : "—",
       up: false,
@@ -421,7 +417,7 @@ function KycStats({ counts }: { counts?: Record<string, number> }) {
     {
       label: "Manual Review",
       value: manual,
-      icon: Eye,
+      icon: ManualVerifyIcon,
       tone: manual > 0 ? "amber" : "pine",
       trend: manual > 0 ? "flagged" : "clear",
       up: false,

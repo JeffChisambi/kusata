@@ -5,7 +5,7 @@ import {
 import { createPortal } from "react-dom";
 import {
   OverviewIcon, UsersIcon, KycIcon, SupportIcon, OrdersIcon, ErrorIcon,
-  NewsIcon, SecuritiesIcon, NotificationsIcon, SettingsIcon, CashIcon,
+  NewsIcon, SecuritiesIcon, NotificationsIcon, SettingsIcon, CashIcon, BrokersIcon,
 } from "./pine-icons";
 import { Link, useNavigate, useLocation, useElementScrollRestoration } from "@tanstack/react-router";
 import { useCurrentUser, logout, isSuperAdmin } from "@/lib/auth";
@@ -17,7 +17,7 @@ import { useNotificationDelivery } from "@/hooks/useNotificationDelivery";
 import {
   ChevronDown, ChevronsLeft, ChevronsRight,
   Sun, Moon, LogOut, Palette,
-  Building2, ScrollText, CheckCircle2,
+  ScrollText, CheckCircle2,
 } from "lucide-react";
 
 type NavGroup = {
@@ -43,7 +43,7 @@ export const brokerNav: NavGroup[] = [
   { section: "TRADING", icon: OrdersIcon, label: "Orders", href: "/orders" },
 
   // ── PLATFORM (super admin only) ──
-  { section: "PLATFORM", icon: Building2, label: "Brokers", href: "/brokers", superAdminOnly: true },
+  { section: "PLATFORM", icon: BrokersIcon, label: "Brokers", href: "/brokers", superAdminOnly: true },
   { section: "PLATFORM", icon: ScrollText, label: "Audit Log", href: "/audit", superAdminOnly: true },
   { section: "PLATFORM", icon: ErrorIcon, label: "System Errors", href: "/errors", superAdminOnly: true },
   { section: "PLATFORM", icon: NewsIcon, label: "News", href: "/news", superAdminOnly: true },
