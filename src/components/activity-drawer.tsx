@@ -32,12 +32,19 @@ export function ActivityDrawer() {
   // Mounted separately from `open` so the panel can animate out before it is
   // removed from the tree.
   const [visible, setVisible] = useState(false);
+  // Drives the transform. Kept a frame behind `visible` so the panel paints
+  // off-screen first and the browser has a start value to animate FROM —
+  // without this the transition is skipped and the panel simply appears.
+  const [shown, setShown] = useState(false);
+
   useEffect(() => {
     if (open) {
       setVisible(true);
-      return;
+      const raf = requestAnimationFrame(() => requestAnimationFrame(() => setShown(true)));
+      return () => cancelAnimationFrame(raf);
     }
-    const t = setTimeout(() => setVisible(false), 220);
+    setShown(false);
+    const t = setTimeout(() => setVisible(false), 320);
     return () => clearTimeout(t);
   }, [open]);
 
@@ -55,7 +62,7 @@ export function ActivityDrawer() {
   return (
     <>
       <FloatingBell count={count} open={open} onToggle={() => setOpen((o) => !o)} />
-      {visible && <Panel open={open} onClose={() => setOpen(false)} />}
+      {visible && <Panel open={shown} onClose={() => setOpen(false)} />}
     </>
   );
 }
@@ -170,15 +177,20 @@ function Panel({ open, onClose }: { open: boolean; onClose: () => void }) {
     <>
       <div
         onClick={onClose}
-        className={`fixed inset-0 z-40 bg-black/30 transition-opacity duration-200 ${
+        className={`fixed inset-0 z-40 bg-black/30 transition-opacity duration-300 ease-out ${
           open ? "opacity-100" : "opacity-0"
         }`}
       />
       <aside
         role="dialog"
         aria-label="Recent activity"
-        className={`fixed right-0 top-0 z-50 h-screen w-full max-w-[400px] bg-card border-l border-border shadow-2xl flex flex-col transition-transform duration-200 ease-out ${
-          open ? "translate-x-0" : "translate-x-full"
+        style={{
+          transitionTimingFunction: open
+            ? "cubic-bezier(0.22, 1, 0.36, 1)"   // decelerate in — settles, no bounce
+            : "cubic-bezier(0.4, 0, 1, 1)",      // accelerate out — gets out of the way
+        }}
+        className={`fixed right-0 top-0 z-50 h-screen w-full max-w-[400px] bg-card border-l border-border shadow-2xl flex flex-col transition-transform ${
+          open ? "translate-x-0 duration-[320ms]" : "translate-x-full duration-200"
         }`}
       >
         <header className="shrink-0 flex items-center justify-between px-5 h-14 border-b border-border">

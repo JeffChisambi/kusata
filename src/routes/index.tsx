@@ -294,7 +294,65 @@ type ChartPoint = {
   revenue: number;
 };
 
-type ChartProps = { data: ChartPoint[]; loading: boolean; days: number; colors: ChartColors };
+type ChartCardProps = { colors: ChartColors; initialDays: number };
+
+/**
+ * Each chart carries its own window.
+ *
+ * One dashboard-wide range forced every chart to the same span, which is
+ * rarely what a broker wants — today's volume next to a quarter of revenue is
+ * a perfectly ordinary comparison.
+ */
+const CHART_RANGES: Array<{ label: string; days: number }> = [
+  { label: "Today", days: 1 },
+  { label: "7d", days: 7 },
+  { label: "1m", days: 30 },
+  { label: "3m", days: 90 },
+];
+
+/** Reads as a sentence in each card's subtitle: "… — today" / "… — last 7 days". */
+function rangeLabel(days: number) {
+  return days === 1 ? "today" : days === 30 ? "last month" : days === 90 ? "last 3 months" : `last ${days} days`;
+}
+
+function ChartRangePicker({ days, onChange }: { days: number; onChange: (d: number) => void }) {
+  return (
+    <div className="flex items-center gap-0.5 rounded-[4px] border border-border p-0.5">
+      {CHART_RANGES.map((r) => (
+        <button
+          key={r.days}
+          type="button"
+          onClick={() => onChange(r.days)}
+          className={`h-6 px-2 rounded-[3px] text-[11px] font-medium transition-colors ${
+            days === r.days
+              ? "bg-pine/10 text-pine"
+              : "text-muted-foreground hover:bg-muted/60"
+          }`}
+          aria-pressed={days === r.days}
+        >
+          {r.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** One chart's series, fetched for its own window. */
+function useChartSeries(days: number) {
+  const { data: charts, isLoading } = useDashboardCharts(days);
+  const data = useMemo<ChartPoint[]>(
+    () => (charts ?? []).map((d) => ({
+      day: dayLabel(d.date, days),
+      clients: d.activeUsers,
+      volume: parseFloat(d.volume) || 0,
+      deposits: parseFloat(d.deposits) || 0,
+      withdrawals: parseFloat(d.withdrawals) || 0,
+      revenue: parseFloat(d.revenue) || 0,
+    })),
+    [charts, days],
+  );
+  return { data, loading: isLoading };
+}
 
 function ChartState({ loading, empty }: { loading: boolean; empty: boolean }) {
   return (
@@ -311,18 +369,20 @@ const tooltipStyle = (c: ChartColors) => ({
   fontSize: 12,
 });
 
-const ClientGrowthChart = memo(function ClientGrowthChart({ data, loading, days, colors: c }: ChartProps) {
+const ClientGrowthChart = memo(function ClientGrowthChart({ colors: c, initialDays }: ChartCardProps) {
+  const [days, setDays] = useState(initialDays);
+  const { data, loading } = useChartSeries(days);
   return (
     <Card
       title="Client Activity"
-      subtitle={`Active client count — last ${days} days`}
-      className="xl:col-span-2"
+      subtitle={`Active client count — ${rangeLabel(days)}`}
+      action={<ChartRangePicker days={days} onChange={setDays} />}
     >
       {loading || data.length === 0 ? (
         <ChartState loading={loading} empty={data.length === 0} />
       ) : (
         <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={data} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+          <AreaChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="brokerClientGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={c.pine} stopOpacity={0.25} />
@@ -341,14 +401,20 @@ const ClientGrowthChart = memo(function ClientGrowthChart({ data, loading, days,
   );
 });
 
-const TradeVolumeChart = memo(function TradeVolumeChart({ data, loading, days, colors: c }: ChartProps) {
+const TradeVolumeChart = memo(function TradeVolumeChart({ colors: c, initialDays }: ChartCardProps) {
+  const [days, setDays] = useState(initialDays);
+  const { data, loading } = useChartSeries(days);
   return (
-    <Card title="Trade Volume" subtitle={`Daily MWK volume — last ${days} days`}>
+    <Card
+      title="Trade Volume"
+      subtitle={`Daily MWK volume — ${rangeLabel(days)}`}
+      action={<ChartRangePicker days={days} onChange={setDays} />}
+    >
       {loading || data.length === 0 ? (
         <ChartState loading={loading} empty={data.length === 0} />
       ) : (
         <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={data} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+          <BarChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={c.border} strokeWidth={1} />
             <XAxis dataKey="day" tick={{ fontSize: 11, fill: c.mutedFg }} axisLine={false} tickLine={false} minTickGap={16} />
             <YAxis tick={{ fontSize: 11, fill: c.mutedFg }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtMoney(v).replace("MK ", "")} />
@@ -361,14 +427,20 @@ const TradeVolumeChart = memo(function TradeVolumeChart({ data, loading, days, c
   );
 });
 
-const DepositsWithdrawalsChart = memo(function DepositsWithdrawalsChart({ data, loading, days, colors: c }: ChartProps) {
+const DepositsWithdrawalsChart = memo(function DepositsWithdrawalsChart({ colors: c, initialDays }: ChartCardProps) {
+  const [days, setDays] = useState(initialDays);
+  const { data, loading } = useChartSeries(days);
   return (
-    <Card title="Deposits vs Withdrawals" subtitle={`Completed client cash movements — last ${days} days`}>
+    <Card
+      title="Deposits vs Withdrawals"
+      subtitle={`Completed client cash movements — ${rangeLabel(days)}`}
+      action={<ChartRangePicker days={days} onChange={setDays} />}
+    >
       {loading || data.length === 0 ? (
         <ChartState loading={loading} empty={data.length === 0} />
       ) : (
         <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={data} margin={{ top: 4, right: 4, left: -28, bottom: 0 }} barGap={2}>
+          <BarChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }} barGap={2}>
             <CartesianGrid strokeDasharray="3 3" stroke={c.border} strokeWidth={1} />
             <XAxis dataKey="day" tick={{ fontSize: 11, fill: c.mutedFg }} axisLine={false} tickLine={false} minTickGap={16} />
             <YAxis tick={{ fontSize: 11, fill: c.mutedFg }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtMoney(v).replace("MK ", "")} />
@@ -383,14 +455,20 @@ const DepositsWithdrawalsChart = memo(function DepositsWithdrawalsChart({ data, 
   );
 });
 
-const RevenueChart = memo(function RevenueChart({ data, loading, days, colors: c, label }: ChartProps & { label: string }) {
+const RevenueChart = memo(function RevenueChart({ colors: c, initialDays, label }: ChartCardProps & { label: string }) {
+  const [days, setDays] = useState(initialDays);
+  const { data, loading } = useChartSeries(days);
   return (
-    <Card title={label} subtitle={`Daily MWK earned on executed trades — last ${days} days`}>
+    <Card
+      title={label}
+      subtitle={`Daily MWK earned on executed trades — ${rangeLabel(days)}`}
+      action={<ChartRangePicker days={days} onChange={setDays} />}
+    >
       {loading || data.length === 0 ? (
         <ChartState loading={loading} empty={data.length === 0} />
       ) : (
         <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={data} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+          <AreaChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="brokerRevenueGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={c.sky} stopOpacity={0.25} />
@@ -410,29 +488,18 @@ const RevenueChart = memo(function RevenueChart({ data, loading, days, colors: c
 });
 
 function DashboardCharts() {
+  // The dashboard range is only the starting point now — each chart keeps its
+  // own window from there.
   const { days } = useDashboardRange();
   const colors = useChartColors();
-  const { data: charts, isLoading } = useDashboardCharts(days);
   // Platform staff see Pine's cut of every commission; brokers see their own.
   const superAdmin = isSuperAdmin(useCurrentUser());
   const revenueLabel = superAdmin ? "Platform fees" : "Commissions";
 
-  const data = useMemo<ChartPoint[]>(
-    () => (charts ?? []).map((d) => ({
-      day: dayLabel(d.date, days),
-      clients: d.activeUsers,
-      volume: parseFloat(d.volume) || 0,
-      deposits: parseFloat(d.deposits) || 0,
-      withdrawals: parseFloat(d.withdrawals) || 0,
-      revenue: parseFloat(d.revenue) || 0,
-    })),
-    [charts, days],
-  );
-
-  const common = { data, loading: isLoading, days, colors };
+  const common = { colors, initialDays: days };
   return (
     <>
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <ClientGrowthChart {...common} />
         <TradeVolumeChart {...common} />
       </div>
