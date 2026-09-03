@@ -13,6 +13,13 @@ import { useCurrentUser, logout, isSuperAdmin } from "@/lib/auth";
 import { useKycQueue } from "@/hooks/useKyc";
 import { useUnreadSupportCount } from "@/hooks/useSupport";
 import { usePendingWithdrawals } from "@/hooks/useWithdrawals";
+import { useOrders } from "@/hooks/useOrders";
+import { useDashboardStats } from "@/hooks/useDashboard";
+import { useNotificationStats } from "@/hooks/useNotifications";
+import { useSystemErrorStats } from "@/hooks/useSystemErrors";
+import { useNewsList } from "@/hooks/useNewsAdmin";
+import { useBrokersList } from "@/hooks/useBrokers";
+import { useTreasuryInvestments } from "@/hooks/useTreasuryAdmin";
 import { useNotificationDelivery } from "@/hooks/useNotificationDelivery";
 import {
   ChevronDown, LogOut, Sun, Moon,
@@ -275,39 +282,85 @@ function BrokerSidebar({
   transitionReady: boolean;
   onToggleCollapse: () => void;
 }) {
-  // Live pending KYC count — replaces the hardcoded badge value.
-  const { data: kycData } = useKycQueue({ status: 'PENDING', limit: 1 });
-  const pendingKycCount = kycData?.count ?? 0;
-
-  // Live count of withdrawals awaiting the broker's decision.
-  const { data: withdrawalData } = usePendingWithdrawals();
-  const pendingWithdrawalCount = withdrawalData?.withdrawals?.length ?? 0;
-
-  // Live count of support tickets awaiting a staff reply.
-  const awaitingSupportCount = useUnreadSupportCount();
-
   // Role-aware nav: broker admins only see their operational scope; the
   // PLATFORM section (and other superAdminOnly items) is SUPER_ADMIN only.
   const user = useCurrentUser();
   const superAdmin = isSuperAdmin(user);
 
+  /**
+   * Live signals behind the nav badges — a dot when the sidebar is collapsed,
+   * a count when it is open.
+   *
+   * Each one is something a person can act on in that section. Sections with
+   * nothing to act on (Overview, Mobile Themes, Settings) deliberately carry
+   * no badge: a dot that is always lit teaches people to ignore dots.
+   */
+  const { data: kycData } = useKycQueue({ status: 'PENDING', limit: 1 });
+  const pendingKycCount = kycData?.count ?? 0;
+
+  const { data: withdrawalData } = usePendingWithdrawals();
+  const pendingWithdrawalCount = withdrawalData?.withdrawals?.length ?? 0;
+
+  const awaitingSupportCount = useUnreadSupportCount();
+
+  // Orders sitting with the market, waiting to be executed.
+  const { data: orderData } = useOrders({ status: 'SUBMITTED', limit: 1 });
+  const awaitingOrderCount = orderData?.total ?? 0;
+
+  // Sign-ups today — the reason to open Users this morning.
+  const { data: dashStats } = useDashboardStats();
+  const newUserCount = dashStats?.todayNewUsers ?? 0;
+
+  // Client notifications that failed to reach their recipient.
+  const { data: notificationStats } = useNotificationStats();
+  const failedNotificationCount =
+    notificationStats?.byStatus?.find((r) => r.status === 'FAILED')?.count ?? 0;
+
+  // Platform-only queues. Fetched only for the role that can see them.
+  const { data: errorStats } = useSystemErrorStats({ enabled: superAdmin });
+  const openErrorCount = errorStats?.open ?? 0;
+
+  const { data: newsData } = useNewsList();
+  const draftNewsCount = superAdmin
+    ? (newsData?.articles ?? []).filter((a) => !a.isPublished).length
+    : 0;
+
+  const { data: brokersData } = useBrokersList();
+  const unconfiguredBrokerCount = superAdmin
+    ? (brokersData ?? []).filter((b) => b.isActive && !b.paymentConfigured).length
+    : 0;
+
+  const { data: treasuryData } = useTreasuryInvestments();
+  const maturedTreasuryCount = superAdmin
+    ? (treasuryData?.investments ?? []).filter((i) => new Date(i.maturityDate) <= new Date()
+        && i.status !== 'MATURED' && i.status !== 'SETTLED' && i.status !== 'CANCELLED').length
+    : 0;
+
   // Merge live badge counts into the static nav definition. Memoised so poll
   // ticks that return the same numbers don't rebuild the nav tree.
   const navWithBadges = useMemo(() => {
     const visible = brokerNav.filter((item) => !item.superAdminOnly || superAdmin);
+    const counts: Record<string, number> = {
+      'Users': newUserCount,
+      'KYC': pendingKycCount,
+      'Withdrawals': pendingWithdrawalCount,
+      'Support': awaitingSupportCount,
+      'Orders': awaitingOrderCount,
+      'Brokers': unconfiguredBrokerCount,
+      'System Errors': openErrorCount,
+      'News': draftNewsCount,
+      'Treasury': maturedTreasuryCount,
+      'Client Notifications': failedNotificationCount,
+    };
     return visible.map((item) => {
-      if (item.label === 'KYC') {
-        return { ...item, badge: pendingKycCount > 0 ? pendingKycCount : undefined };
-      }
-      if (item.label === 'Withdrawals') {
-        return { ...item, badge: pendingWithdrawalCount > 0 ? pendingWithdrawalCount : undefined };
-      }
-      if (item.label === 'Support') {
-        return { ...item, badge: awaitingSupportCount > 0 ? awaitingSupportCount : undefined };
-      }
-      return item;
+      const count = counts[item.label] ?? 0;
+      return count > 0 ? { ...item, badge: count } : item;
     });
-  }, [superAdmin, pendingKycCount, pendingWithdrawalCount, awaitingSupportCount]);
+  }, [
+    superAdmin, newUserCount, pendingKycCount, pendingWithdrawalCount, awaitingSupportCount,
+    awaitingOrderCount, unconfiguredBrokerCount, openErrorCount, draftNewsCount,
+    maturedTreasuryCount, failedNotificationCount,
+  ]);
 
   const isCollapsed = collapsed === true;
   return (
