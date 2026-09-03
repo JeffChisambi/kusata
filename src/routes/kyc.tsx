@@ -432,17 +432,19 @@ function KycStats({ counts }: { counts?: Record<string, number> }) {
         const Trend = s.up ? TrendingUp : TrendingDown;
         return (
           <div key={s.label} className="flex-1 min-w-[160px] rounded-[3px] bg-card border border-border p-4">
-            <div className="flex items-center justify-between">
-              <div className="w-9 h-9 flex items-center justify-center">
+            <div className="flex items-start justify-between gap-3">
+              <span className="w-9 h-9 shrink-0 flex items-center justify-center">
                 <Icon className="w-4 h-4 text-muted-foreground" />
-              </div>
-              <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${s.up ? "text-pine" : "text-amber"}`}>
+              </span>
+              {/* Neutral: these are captions, not alerts — the accent belongs
+                  to figures that genuinely need attention. */}
+              <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/60">
                 <Trend className="w-3 h-3" /> {s.trend}
               </span>
             </div>
             <div className="mt-3">
               <div className="text-xs text-muted-foreground">{s.label}</div>
-              <div className="text-2xl font-bold mt-0.5">{s.value}</div>
+              <div className="text-2xl font-bold leading-tight mt-0.5">{s.value}</div>
             </div>
           </div>
         );
