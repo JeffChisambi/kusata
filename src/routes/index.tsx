@@ -898,15 +898,13 @@ function SupportTickets() {
 function BrokerDashboard() {
   return (
     <>
-      <div className="pt-6" />
-
       {/* KPI row */}
       <KpiGrid />
 
       {/* Financial overview: client assets vs broker revenue vs payment costs */}
       <FinancialOverview />
 
-      {/* Charts — all driven by the topbar time range */}
+      {/* Charts — all driven by the dashboard time range */}
       <DashboardCharts />
 
       {/* KYC + withdrawals row */}

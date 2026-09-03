@@ -777,8 +777,6 @@ function SettingsPage() {
 
   return (
     <>
-      <div className="pt-6" />
-
       <div className="flex gap-6 items-start">
         {/* Sidebar nav */}
         <div className="w-48 shrink-0">
