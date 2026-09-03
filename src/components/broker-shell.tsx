@@ -16,7 +16,7 @@ import { usePendingWithdrawals } from "@/hooks/useWithdrawals";
 import { useSystemErrorStats } from "@/hooks/useSystemErrors";
 import { useNotificationDelivery } from "@/hooks/useNotificationDelivery";
 import {
-  ChevronDown, LogOut, Palette, CheckCircle2,
+  ChevronDown, LogOut, Sun, Moon, CheckCircle2,
 } from "lucide-react";
 
 type NavGroup = {
@@ -46,7 +46,7 @@ export const brokerNav: NavGroup[] = [
   { section: "PLATFORM", icon: AuditLogIcon, label: "Audit Log", href: "/audit", superAdminOnly: true },
   { section: "PLATFORM", icon: ErrorIcon, label: "System Errors", href: "/errors", superAdminOnly: true },
   { section: "PLATFORM", icon: NewsIcon, label: "News", href: "/news", superAdminOnly: true },
-  { section: "PLATFORM", icon: Palette, label: "Mobile Themes", href: "/mobile-themes", superAdminOnly: true },
+  { section: "PLATFORM", icon: ThemeIcon, label: "Mobile Themes", href: "/mobile-themes", superAdminOnly: true },
   { section: "PLATFORM", icon: SecuritiesIcon, label: "Treasury", href: "/treasury", superAdminOnly: true },
 
   // ── ACCOUNT ──
@@ -548,7 +548,7 @@ function ThemeToggle() {
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
       title={dark ? "Light mode" : "Dark mode"}
     >
-      <ThemeIcon className="w-4 h-4 text-muted-foreground" />
+      {dark ? <Sun className="w-4 h-4 text-muted-foreground" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
     </button>
   );
 }

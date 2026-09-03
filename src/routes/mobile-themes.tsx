@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Palette, Loader2, RotateCcw, Check, Smartphone } from "lucide-react";
+import { Loader2, RotateCcw, Check, Smartphone } from "lucide-react";
+import { ThemeIcon } from "@/components/pine-icons";
 import { Card } from "@/components/broker-shell";
 import { requireSuperAdmin } from "@/lib/auth";
 import {
@@ -83,7 +84,7 @@ function MobileThemesPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-[3px] bg-pine/10 text-pine flex items-center justify-center">
-          <Palette className="w-4.5 h-4.5" />
+          <ThemeIcon className="w-4.5 h-4.5" />
         </div>
         <div className="flex-1">
           <h1 className="text-lg font-semibold">Mobile Themes</h1>
