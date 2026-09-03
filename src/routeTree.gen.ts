@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WithdrawalsRouteImport } from './routes/withdrawals'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as TreasuryRouteImport } from './routes/treasury'
 import { Route as SupportRouteImport } from './routes/support'
@@ -32,6 +33,11 @@ import { Route as OrdersOrderIdRouteImport } from './routes/orders.$orderId'
 import { Route as KycApplicationIdRouteImport } from './routes/kyc_.$applicationId'
 import { Route as BrokersBrokerIdRouteImport } from './routes/brokers_.$brokerId'
 
+const WithdrawalsRoute = WithdrawalsRouteImport.update({
+  id: '/withdrawals',
+  path: '/withdrawals',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -160,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/support': typeof SupportRoute
   '/treasury': typeof TreasuryRoute
   '/users': typeof UsersRoute
+  '/withdrawals': typeof WithdrawalsRoute
   '/brokers/$brokerId': typeof BrokersBrokerIdRoute
   '/kyc/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
@@ -183,6 +190,7 @@ export interface FileRoutesByTo {
   '/support': typeof SupportRoute
   '/treasury': typeof TreasuryRoute
   '/users': typeof UsersRoute
+  '/withdrawals': typeof WithdrawalsRoute
   '/brokers/$brokerId': typeof BrokersBrokerIdRoute
   '/kyc/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
@@ -208,6 +216,7 @@ export interface FileRoutesById {
   '/support': typeof SupportRoute
   '/treasury': typeof TreasuryRoute
   '/users': typeof UsersRoute
+  '/withdrawals': typeof WithdrawalsRoute
   '/brokers_/$brokerId': typeof BrokersBrokerIdRoute
   '/kyc_/$applicationId': typeof KycApplicationIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
@@ -234,6 +243,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/treasury'
     | '/users'
+    | '/withdrawals'
     | '/brokers/$brokerId'
     | '/kyc/$applicationId'
     | '/orders/$orderId'
@@ -257,6 +267,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/treasury'
     | '/users'
+    | '/withdrawals'
     | '/brokers/$brokerId'
     | '/kyc/$applicationId'
     | '/orders/$orderId'
@@ -281,6 +292,7 @@ export interface FileRouteTypes {
     | '/support'
     | '/treasury'
     | '/users'
+    | '/withdrawals'
     | '/brokers_/$brokerId'
     | '/kyc_/$applicationId'
     | '/orders/$orderId'
@@ -306,6 +318,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   TreasuryRoute: typeof TreasuryRoute
   UsersRoute: typeof UsersRoute
+  WithdrawalsRoute: typeof WithdrawalsRoute
   BrokersBrokerIdRoute: typeof BrokersBrokerIdRoute
   KycApplicationIdRoute: typeof KycApplicationIdRoute
   SupportTicketIdRoute: typeof SupportTicketIdRoute
@@ -314,6 +327,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/withdrawals': {
+      id: '/withdrawals'
+      path: '/withdrawals'
+      fullPath: '/withdrawals'
+      preLoaderRoute: typeof WithdrawalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/users': {
       id: '/users'
       path: '/users'
@@ -501,6 +521,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   TreasuryRoute: TreasuryRoute,
   UsersRoute: UsersRoute,
+  WithdrawalsRoute: WithdrawalsRoute,
   BrokersBrokerIdRoute: BrokersBrokerIdRoute,
   KycApplicationIdRoute: KycApplicationIdRoute,
   SupportTicketIdRoute: SupportTicketIdRoute,

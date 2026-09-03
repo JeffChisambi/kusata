@@ -53,7 +53,7 @@ export function useNotificationDelivery() {
         key: `withdrawal:${w.transactionId}`,
         title: "Withdrawal awaiting approval",
         body: `${w.user.name} requested MK ${w.amount.toLocaleString()}.`,
-        to: "/",
+        to: "/withdrawals",
       })),
     ];
 

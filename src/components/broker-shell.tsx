@@ -11,12 +11,11 @@ import {
 import { Link, useNavigate, useLocation, useElementScrollRestoration } from "@tanstack/react-router";
 import { useCurrentUser, logout, isSuperAdmin } from "@/lib/auth";
 import { useKycQueue } from "@/hooks/useKyc";
-import { useUnreadSupportCount, useSupportStats } from "@/hooks/useSupport";
+import { useUnreadSupportCount } from "@/hooks/useSupport";
 import { usePendingWithdrawals } from "@/hooks/useWithdrawals";
-import { useSystemErrorStats } from "@/hooks/useSystemErrors";
 import { useNotificationDelivery } from "@/hooks/useNotificationDelivery";
 import {
-  ChevronDown, LogOut, Sun, Moon, CheckCircle2,
+  ChevronDown, LogOut, Sun, Moon,
 } from "lucide-react";
 
 type NavGroup = {
@@ -36,6 +35,7 @@ export const brokerNav: NavGroup[] = [
   // ── CLIENTS ──
   { section: "CLIENTS", icon: UsersIcon, label: "Users", href: "/users" },
   { section: "CLIENTS", icon: KycIcon, label: "KYC", href: "/kyc" },
+  { section: "CLIENTS", icon: CashIcon, label: "Withdrawals", href: "/withdrawals" },
   { section: "CLIENTS", icon: SupportIcon, label: "Support", href: "/support" },
 
   // ── TRADING ──
@@ -150,6 +150,7 @@ const STATIC_TITLES: Record<string, string> = {
   "/": "Broker Overview",
   "/users": "User Management",
   "/kyc": "KYC",
+  "/withdrawals": "Withdrawals",
   "/orders": "Orders",
   "/settings": "Settings",
   "/notifications": "Client Notifications",
@@ -278,6 +279,10 @@ function BrokerSidebar({
   const { data: kycData } = useKycQueue({ status: 'PENDING', limit: 1 });
   const pendingKycCount = kycData?.count ?? 0;
 
+  // Live count of withdrawals awaiting the broker's decision.
+  const { data: withdrawalData } = usePendingWithdrawals();
+  const pendingWithdrawalCount = withdrawalData?.withdrawals?.length ?? 0;
+
   // Live count of support tickets awaiting a staff reply.
   const awaitingSupportCount = useUnreadSupportCount();
 
@@ -294,12 +299,15 @@ function BrokerSidebar({
       if (item.label === 'KYC') {
         return { ...item, badge: pendingKycCount > 0 ? pendingKycCount : undefined };
       }
+      if (item.label === 'Withdrawals') {
+        return { ...item, badge: pendingWithdrawalCount > 0 ? pendingWithdrawalCount : undefined };
+      }
       if (item.label === 'Support') {
         return { ...item, badge: awaitingSupportCount > 0 ? awaitingSupportCount : undefined };
       }
       return item;
     });
-  }, [superAdmin, pendingKycCount, awaitingSupportCount]);
+  }, [superAdmin, pendingKycCount, pendingWithdrawalCount, awaitingSupportCount]);
 
   const isCollapsed = collapsed === true;
   return (
@@ -361,9 +369,9 @@ function BrokerSidebar({
         })}
       </nav>
 
-      {/* Utilities — moved off the old top bar. */}
-      <div className={`shrink-0 border-t border-sidebar-border p-3 flex items-center gap-2 ${isCollapsed ? "flex-col" : ""}`}>
-        <WorkQueueBell />
+      {/* Utilities. The work queue moved to the overview's activity drawer;
+          only the theme toggle lives here now. */}
+      <div className="shrink-0 border-t border-sidebar-border p-3 flex items-center">
         <ThemeToggle />
       </div>
 
@@ -550,149 +558,6 @@ function ThemeToggle() {
     >
       {dark ? <Sun className="w-4 h-4 text-muted-foreground" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
     </button>
-  );
-}
-
-// ─── Work queue bell ──────────────────────────────────────────────────────────
-// The badge counts what THIS ADMIN has to act on — never investors' unread
-// notifications (those belong to the clients' own inboxes and mean nothing
-// here). Everything is assembled from hooks the dashboard already polls, so
-// the popover costs no extra requests.
-
-type QueueItem = {
-  key: string;
-  label: string;
-  detail: string;
-  count: number;
-  to: string;
-  icon: React.ComponentType<{ className?: string }>;
-};
-
-function WorkQueueBell() {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const superAdmin = isSuperAdmin(useCurrentUser());
-
-  const { data: kyc } = useKycQueue({ status: "PENDING", limit: 1 });
-  const { data: withdrawals } = usePendingWithdrawals();
-  const { data: support } = useSupportStats();
-  // Platform-only endpoint — never fire it for broker admins (403).
-  const { data: errors } = useSystemErrorStats({ enabled: superAdmin });
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  const items = useMemo<QueueItem[]>(() => {
-    const openTickets = support?.open ?? 0;
-    const list: QueueItem[] = [
-      {
-        key: "kyc",
-        label: "KYC applications",
-        detail: "waiting for review",
-        count: kyc?.count ?? 0,
-        to: "/kyc",
-        icon: KycIcon,
-      },
-      {
-        key: "withdrawals",
-        label: "Withdrawal requests",
-        detail: "waiting for approval",
-        count: withdrawals?.withdrawals?.length ?? 0,
-        to: "/",
-        icon: CashIcon,
-      },
-      {
-        key: "support",
-        label: "Support tickets",
-        detail: openTickets > 0 ? `awaiting your reply · ${openTickets} open` : "awaiting your reply",
-        count: support?.awaitingAdmin ?? 0,
-        to: "/support",
-        icon: SupportIcon,
-      },
-    ];
-    if (superAdmin) {
-      list.push({
-        key: "errors",
-        label: "System errors",
-        detail: "still open",
-        count: errors?.open ?? 0,
-        to: "/errors",
-        icon: ErrorIcon,
-      });
-    }
-    return list;
-  }, [kyc?.count, withdrawals?.withdrawals?.length, support?.awaitingAdmin, support?.open, errors?.open, superAdmin]);
-
-  const total = items.reduce((sum, i) => sum + i.count, 0);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className={`w-9 h-9 rounded-[4px] flex items-center justify-center relative transition-colors ${
-          open ? "text-pine bg-muted/60" : "hover:bg-muted/60"
-        }`}
-        aria-label={total > 0 ? `Work queue — ${total} item${total === 1 ? "" : "s"}` : "Work queue"}
-        aria-expanded={open}
-      >
-        <NotificationsIcon className={`w-4 h-4 ${open ? "text-pine" : "text-muted-foreground"}`} />
-        {total > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-white text-[10px] font-bold flex items-center justify-center leading-none">
-            {total > 99 ? "99+" : total}
-          </span>
-        )}
-      </button>
-
-      {open && (
-        <div className="absolute left-0 bottom-full mb-1.5 z-50 w-[19rem] bg-card border border-border rounded-[4px] shadow-xl overflow-hidden">
-          <div className="px-3.5 pt-3 pb-2 flex items-center justify-between">
-            <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">NEEDS YOUR ATTENTION</span>
-            {total > 0 && (
-              <span className="text-[10px] font-semibold text-muted-foreground">{total}</span>
-            )}
-          </div>
-          {total === 0 ? (
-            <div className="px-3.5 pb-5 pt-2 text-center">
-              <CheckCircle2 className="w-7 h-7 text-pine mx-auto mb-2" />
-              <p className="text-[13px] font-medium">Nothing needs your attention</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Every queue is clear right now.
-              </p>
-            </div>
-          ) : (
-            <ul className="pb-1.5">
-              {items.filter((i) => i.count > 0).map((item) => {
-                const Icon = item.icon;
-                return (
-                  <li key={item.key}>
-                    <Link
-                      to={item.to}
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-muted transition-colors"
-                    >
-                      <span className="w-7 h-7 shrink-0 rounded-[3px] bg-muted flex items-center justify-center">
-                        <Icon className="w-3.5 h-3.5 text-muted-foreground" />
-                      </span>
-                      <span className="flex-1 min-w-0">
-                        <span className="block text-[13px] font-medium text-foreground truncate">{item.label}</span>
-                        <span className="block text-[11px] text-muted-foreground truncate">{item.detail}</span>
-                      </span>
-                      <span className="text-[11px] font-bold text-foreground tabular-nums shrink-0">{item.count}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      )}
-    </div>
   );
 }
 
