@@ -270,7 +270,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         <div
           ref={scrollRef}
           data-scroll-restoration-id="dashboard-scroll"
-          className="flex-1 min-h-0 overflow-y-auto px-8 pt-6 pb-10 scrollbar-thin-gray"
+          className="flex-1 min-h-0 overflow-y-auto px-8 pt-4 pb-10 scrollbar-thin-gray"
         >
           <div className="space-y-6 animate-in fade-in duration-150 ease-out">
             {children}

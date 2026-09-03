@@ -116,10 +116,19 @@ function OrderTable({ orders }: { orders: Order[] }) {
   const superAdmin = isSuperAdmin(useCurrentUser());
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[700px] text-[13px]">
+      <table className="w-full min-w-[700px] table-fixed text-[13px]">
+        {/* Fixed shares so the columns space evenly instead of collapsing
+            left and leaving the right half of the card blank. */}
+        <colgroup>
+          <col className="w-[26%]" />
+          <col className="w-[24%]" />
+          <col className="w-[13%]" />
+          <col className="w-[20%]" />
+          <col className="w-[17%]" />
+        </colgroup>
         <thead>
           <tr className="border-b border-border">
-            {["Client", "Side / security", "Quantity", "Limit", "Status", ""].map((heading) => (
+            {["Client", "Side / security", "Quantity", "Limit", "Status"].map((heading) => (
               <th
                 key={heading}
                 className="px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground first:pl-4 last:pr-4"
@@ -132,7 +141,7 @@ function OrderTable({ orders }: { orders: Order[] }) {
         <tbody>
           {orders.length === 0 ? (
             <tr>
-              <td colSpan={6} className="px-4 py-14 text-center text-sm text-muted-foreground">
+              <td colSpan={5} className="px-4 py-14 text-center text-sm text-muted-foreground">
                 No orders match this view.
               </td>
             </tr>
@@ -143,7 +152,7 @@ function OrderTable({ orders }: { orders: Order[] }) {
                 onClick={() => navigate({ to: "/orders/$orderId", params: { orderId: order.id } })}
                 className="cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-muted/30"
               >
-                <td className="max-w-[150px] px-3 py-3.5 first:pl-4">
+                <td className="px-3 py-3.5 first:pl-4">
                   <div className="truncate font-medium">{order.client}</div>
                   <div className="mt-1 truncate text-[11px] text-muted-foreground font-mono">{order.id.slice(0, 8)}</div>
                   {superAdmin && order.brokerName && (
@@ -174,10 +183,10 @@ function OrderTable({ orders }: { orders: Order[] }) {
                       : `${fmtMoney(order.value)} est.`}
                   </div>
                 </td>
-                <td className="px-3 py-3.5">
+                <td className="px-3 py-3.5 last:pr-4">
                   {/* One status only. "Ready" and "Awaiting execution" side by side
                       read as two different states of the same order. */}
-                  <StatusPill status={order.status} label={order.backendStatus === "SUBMITTED" ? "Awaiting execution" : undefined} />
+                  <StatusPill status={order.status} label={order.backendStatus === "SUBMITTED" ? "Awaiting" : undefined} />
                 </td>
               </tr>
             ))
