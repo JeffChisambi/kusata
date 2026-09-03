@@ -103,7 +103,7 @@ function BrokersPage() {
   const totalUsers = list.reduce((sum, b) => sum + (b.userCount ?? 0), 0);
 
   return (
-    <div className="pt-6 space-y-5">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-[3px] bg-pine/10 text-pine flex items-center justify-center">

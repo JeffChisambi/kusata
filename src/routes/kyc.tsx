@@ -428,7 +428,7 @@ function KycStats({ counts }: { counts?: Record<string, number> }) {
   ] as const;
 
   return (
-    <div className="flex flex-wrap gap-4 pt-6">
+    <div className="flex flex-wrap gap-4">
       {stats.map((s) => {
         const Icon = s.icon;
         const Trend = s.up ? TrendingUp : TrendingDown;

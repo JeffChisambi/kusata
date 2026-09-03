@@ -181,7 +181,7 @@ function NotificationsPage() {
 
   return (
     <>
-      <div className="pt-6 space-y-5">
+      <div className="space-y-5">
 
         {/* Framing — these are the CLIENTS' messages, not the broker's inbox. */}
         <div className="flex items-start gap-3">

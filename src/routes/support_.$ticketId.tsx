@@ -69,7 +69,7 @@ function TicketThreadPage() {
   }
 
   return (
-    <div className="pt-6 space-y-4 max-w-4xl">
+    <div className="space-y-4 max-w-4xl">
       {/* Back + header */}
       <button onClick={() => navigate({ to: "/support" })} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="w-4 h-4" /> Support

@@ -217,7 +217,7 @@ function UserStats({ matching }: { matching?: number }) {
   ] as const;
 
   return (
-    <div className="flex gap-4 pt-6">
+    <div className="flex gap-4">
       {items.map((it) => {
         const Icon = it.icon;
         const tone = "tone" in it && it.tone === "amber" ? "text-amber" : "text-muted-foreground";

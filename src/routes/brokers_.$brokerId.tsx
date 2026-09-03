@@ -54,7 +54,7 @@ function BrokerDetailPage() {
   // list doesn't blank the page.
   if (isLoading) {
     return (
-      <div className="pt-6 space-y-5">
+      <div className="space-y-5">
         <Breadcrumb items={[{ label: "Brokers", to: "/brokers" }, { label: "Broker" }]} />
         <Card>
           <div className="flex items-center gap-4 animate-pulse">
@@ -71,7 +71,7 @@ function BrokerDetailPage() {
   }
   if (isError || !broker) {
     return (
-      <div className="pt-6">
+      <div>
         <Breadcrumb items={[{ label: "Brokers", to: "/brokers" }, { label: "Broker" }]} />
         <Card>
           <div className="py-16 text-center text-sm text-rose flex flex-col items-center gap-2">
@@ -91,7 +91,7 @@ function BrokerDetailPage() {
   ];
 
   return (
-    <div className="pt-6 space-y-5">
+    <div className="space-y-5">
       <Breadcrumb items={[{ label: "Brokers", to: "/brokers" }, { label: broker.name }]} />
 
       <HeaderCard broker={broker} onFlash={flash} />

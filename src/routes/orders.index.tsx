@@ -92,7 +92,7 @@ function KpiStrip({ orders, total }: { orders: Order[]; total: number }) {
     { label: "Total orders", value: total, detail: "across all pages", icon: ClipboardList },
   ];
   return (
-    <div className="grid grid-cols-2 gap-3 pt-6 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
       {kpis.map((kpi) => {
         const Icon = kpi.icon;
         return (
