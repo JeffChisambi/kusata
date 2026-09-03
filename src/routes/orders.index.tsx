@@ -50,7 +50,7 @@ function statusLabel(status: DisplayStatus) {
   }
 }
 
-function StatusPill({ status }: { status: DisplayStatus }) {
+function StatusPill({ status, label }: { status: DisplayStatus; label?: string }) {
   const Icon =
     status === "READY"
       ? Clock3
@@ -62,7 +62,7 @@ function StatusPill({ status }: { status: DisplayStatus }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">
       <Icon className="h-3.5 w-3.5" />
-      {statusLabel(status)}
+      {label ?? statusLabel(status)}
     </span>
   );
 }
@@ -175,14 +175,9 @@ function OrderTable({ orders }: { orders: Order[] }) {
                   </div>
                 </td>
                 <td className="px-3 py-3.5">
-                  <div className="flex items-center gap-2">
-                    <StatusPill status={order.status} />
-                    {order.backendStatus === "SUBMITTED" && (
-                      <span className="inline-flex items-center rounded-full bg-pine/10 px-2 py-0.5 text-[10px] font-semibold text-pine">
-                        Awaiting execution
-                      </span>
-                    )}
-                  </div>
+                  {/* One status only. "Ready" and "Awaiting execution" side by side
+                      read as two different states of the same order. */}
+                  <StatusPill status={order.status} label={order.backendStatus === "SUBMITTED" ? "Awaiting execution" : undefined} />
                 </td>
               </tr>
             ))

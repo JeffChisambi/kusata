@@ -2,8 +2,8 @@ import { createFileRoute, useSearch, useNavigate } from "@tanstack/react-router"
 import { useMemo, useState, useEffect, useRef } from "react";
 import { z } from "zod";
 import {
-  Search, Download, MoreHorizontal, Mail, Clock, Users, UserCheck, Filter,
-  Ban, Snowflake, Eye, ChevronDown, RefreshCw, Loader2, X, AlertTriangle,
+  Search, Download, Mail, Clock, Users, UserCheck, Filter,
+  Ban, Snowflake, ChevronDown, RefreshCw, Loader2, X, AlertTriangle,
 } from "lucide-react";
 import { Card } from "@/components/broker-shell";
 import { useUsersList, useUpdateUserStatus, useNotifyUser } from "@/hooks/useUsers";
@@ -449,7 +449,6 @@ function UsersTable({
             <th className="py-2.5 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground" title="Market value of stock holdings at the latest close">Portfolio</th>
             <th className="py-2.5 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground" title="Uninvested wallet cash held for the client">Cash</th>
             <th className="py-2.5 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground" title="Total assets = cash + portfolio market value">Total</th>
-            <th className="pr-5 py-2.5"></th>
           </tr>
         </thead>
         <tbody>
@@ -463,7 +462,6 @@ function UsersTable({
                 <td className="py-3"><div className="ml-auto w-20 h-3 rounded bg-muted" /></td>
                 <td className="py-3"><div className="ml-auto w-20 h-3 rounded bg-muted" /></td>
                 <td className="py-3"><div className="ml-auto w-20 h-3 rounded bg-muted" /></td>
-                <td className="pr-5 py-3"><div className="ml-auto w-6 h-6 rounded bg-muted" /></td>
               </tr>
             ))
           ) : rows.map((r) => (
@@ -495,13 +493,10 @@ function UsersTable({
               <td className="py-3 text-right font-mono cursor-help" title={MWKexact(r.portfolio)}>MWK {MWK(r.portfolio)}</td>
               <td className="py-3 text-right font-mono text-muted-foreground cursor-help" title={MWKexact(r.cash)}>MWK {MWK(r.cash)}</td>
               <td className="py-3 text-right font-mono font-medium cursor-help" title={MWKexact(r.aum)}>MWK {MWK(r.aum)}</td>
-              <td className="pr-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                <RowMenu onViewMore={() => onOpen(r)} />
-              </td>
             </tr>
           ))}
           {!loading && rows.length === 0 && (
-            <tr><td colSpan={8} className="py-16 text-center text-sm text-muted-foreground">No users match these filters.</td></tr>
+            <tr><td colSpan={7} className="py-16 text-center text-sm text-muted-foreground">No users match these filters.</td></tr>
           )}
         </tbody>
       </table>
@@ -522,13 +517,13 @@ function Avatar({ name }: { name: string }) {
 
 function StatusBadge({ status }: { status: Status }) {
   const map: Record<Status, { cls: string; label: string; dot: string }> = {
-    active: { cls: "bg-pine/10 text-pine", label: "Active", dot: "bg-pine" },
-    frozen: { cls: "bg-amber/10 text-amber", label: "Frozen", dot: "bg-amber" },
-    suspended: { cls: "bg-rose/10 text-rose", label: "Suspended", dot: "bg-rose" },
+    active: { cls: "text-pine", label: "Active", dot: "bg-pine" },
+    frozen: { cls: "text-amber", label: "Frozen", dot: "bg-amber" },
+    suspended: { cls: "text-rose", label: "Suspended", dot: "bg-rose" },
   };
   const m = map[status];
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full ${m.cls}`}>
+    <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium ${m.cls}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} /> {m.label}
     </span>
   );
@@ -536,11 +531,11 @@ function StatusBadge({ status }: { status: Status }) {
 
 function KycBadge({ kyc }: { kyc: Kyc }) {
   const map: Record<Kyc, { cls: string; label: string }> = {
-    verified: { cls: "bg-pine/10 text-pine", label: "Verified" },
-    pending: { cls: "bg-amber/10 text-amber", label: "Pending" },
-    rejected: { cls: "bg-rose/10 text-rose", label: "Rejected" },
+    verified: { cls: "text-pine", label: "Verified" },
+    pending: { cls: "text-amber", label: "Pending" },
+    rejected: { cls: "text-rose", label: "Rejected" },
   };
-  return <span className={`text-[11px] font-medium px-2 py-0.5 rounded ${map[kyc].cls}`}>{map[kyc].label}</span>;
+  return <span className={`text-[11px] font-medium ${map[kyc].cls}`}>{map[kyc].label}</span>;
 }
 
 /* -------------------- pagination -------------------- */
@@ -614,44 +609,6 @@ function Pagination({ page, totalPages, onPageChange }: {
       >
         Next
       </button>
-    </div>
-  );
-}
-
-/* -------------------- row context menu -------------------- */
-
-function RowMenu({ onViewMore }: { onViewMore: () => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative inline-block">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="w-8 h-8 rounded-md hover:bg-muted/60 inline-flex items-center justify-center"
-        aria-label="Row actions"
-      >
-        <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1.5 z-50 w-40 rounded-[3px] border border-border bg-card shadow-lg py-1 overflow-hidden">
-          <button
-            onClick={() => { onViewMore(); setOpen(false); }}
-            className="w-full text-left px-3.5 py-2 text-sm text-foreground hover:bg-muted/60 flex items-center gap-2.5 transition-colors"
-          >
-            <Eye className="w-3.5 h-3.5 text-muted-foreground" /> View more
-          </button>
-        </div>
-      )}
     </div>
   );
 }
