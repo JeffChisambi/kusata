@@ -131,7 +131,7 @@ function OrderTable({ orders }: { orders: Order[] }) {
             {["Client", "Side / security", "Quantity", "Limit", "Status"].map((heading) => (
               <th
                 key={heading}
-                className="px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground first:pl-4 last:pr-4"
+                className="px-3 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground first:pl-4 last:pr-4 last:text-right text-left"
               >
                 {heading}
               </th>
@@ -183,7 +183,7 @@ function OrderTable({ orders }: { orders: Order[] }) {
                       : `${fmtMoney(order.value)} est.`}
                   </div>
                 </td>
-                <td className="px-3 py-3.5 last:pr-4">
+                <td className="px-3 py-3.5 pr-4 text-right">
                   {/* One status only. "Ready" and "Awaiting execution" side by side
                       read as two different states of the same order. */}
                   <StatusPill status={order.status} label={order.backendStatus === "SUBMITTED" ? "Awaiting" : undefined} />
