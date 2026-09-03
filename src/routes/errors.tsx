@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { requireSuperAdmin } from "@/lib/auth";
-import { useDashboardRange } from "@/components/broker-shell";
 import {
   useSystemErrors, useSystemErrorStats, systemErrorKeys,
   type SystemErrorEvent as ErrorEvent,
@@ -50,12 +49,9 @@ function ErrorsPage() {
   const [status, setStatus] = useState<string>("OPEN");
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<string | null>(null);
-  // The topbar time range scopes the list to errors still occurring in the
-  // window (matched on lastSeenAt server-side).
-  const { days, dateFrom } = useDashboardRange();
-
-  // Any filter change — including the time range — starts back at the first page.
-  useEffect(() => { setPage(1); }, [source, severity, status, dateFrom]);
+  // No date window — an error that first appeared last month but is still
+  // open is exactly the one an operator must not lose sight of.
+  useEffect(() => { setPage(1); }, [source, severity, status]);
 
   const statsQ = useSystemErrorStats();
 
@@ -63,7 +59,6 @@ function ErrorsPage() {
     source: source || undefined,
     severity: severity || undefined,
     status: status || undefined,
-    dateFrom,
     page,
     limit: PAGE_SIZE,
   });
@@ -87,8 +82,8 @@ function ErrorsPage() {
     <div className="max-w-[1200px] mx-auto">
       <p className="text-xs text-muted-foreground mb-4">
         Errors captured from every surface — mobile app, dashboards, and the backend — deduplicated and ranked
-        by priority, so issues are visible before anyone reports them. Showing the last {days} days; the
-        severity counts above are open errors across all time.
+        by priority, so issues are visible before anyone reports them. Everything still on the books is
+        listed, however long ago it first appeared.
       </p>
 
       {/* Severity stat cards */}
@@ -144,7 +139,7 @@ function ErrorsPage() {
         <div className="rounded-[6px] border border-border bg-card px-4 py-14 text-center">
           <CheckCircle2 className="w-8 h-8 text-pine mx-auto mb-3" />
           <div className="text-sm font-medium">No {status === "OPEN" ? "open " : ""}errors</div>
-          <div className="text-xs text-muted-foreground mt-1">All quiet across the platform in the last {days} days.</div>
+          <div className="text-xs text-muted-foreground mt-1">All quiet across the platform.</div>
         </div>
       ) : (
         <div className="rounded-[6px] border border-border bg-card divide-y divide-border">

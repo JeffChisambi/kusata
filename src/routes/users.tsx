@@ -2,7 +2,7 @@ import { createFileRoute, useSearch, useNavigate } from "@tanstack/react-router"
 import { useMemo, useState, useEffect, useRef } from "react";
 import { z } from "zod";
 import {
-  Search, Download, Mail, Clock, Users, UserCheck, Filter,
+  Search, Download, Mail, Clock, Users, UserCheck,
   Ban, Snowflake, ChevronDown, RefreshCw, Loader2, X, AlertTriangle,
 } from "lucide-react";
 import { Card } from "@/components/broker-shell";
@@ -165,7 +165,7 @@ function UsersPage() {
         }`}>{toast.msg}</div>
       )}
 
-      <UserStats matching={apiData ? total : undefined} />
+      <UserStats />
 
       <Card>
         <Toolbar
@@ -202,7 +202,7 @@ function UsersPage() {
 
 /* -------------------- pieces -------------------- */
 
-function UserStats({ matching }: { matching?: number }) {
+function UserStats() {
   const { data: stats, isLoading } = useDashboardStats();
   const totalUsers = stats?.totalUsers ?? 0;
   const active = stats?.activeUsers ?? 0;
@@ -213,7 +213,6 @@ function UserStats({ matching }: { matching?: number }) {
     { icon: Users, label: "Total users", value: fmt(totalUsers), sub: "registered accounts" },
     { icon: UserCheck, label: "Active", value: fmt(active), sub: totalUsers ? `${Math.round((active / totalUsers) * 100)}% of total` : "—" },
     { icon: Clock, label: "Pending KYC", value: fmt(pending), sub: pending > 0 ? "Awaiting review" : "None pending", tone: pending > 0 ? "amber" : "default" },
-    { icon: Filter, label: "Matching filters", value: matching == null ? "—" : matching.toLocaleString(), sub: "in the current view" },
   ] as const;
 
   return (

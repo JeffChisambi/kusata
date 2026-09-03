@@ -5,7 +5,7 @@ import {
   Smartphone, Mail, MessageSquare, Megaphone, Plus,
   XCircle, Loader2, ChevronLeft, ChevronRight, Inbox,
 } from "lucide-react";
-import { Card, useDashboardRange } from "@/components/broker-shell";
+import { Card } from "@/components/broker-shell";
 import {
   useNotificationsList, useBroadcastNotification,
   type NotificationRow,
@@ -140,8 +140,6 @@ function mapDelivery(n: NotificationRow): Delivery {
 /* ─────────────────────────── page ─────────────────────────── */
 
 function NotificationsPage() {
-  const { days, dateFrom } = useDashboardRange();
-
   const [compose, setCompose] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [channel, setChannel] = useState<string>("");
@@ -149,13 +147,12 @@ function NotificationsPage() {
   const [categoryTab, setCategoryTab] = useState<"all" | "broker" | "system">("all");
   const [page, setPage] = useState(1);
 
-  // Any filter — including the topbar time range — starts back at page 1.
-  useEffect(() => { setPage(1); }, [status, channel, categoryTab, dateFrom]);
+  // Any filter change starts back at page 1.
+  useEffect(() => { setPage(1); }, [status, channel, categoryTab]);
 
   const { data, isLoading, isFetching } = useNotificationsList({
     status: status || undefined,
     channel: channel || undefined,
-    dateFrom,
     page,
     limit: PAGE_SIZE,
   });
@@ -202,7 +199,7 @@ function NotificationsPage() {
 
         {/* Summary strip */}
         <div className="grid grid-cols-3 gap-4">
-          <SummaryCard icon={Send} label="Messages sent" value={total} sub={`last ${days} days`} />
+          <SummaryCard icon={Send} label="Messages sent" value={total} sub="all time" />
           <SummaryCard icon={CheckCircle2} label="Reached the client" value={delivered} sub="on this page" />
           <SummaryCard icon={AlertTriangle} label="Failed" value={failed} sub="on this page" accent={failed > 0} />
         </div>
@@ -210,7 +207,7 @@ function NotificationsPage() {
         {/* Delivery log */}
         <Card
           title="Delivery log"
-          subtitle={`Newest first · last ${days} days`}
+          subtitle="Newest first"
           action={
             <button
               onClick={() => setCompose(true)}
@@ -276,9 +273,9 @@ function NotificationsPage() {
           ) : visible.length === 0 ? (
             <div className="py-16 text-center">
               <Inbox className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-sm font-medium">Nothing sent in this window</p>
+              <p className="text-sm font-medium">Nothing sent yet</p>
               <p className="text-xs text-muted-foreground mt-1">
-                No client notifications match these filters over the last {days} days.
+                No client notifications match these filters.
               </p>
             </div>
           ) : (

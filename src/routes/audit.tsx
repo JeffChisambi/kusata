@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ScrollText, Loader2, AlertTriangle, Search, ChevronLeft, ChevronRight, X,
 } from "lucide-react";
-import { Card, useDashboardRange } from "@/components/broker-shell";
+import { Card } from "@/components/broker-shell";
 import { requireSuperAdmin } from "@/lib/auth";
 import { useAuditLogs, type AuditLogEntry } from "@/hooks/useAudit";
 
@@ -22,9 +22,8 @@ function fmtTime(iso: string) {
 }
 
 function AuditLogPage() {
-  // The topbar time range is the default window; the explicit From/To inputs
-  // below override it when the reviewer needs a specific period.
-  const { days, dateFrom: rangeFrom } = useDashboardRange();
+  // No default window — the explicit From/To inputs below are the only date
+  // filter, so the log always opens on the most recent activity.
 
   // Draft inputs vs applied filters — the query only refires on Apply/Enter.
   const [actionDraft, setActionDraft] = useState("");
@@ -35,13 +34,10 @@ function AuditLogPage() {
   const [page, setPage] = useState(1);
 
   const filters = useMemo(
-    () => ({ ...applied, dateFrom: applied.dateFrom ?? rangeFrom, page, limit: PAGE_SIZE }),
-    [applied, rangeFrom, page],
+    () => ({ ...applied, page, limit: PAGE_SIZE }),
+    [applied, page],
   );
   const { data, isLoading, isError, isFetching } = useAuditLogs(filters);
-
-  // Changing the topbar range restarts at the first page.
-  useEffect(() => { setPage(1); }, [rangeFrom]);
 
   const apply = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -75,7 +71,7 @@ function AuditLogPage() {
           <h1 className="text-lg font-semibold">Audit Log</h1>
           <p className="text-xs text-muted-foreground">
             Every administrative action recorded for compliance and review
-            {applied.dateFrom ? "." : ` — last ${days} days unless a date is set below.`}
+            {applied.dateFrom ? "." : " — newest first, filter by date below."}
           </p>
         </div>
         {isFetching && !isLoading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
@@ -148,7 +144,7 @@ function AuditLogPage() {
           <div className="py-20 text-center">
             <ScrollText className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">
-            No audit entries{hasFilters ? " match these filters" : ` in the last ${days} days`}.
+            No audit entries{hasFilters ? " match these filters" : " recorded yet"}.
           </p>
           </div>
         ) : (
