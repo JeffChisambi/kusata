@@ -205,47 +205,38 @@ function KpiGrid() {
 
 function FinancialOverview() {
   const { data: fin, isLoading } = useDashboardFinancials();
+  const superAdmin = isSuperAdmin(useCurrentUser());
   // Abbreviated on screen; the exact unrounded figure appears on hover.
   const money = (n?: number) => (isLoading || n == null ? <>—</> : <Money value={n} />);
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-      {/* Client Assets — client money the broker administers */}
+    <div className={`grid grid-cols-1 gap-5 ${superAdmin ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}>
+      {/* Client Portfolio — holdings only. Uninvested cash is not a portfolio:
+          counting it here made a fresh deposit look like investment growth.
+          The Client Cash KPI above still reports the wallet side. */}
       <Card
-        title="Client Assets"
-        subtitle="Money you hold and administer for clients"
-        className="xl:col-span-1"
+        title="Client Portfolio"
+        subtitle="Market value of the shares your clients hold"
       >
         <div className="space-y-3">
           <div
             className="flex items-baseline justify-between"
-            title="Sum of all investors' uninvested wallet balances. Cash only — excludes stock positions."
+            title="Market value of every client stock holding at the latest close. Cash is excluded — see the Client Cash card above."
           >
-            <span className="text-xs text-muted-foreground">Client Cash</span>
-            <span className="text-sm font-bold font-mono">{money(fin?.clientAssets?.clientCash)}</span>
-          </div>
-          <div
-            className="flex items-baseline justify-between"
-            title="Market value of all client stock holdings at the latest close. Not cash."
-          >
-            <span className="text-xs text-muted-foreground">Portfolio Value</span>
-            <span className="text-sm font-bold font-mono">{money(fin?.clientAssets?.portfolioValue)}</span>
-          </div>
-          <div
-            className="flex items-baseline justify-between pt-2.5 border-t border-border"
-            title="Client Cash + Portfolio Value. Assets under administration — still client money."
-          >
-            <span className="text-xs font-medium text-foreground">Total Investor Assets</span>
+            <span className="text-xs font-medium text-foreground">Total Portfolio Value</span>
             <span className="text-base font-bold font-mono text-pine">
-              {money(fin?.clientAssets?.totalInvestorAssets)}
+              {money(fin?.clientAssets?.portfolioValue)}
             </span>
           </div>
+          <p className="text-[11px] text-muted-foreground/70">
+            Holdings at the latest close, valued across every client account.
+          </p>
         </div>
       </Card>
 
-      {/* Broker Revenue — the broker's own earnings */}
+      {/* Broker Earnings — what the broker keeps */}
       <Card
-        title="Broker Revenue"
+        title="Broker Earnings"
         subtitle="Your earnings — separate from client money"
       >
         <div className="space-y-3">
@@ -260,6 +251,13 @@ function FinancialOverview() {
           </div>
           <div
             className="flex items-baseline justify-between"
+            title="Deposit processing fees recorded on completed deposits, under Settings → Fees & Charges."
+          >
+            <span className="text-xs text-muted-foreground">Processing Fees</span>
+            <span className="text-sm font-bold font-mono">{money(fin?.paymentCosts?.processingFees)}</span>
+          </div>
+          <div
+            className="flex items-baseline justify-between pt-2.5 border-t border-border"
             title="SEC + MSE levies collected on trades — statutory pass-through, not your revenue."
           >
             <span className="text-xs text-muted-foreground">Statutory Levies (pass-through)</span>
@@ -267,51 +265,67 @@ function FinancialOverview() {
               {money(fin?.statutory?.leviesCollected)}
             </span>
           </div>
-          <div
-            className="flex items-baseline justify-between pt-2.5 border-t border-border"
-            title={`Pine's platform commission: ${fin?.platformFees?.ratePct ?? 0}% of each commission you earn, frozen per trade. Settled monthly.`}
-          >
-            <span className="text-xs text-muted-foreground">
-              Owed to Pine (this month{fin ? ` · ${fin.platformFees?.ratePct}%` : ""})
-            </span>
-            <span className="text-sm font-bold font-mono text-amber">
-              {money(fin?.platformFees?.owedThisMonth)}
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between" title="Based on your commissions this month; last month's figure for comparison.">
-            <span className="text-[11px] text-muted-foreground/70">
-              on {money(fin?.platformFees?.commissionsThisMonth)} earned this month · last month owed {money(fin?.platformFees?.owedLastMonth)}
-            </span>
-          </div>
         </div>
       </Card>
 
-      {/* Payment Costs + withdrawals awaiting action */}
+      {/* Pine Earnings — the platform's cut of the broker's commissions */}
       <Card
-        title="Payment Costs"
-        subtitle="Deposit processing fees collected"
+        title="Pine Earnings"
+        subtitle={`Pine's share of your commissions${fin ? ` · ${fin.platformFees?.ratePct ?? 0}%` : ""}`}
       >
         <div className="space-y-3">
           <div
             className="flex items-baseline justify-between"
-            title="Deposit processing fees recorded on completed deposits, under Settings → Fees & Charges. Reported separately from trading commissions."
+            title={`Pine's platform commission: ${fin?.platformFees?.ratePct ?? 0}% of each commission you earn, frozen per trade. Settled monthly.`}
           >
-            <span className="text-xs text-muted-foreground">Processing Fees</span>
-            <span className="text-base font-bold font-mono">{money(fin?.paymentCosts?.processingFees)}</span>
+            <span className="text-xs text-muted-foreground">Owed this month</span>
+            <span className="text-base font-bold font-mono text-amber">
+              {money(fin?.platformFees?.owedThisMonth)}
+            </span>
+          </div>
+          <div
+            className="flex items-baseline justify-between"
+            title="What the same charge came to last month, for comparison."
+          >
+            <span className="text-xs text-muted-foreground">Owed last month</span>
+            <span className="text-sm font-medium font-mono">{money(fin?.platformFees?.owedLastMonth)}</span>
           </div>
           <div
             className="flex items-baseline justify-between pt-2.5 border-t border-border"
-            title="Withdrawal requests waiting for your approval. Funds stay in the client's wallet (held) until you approve."
+            title="Commissions you have earned this month — the base this month's charge is calculated on."
           >
-            <span className="text-xs text-muted-foreground">
-              Pending Withdrawals{isLoading ? "" : ` (${fin?.pendingWithdrawals?.count ?? 0})`}
-            </span>
-            <span className={`text-sm font-bold font-mono ${(fin?.pendingWithdrawals?.count ?? 0) > 0 ? "text-amber" : ""}`}>
-              {money(fin?.pendingWithdrawals?.amount)}
-            </span>
+            <span className="text-xs text-muted-foreground">Commissions this month</span>
+            <span className="text-sm font-bold font-mono">{money(fin?.platformFees?.commissionsThisMonth)}</span>
           </div>
         </div>
       </Card>
+
+      {/* Withdrawals awaiting action — platform admins only; brokers act on
+          these from the Pending Withdrawals queue lower down the page. */}
+      {superAdmin && (
+        <Card title="Payment Costs" subtitle="Deposit processing fees collected">
+          <div className="space-y-3">
+            <div
+              className="flex items-baseline justify-between"
+              title="Deposit processing fees recorded on completed deposits across every broker."
+            >
+              <span className="text-xs text-muted-foreground">Processing Fees</span>
+              <span className="text-base font-bold font-mono">{money(fin?.paymentCosts?.processingFees)}</span>
+            </div>
+            <div
+              className="flex items-baseline justify-between pt-2.5 border-t border-border"
+              title="Withdrawal requests waiting for approval. Funds stay in the client's wallet (held) until approved."
+            >
+              <span className="text-xs text-muted-foreground">
+                Pending Withdrawals{isLoading ? "" : ` (${fin?.pendingWithdrawals?.count ?? 0})`}
+              </span>
+              <span className={`text-sm font-bold font-mono ${(fin?.pendingWithdrawals?.count ?? 0) > 0 ? "text-amber" : ""}`}>
+                {money(fin?.pendingWithdrawals?.amount)}
+              </span>
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
