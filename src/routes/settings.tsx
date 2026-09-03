@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import {
-  User, Lock, Bell, Shield, Eye, EyeOff, CheckCircle2, Percent, ShieldAlert, AlertTriangle, Smartphone, LogOut, ChevronRight, Save, Loader2, KeyRound, Copy, Check, Monitor, Upload,
+  Lock, Bell, Shield, Eye, EyeOff, CheckCircle2, Percent, ShieldAlert, AlertTriangle, Smartphone, LogOut, ChevronRight, Save, Loader2, KeyRound, Copy, Check, Monitor, Upload,
 } from "lucide-react";
 import { RefreshIcon } from "@/components/pine-icons";
 import { useCurrentUser } from "@/lib/auth";
@@ -21,6 +21,7 @@ import {
 import { FeesSection } from "@/components/fees-settings";
 import { RiskSection } from "@/components/risk-settings";
 import { MigrationSection } from "@/components/migration-settings";
+import { ProfileIcon } from "@/components/pine-icons";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -761,7 +762,7 @@ function SessionsSection() {
 // ─── Nav tabs ─────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { key: "profile",       label: "Profile",         icon: User },
+  { key: "profile",       label: "Profile",         icon: ProfileIcon },
   { key: "fees",          label: "Fees & Charges",  icon: Percent },
   { key: "risk",          label: "Risk & Limits",   icon: ShieldAlert },
   { key: "migration",     label: "Migration",       icon: Upload },

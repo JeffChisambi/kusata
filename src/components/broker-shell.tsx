@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import {
   OverviewIcon, UsersIcon, KycIcon, SupportIcon, OrdersIcon, ErrorIcon,
   NewsIcon, SecuritiesIcon, NotificationsIcon, SettingsIcon, CashIcon, BrokersIcon,
-  AuditLogIcon, ExpandIcon, ThemeIcon,
+  AuditLogIcon, ExpandIcon, ThemeIcon, SignOutIcon, SunIcon, MoonIcon,
 } from "./pine-icons";
 import { Link, useNavigate, useLocation, useElementScrollRestoration } from "@tanstack/react-router";
 import { useCurrentUser, logout, isSuperAdmin } from "@/lib/auth";
@@ -22,7 +22,7 @@ import { useBrokersList } from "@/hooks/useBrokers";
 import { useTreasuryInvestments } from "@/hooks/useTreasuryAdmin";
 import { useNotificationDelivery } from "@/hooks/useNotificationDelivery";
 import {
-  ChevronDown, LogOut, Sun, Moon,
+  ChevronDown,
 } from "lucide-react";
 
 type NavGroup = {
@@ -487,7 +487,7 @@ function UserFooter({ collapsed }: { collapsed: boolean }) {
             onClick={handleLogout}
             className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-rose hover:bg-rose/5 transition-colors text-left"
           >
-            <LogOut className="w-4 h-4" />
+            <SignOutIcon className="w-4 h-4" />
             Sign out
           </button>
         </div>
@@ -609,7 +609,7 @@ function ThemeToggle() {
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
       title={dark ? "Light mode" : "Dark mode"}
     >
-      {dark ? <Sun className="w-4 h-4 text-muted-foreground" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
+      {dark ? <SunIcon className="w-4 h-4 text-muted-foreground" /> : <MoonIcon className="w-4 h-4 text-muted-foreground" />}
     </button>
   );
 }
