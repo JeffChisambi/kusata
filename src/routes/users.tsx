@@ -221,14 +221,17 @@ function UserStats() {
         const Icon = it.icon;
         const tone = "tone" in it && it.tone === "amber" ? "text-amber" : "text-muted-foreground";
         return (
-          <div key={it.label} className="flex-1 min-w-0 rounded-[3px] bg-card border border-border p-4">
-            <div className="w-9 h-9 flex items-center justify-center">
-              <Icon className={`w-4 h-4 ${tone}`} />
+          <div key={it.label} className="flex-1 min-w-0 rounded-[3px] bg-card border border-border p-4 flex flex-col gap-3">
+            {/* Caption opposite the icon, matching the overview KPI cards. */}
+            <div className="flex items-start justify-between gap-3">
+              <span className="w-9 h-9 shrink-0 flex items-center justify-center">
+                <Icon className={`w-4 h-4 ${tone}`} />
+              </span>
+              <span className="text-[11px] text-muted-foreground/60 truncate text-right">{it.sub}</span>
             </div>
-            <div className="mt-3">
+            <div>
               <div className="text-xs text-muted-foreground">{it.label}</div>
-              <div className="text-xl font-bold mt-0.5">{it.value}</div>
-              <div className="text-[11px] text-muted-foreground mt-1">{it.sub}</div>
+              <div className="text-xl font-bold leading-tight mt-0.5">{it.value}</div>
             </div>
           </div>
         );

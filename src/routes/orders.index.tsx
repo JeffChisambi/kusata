@@ -85,13 +85,19 @@ function KpiStrip({ orders, total }: { orders: Order[]; total: number }) {
       {kpis.map((kpi) => {
         const Icon = kpi.icon;
         return (
-          <div key={kpi.label} className="rounded-[3px] border border-border bg-card p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{kpi.label}</span>
-              <Icon className="h-4 w-4 text-muted-foreground" />
+          <div key={kpi.label} className="rounded-[3px] border border-border bg-card p-4 flex flex-col gap-3">
+            {/* Icon left, caption opposite it — same shape as the overview
+                and users KPI cards. */}
+            <div className="flex items-start justify-between gap-3">
+              <span className="w-9 h-9 shrink-0 flex items-center justify-center">
+                <Icon className="h-4 w-4 text-muted-foreground" />
+              </span>
+              <span className="text-[11px] text-muted-foreground/60 truncate text-right">{kpi.detail}</span>
             </div>
-            <div className="mt-3 text-2xl font-bold tracking-tight text-foreground">{kpi.value}</div>
-            <div className="mt-1 text-[11px] text-muted-foreground">{kpi.detail}</div>
+            <div>
+              <div className="text-xs text-muted-foreground">{kpi.label}</div>
+              <div className="mt-0.5 text-2xl font-bold tracking-tight leading-tight text-foreground">{kpi.value}</div>
+            </div>
           </div>
         );
       })}
