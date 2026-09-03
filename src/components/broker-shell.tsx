@@ -13,8 +13,8 @@ import { useNotificationDelivery } from "@/hooks/useNotificationDelivery";
 import {
   Users, FileCheck2,
   ChevronDown, ChevronsLeft, ChevronsRight,
-  Clock, Sun, Moon, Bell, Check, LogOut,
-  ClipboardList, Settings2, Search, Newspaper, Landmark, LifeBuoy, Palette,
+  Sun, Moon, Bell, LogOut,
+  ClipboardList, Settings2, Newspaper, Landmark, LifeBuoy, Palette,
   Building2, ScrollText, AlertOctagon, Banknote, CheckCircle2,
 } from "lucide-react";
 
@@ -86,18 +86,6 @@ const TIME_RANGES: Array<{ label: string; value: DashboardRange; short: string; 
   { label: "Last 90 days",  value: "90d", short: "Last 90d", days: 90 },
 ];
 const DEFAULT_RANGE: DashboardRange = "7d";
-
-/**
- * Routes the range picker actually changes. Anywhere else (Settings, Brokers,
- * Users, Treasury, Mobile themes…) the control is HIDDEN rather than shown but
- * inert — a filter that silently does nothing is worse than no filter.
- */
-const RANGE_AWARE_ROUTES = new Set(["/", "/orders", "/audit", "/errors", "/notifications"]);
-
-function isRangeAware(pathname: string): boolean {
-  const p = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
-  return RANGE_AWARE_ROUTES.has(p || "/");
-}
 
 /** Start of the window: midnight, `days` days ago. */
 function rangeStart(days: number): Date {
@@ -221,6 +209,12 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
   const activeLabel = activeLabelFor(pathname);
   const title = ctx.forPath === pathname && ctx.title ? ctx.title : defaultTitleFor(pathname);
 
+  // With the top bar gone the section name lives in the browser tab instead,
+  // so useDashboardTitle() still has somewhere to land.
+  useEffect(() => {
+    document.title = title ? `${title} · Pine` : "Pine";
+  }, [title]);
+
   // Deliver desktop notifications for new alerts, app-wide, from one place.
   useNotificationDelivery();
 
@@ -271,11 +265,12 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         onToggleCollapse={toggleCollapse}
       />
       <main className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
-        <BrokerTopbar title={title} showRange={isRangeAware(pathname)} />
+        {/* No top bar. Notifications and the theme toggle live in the sidebar;
+            each page owns its own heading and search. */}
         <div
           ref={scrollRef}
           data-scroll-restoration-id="dashboard-scroll"
-          className="flex-1 min-h-0 overflow-y-auto px-8 pb-10 scrollbar-thin-gray"
+          className="flex-1 min-h-0 overflow-y-auto px-8 pt-6 pb-10 scrollbar-thin-gray"
         >
           <div className="space-y-6 animate-in fade-in duration-150 ease-out">
             {children}
@@ -383,6 +378,12 @@ function BrokerSidebar({
           );
         })}
       </nav>
+
+      {/* Utilities — moved off the old top bar. */}
+      <div className={`shrink-0 border-t border-sidebar-border p-3 flex items-center gap-2 ${isCollapsed ? "flex-col" : ""}`}>
+        <WorkQueueBell />
+        <ThemeToggle />
+      </div>
 
       {/* User footer */}
       <div className="shrink-0 border-t border-sidebar-border p-3">
@@ -522,39 +523,24 @@ function BrokerNavItem({
   );
 }
 
-// ─── Topbar ───────────────────────────────────────────────────────────────────
+// ─── Theme toggle ─────────────────────────────────────────────────────────────
 
-function BrokerTopbar({ title, showRange }: { title: string; showRange: boolean }) {
-  const navigate = useNavigate();
+/**
+ * Dark/light toggle. Lives in the sidebar now that there is no top bar.
+ *
+ * Theme preference is PER-USER: keyed by the signed-in account id so two
+ * people sharing a browser (or one person with admin + broker accounts)
+ * never overwrite each other's choice. The legacy global key is read once as
+ * a migration fallback, never written again.
+ *
+ * The pre-paint <head> script in __root.tsx resolves the same key and adds the
+ * `dark` class before first paint; this layout effect adopts that value into
+ * React state before the browser paints, so the icon and the page theme never
+ * flip after load.
+ */
+function ThemeToggle() {
   const [dark, setDark] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { range, setRange } = useDashboardRange();
-  const [rangeOpen, setRangeOpen] = useState(false);
-  const rangeRef = useRef<HTMLDivElement>(null);
-  const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    if (!rangeOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (rangeRef.current && !rangeRef.current.contains(e.target as Node)) setRangeOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [rangeOpen]);
-
-  // Navigating to a route the range doesn't apply to hides the picker — make
-  // sure an open dropdown doesn't linger behind it.
-  useEffect(() => { if (!showRange) setRangeOpen(false); }, [showRange]);
-
-  // Theme preference is PER-USER: keyed by the signed-in account id so two
-  // people sharing a browser (or one person with admin + broker accounts)
-  // never overwrite each other's dark-mode choice. The legacy global key is
-  // read once as a migration fallback, never written again.
-  //
-  // The pre-paint <head> script in __root.tsx resolves the same key and adds
-  // the `dark` class before first paint; this layout effect adopts that value
-  // into React state before the browser paints, so the toggle icon and the
-  // page theme never flip after load.
   const themeUser = useCurrentUser();
   const themeKey = themeUser?.id ? `pine-theme:${themeUser.id}` : "pine-theme";
 
@@ -573,89 +559,15 @@ function BrokerTopbar({ title, showRange }: { title: string; showRange: boolean 
     else { root.classList.remove("dark"); localStorage.setItem(themeKey, "light"); }
   }, [dark, mounted, themeKey]);
 
-  const submitSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = query.trim();
-    navigate({ to: "/users", search: q ? { q } : {} });
-  };
-
   return (
-    <header className="flex items-center gap-4 px-8 py-4 bg-background sticky top-0 z-10 border-b border-border">
-      <div className="shrink-0 min-w-0">
-        <div className="text-lg font-semibold">{title}</div>
-      </div>
-      <form className="flex-1 min-w-0 mx-6" onSubmit={submitSearch} role="search">
-        <div className="relative">
-          <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search users by name, email or phone — press Enter"
-            aria-label="Search users"
-            className="w-full h-10 pl-11 pr-4 rounded-[4px] bg-muted/60 border border-transparent focus:outline-none focus:border-pine/40 text-sm"
-          />
-        </div>
-      </form>
-      <div className="flex items-center gap-2">
-        {/* Time range picker — only on the routes it genuinely filters. */}
-        <div ref={rangeRef} className={`relative ${showRange ? "hidden md:block" : "hidden"}`}>
-          <button
-            onClick={() => setRangeOpen((o) => !o)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-[4px] border text-sm transition-colors ${
-              rangeOpen ? "border-pine/40 bg-pine/5 text-pine" : "border-border hover:bg-muted/40 text-foreground"
-            }`}
-          >
-            <Clock className={`w-4 h-4 ${rangeOpen ? "text-pine" : "text-muted-foreground"}`} />
-            {TIME_RANGES.find((r) => r.value === range)?.short ?? "Last 7d"}
-            <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform duration-150 ${rangeOpen ? "rotate-180" : ""}`} />
-          </button>
-          {rangeOpen && (
-            <div className="absolute right-0 top-full mt-1.5 z-50 w-56 bg-card border border-border rounded-[4px] shadow-xl overflow-hidden">
-              <div className="px-3.5 pt-3 pb-2">
-                <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">TIME RANGE</span>
-              </div>
-              <div className="pb-2">
-                {TIME_RANGES.map((r) => {
-                  const selected = range === r.value;
-                  return (
-                    <button
-                      key={r.value}
-                      onClick={() => { setRange(r.value); setRangeOpen(false); }}
-                      className={`w-full flex items-center gap-2.5 px-3.5 py-[7px] text-[13px] transition-colors text-left ${
-                        selected ? "bg-pine/6 text-pine font-medium" : "text-foreground hover:bg-muted"
-                      }`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${selected ? "bg-pine" : "bg-border"}`} />
-                      <span className="flex-1">{r.label}</span>
-                      {selected && <Check className="w-3.5 h-3.5 text-pine shrink-0" />}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="px-3.5 py-2.5 border-t border-border bg-muted/30">
-                <p className="text-[11px] text-muted-foreground">
-                  Applies to the overview charts, order blotter, audit log, system errors and the
-                  client notification log.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Theme toggle */}
-        <button
-          onClick={() => setDark((d) => !d)}
-          className="w-10 h-10 rounded-[4px] bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors"
-          aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-        >
-          {dark ? <Sun className="w-4 h-4 text-muted-foreground" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
-        </button>
-
-        {/* Work queue */}
-        <WorkQueueBell />
-      </div>
-    </header>
+    <button
+      onClick={() => setDark((d) => !d)}
+      className="w-9 h-9 rounded-[4px] flex items-center justify-center hover:bg-muted/60 transition-colors"
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      title={dark ? "Light mode" : "Dark mode"}
+    >
+      {dark ? <Sun className="w-4 h-4 text-muted-foreground" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
+    </button>
   );
 }
 
@@ -741,8 +653,8 @@ function WorkQueueBell() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className={`w-10 h-10 rounded-[4px] flex items-center justify-center relative transition-colors ${
-          open ? "bg-pine/10 text-pine" : "bg-muted/60 hover:bg-muted"
+        className={`w-9 h-9 rounded-[4px] flex items-center justify-center relative transition-colors ${
+          open ? "text-pine bg-muted/60" : "hover:bg-muted/60"
         }`}
         aria-label={total > 0 ? `Work queue — ${total} item${total === 1 ? "" : "s"}` : "Work queue"}
         aria-expanded={open}
@@ -756,7 +668,7 @@ function WorkQueueBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 z-50 w-[19rem] bg-card border border-border rounded-[4px] shadow-xl overflow-hidden">
+        <div className="absolute left-0 bottom-full mb-1.5 z-50 w-[19rem] bg-card border border-border rounded-[4px] shadow-xl overflow-hidden">
           <div className="px-3.5 pt-3 pb-2 flex items-center justify-between">
             <span className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">NEEDS YOUR ATTENTION</span>
             {total > 0 && (

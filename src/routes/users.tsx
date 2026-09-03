@@ -448,7 +448,7 @@ function UsersTable({
             <th className="py-2.5 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground">KYC</th>
             <th className="py-2.5 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground" title="Market value of stock holdings at the latest close">Portfolio</th>
             <th className="py-2.5 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground" title="Uninvested wallet cash held for the client">Cash</th>
-            <th className="py-2.5 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground" title="Total assets = cash + portfolio market value">Total</th>
+            <th className="pr-5 py-2.5 text-right font-medium text-[11px] uppercase tracking-wider text-muted-foreground" title="Total assets = cash + portfolio market value">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -461,7 +461,7 @@ function UsersTable({
                 <td className="py-3"><div className="w-14 h-5 rounded bg-muted" /></td>
                 <td className="py-3"><div className="ml-auto w-20 h-3 rounded bg-muted" /></td>
                 <td className="py-3"><div className="ml-auto w-20 h-3 rounded bg-muted" /></td>
-                <td className="py-3"><div className="ml-auto w-20 h-3 rounded bg-muted" /></td>
+                <td className="pr-5 py-3"><div className="ml-auto w-20 h-3 rounded bg-muted" /></td>
               </tr>
             ))
           ) : rows.map((r) => (
@@ -492,7 +492,7 @@ function UsersTable({
               <td className="py-3"><KycBadge kyc={r.kyc} /></td>
               <td className="py-3 text-right font-mono cursor-help" title={MWKexact(r.portfolio)}>MWK {MWK(r.portfolio)}</td>
               <td className="py-3 text-right font-mono text-muted-foreground cursor-help" title={MWKexact(r.cash)}>MWK {MWK(r.cash)}</td>
-              <td className="py-3 text-right font-mono font-medium cursor-help" title={MWKexact(r.aum)}>MWK {MWK(r.aum)}</td>
+              <td className="pr-5 py-3 text-right font-mono font-medium cursor-help" title={MWKexact(r.aum)}>MWK {MWK(r.aum)}</td>
             </tr>
           ))}
           {!loading && rows.length === 0 && (
