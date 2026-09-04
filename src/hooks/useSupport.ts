@@ -52,7 +52,7 @@ export type SupportStats = { awaitingAdmin: number; open: number; inReview: numb
 
 // ── Hooks ───────────────────────────────────────────────────────────────────
 
-export function useSupportTickets(filters: { status?: SupportStatus; awaitingAdmin?: boolean } = {}) {
+export function useSupportTickets(filters: { status?: SupportStatus; awaitingAdmin?: boolean } = {}, opts: { enabled?: boolean } = {}) {
   const params = new URLSearchParams();
   if (filters.status) params.set('status', filters.status);
   if (filters.awaitingAdmin) params.set('awaitingAdmin', 'true');
@@ -60,6 +60,7 @@ export function useSupportTickets(filters: { status?: SupportStatus; awaitingAdm
   const qs = params.toString();
   return useQuery<SupportListResponse>({
     queryKey: queryKeys.support.list(filters),
+    enabled: opts.enabled ?? true,
     queryFn: () => api.get<SupportListResponse>(`/v1/admin/support?${qs}`),
     refetchInterval: 20_000,
     refetchIntervalInBackground: false,
@@ -78,9 +79,10 @@ export function useSupportTicket(id: string | undefined) {
   });
 }
 
-export function useSupportStats() {
+export function useSupportStats(opts: { enabled?: boolean } = {}) {
   return useQuery<SupportStats>({
     queryKey: queryKeys.support.stats(),
+    enabled: opts.enabled ?? true,
     queryFn: () => api.get<SupportStats>('/v1/admin/support/stats'),
     // Drives the sidebar badge only — a minute is plenty.
     refetchInterval: 60_000,
@@ -89,8 +91,8 @@ export function useSupportStats() {
 }
 
 /** Count of tickets awaiting a staff reply — for the sidebar badge. */
-export function useUnreadSupportCount(): number {
-  const { data } = useSupportStats();
+export function useUnreadSupportCount(opts: { enabled?: boolean } = {}): number {
+  const { data } = useSupportStats(opts);
   return data?.awaitingAdmin ?? 0;
 }
 

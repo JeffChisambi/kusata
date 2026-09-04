@@ -2,9 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { queryKeys } from '../lib/query-keys';
 
-export function useDashboardStats() {
+export function useDashboardStats(opts: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: queryKeys.dashboard.stats(),
+    enabled: opts.enabled ?? true,
     queryFn: () => api.get<{
       totalUsers: number;
       activeUsers: number;

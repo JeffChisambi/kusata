@@ -20,6 +20,8 @@ import { useOrders } from "@/hooks/useOrders";
 import { useKycQueue } from "@/hooks/useKyc";
 import { usePendingWithdrawals } from "@/hooks/useWithdrawals";
 import { useSupportTickets } from "@/hooks/useSupport";
+import { useCurrentUser } from "@/lib/auth";
+import { canAccess, type DashboardSection } from "@/lib/sections";
 
 const MAX_PER_GROUP = 5;
 const BELL_POS_KEY = "pine-activity-bell-top";
@@ -69,9 +71,10 @@ export function ActivityDrawer() {
 
 /** Everything actually waiting on the broker — drives the badge. */
 function usePendingCount() {
-  const { data: kyc } = useKycQueue({ status: "PENDING", limit: 1 });
-  const { data: withdrawals } = usePendingWithdrawals();
-  const { data: tickets } = useSupportTickets({ status: "OPEN" });
+  const user = useCurrentUser();
+  const { data: kyc } = useKycQueue({ status: "PENDING", limit: 1 }, { enabled: canAccess(user, "kyc") });
+  const { data: withdrawals } = usePendingWithdrawals({ enabled: canAccess(user, "withdrawals") });
+  const { data: tickets } = useSupportTickets({ status: "OPEN" }, { enabled: canAccess(user, "support") });
 
   return (
     (kyc?.count ?? 0) +
@@ -163,10 +166,12 @@ function clampY(y: number) {
 // ─── The panel ────────────────────────────────────────────────────────────────
 
 function Panel({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const orders = useOrders({ limit: MAX_PER_GROUP });
-  const kyc = useKycQueue({ limit: MAX_PER_GROUP });
-  const withdrawals = usePendingWithdrawals();
-  const tickets = useSupportTickets({ status: "OPEN" });
+  const user = useCurrentUser();
+  const may = (s: DashboardSection) => canAccess(user, s);
+  const orders = useOrders({ limit: MAX_PER_GROUP }, { enabled: may("orders") });
+  const kyc = useKycQueue({ limit: MAX_PER_GROUP }, { enabled: may("kyc") });
+  const withdrawals = usePendingWithdrawals({ enabled: may("withdrawals") });
+  const tickets = useSupportTickets({ status: "OPEN" }, { enabled: may("support") });
 
   const withdrawalRows = (withdrawals.data?.withdrawals ?? []).slice(0, MAX_PER_GROUP);
   const kycRows = (kyc.data?.applications ?? []).slice(0, MAX_PER_GROUP);
@@ -208,6 +213,7 @@ function Panel({ open, onClose }: { open: boolean; onClose: () => void }) {
         </header>
 
         <div className="flex-1 overflow-y-auto scrollbar-thin-gray">
+          {may("withdrawals") && (
           <Group
             title="Withdrawal requests"
             to="/withdrawals"
@@ -227,7 +233,9 @@ function Panel({ open, onClose }: { open: boolean; onClose: () => void }) {
               />
             ))}
           </Group>
+          )}
 
+          {may("kyc") && (
           <Group
             title="KYC applications"
             to="/kyc"
@@ -250,7 +258,9 @@ function Panel({ open, onClose }: { open: boolean; onClose: () => void }) {
               />
             ))}
           </Group>
+          )}
 
+          {may("orders") && (
           <Group
             title="Orders"
             to="/orders"
@@ -282,7 +292,9 @@ function Panel({ open, onClose }: { open: boolean; onClose: () => void }) {
               />
             ))}
           </Group>
+          )}
 
+          {may("support") && (
           <Group
             title="Support tickets"
             to="/support"
@@ -306,6 +318,7 @@ function Panel({ open, onClose }: { open: boolean; onClose: () => void }) {
               />
             ))}
           </Group>
+          )}
         </div>
       </aside>
     </>

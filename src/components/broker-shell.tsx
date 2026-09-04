@@ -20,6 +20,7 @@ import { useSystemErrorStats } from "@/hooks/useSystemErrors";
 import { useNewsList } from "@/hooks/useNewsAdmin";
 import { useBrokersList } from "@/hooks/useBrokers";
 import { useTreasuryInvestments } from "@/hooks/useTreasuryAdmin";
+import { canAccess, sectionForPath, type DashboardSection } from "@/lib/sections";
 import { useNotificationDelivery } from "@/hooks/useNotificationDelivery";
 import {
   ChevronDown,
@@ -286,6 +287,9 @@ function BrokerSidebar({
   // PLATFORM section (and other superAdminOnly items) is SUPER_ADMIN only.
   const user = useCurrentUser();
   const superAdmin = isSuperAdmin(user);
+  // Staff see only their sections; their badge queries are not even sent
+  // for the rest, since the API would refuse them.
+  const may = (section: DashboardSection) => canAccess(user, section);
 
   /**
    * Live signals behind the nav badges — a dot when the sidebar is collapsed,
@@ -295,24 +299,24 @@ function BrokerSidebar({
    * nothing to act on (Overview, Mobile Themes, Settings) deliberately carry
    * no badge: a dot that is always lit teaches people to ignore dots.
    */
-  const { data: kycData } = useKycQueue({ status: 'PENDING', limit: 1 });
+  const { data: kycData } = useKycQueue({ status: 'PENDING', limit: 1 }, { enabled: may('kyc') });
   const pendingKycCount = kycData?.count ?? 0;
 
-  const { data: withdrawalData } = usePendingWithdrawals();
+  const { data: withdrawalData } = usePendingWithdrawals({ enabled: may('withdrawals') });
   const pendingWithdrawalCount = withdrawalData?.withdrawals?.length ?? 0;
 
-  const awaitingSupportCount = useUnreadSupportCount();
+  const awaitingSupportCount = useUnreadSupportCount({ enabled: may('support') });
 
   // Orders sitting with the market, waiting to be executed.
-  const { data: orderData } = useOrders({ status: 'SUBMITTED', limit: 1 });
+  const { data: orderData } = useOrders({ status: 'SUBMITTED', limit: 1 }, { enabled: may('orders') });
   const awaitingOrderCount = orderData?.total ?? 0;
 
   // Sign-ups today — the reason to open Users this morning.
-  const { data: dashStats } = useDashboardStats();
+  const { data: dashStats } = useDashboardStats({ enabled: may('overview') || may('users') });
   const newUserCount = dashStats?.todayNewUsers ?? 0;
 
   // Client notifications that failed to reach their recipient.
-  const { data: notificationStats } = useNotificationStats();
+  const { data: notificationStats } = useNotificationStats({ enabled: may('notifications') });
   const failedNotificationCount =
     notificationStats?.byStatus?.find((r) => r.status === 'FAILED')?.count ?? 0;
 
@@ -339,7 +343,11 @@ function BrokerSidebar({
   // Merge live badge counts into the static nav definition. Memoised so poll
   // ticks that return the same numbers don't rebuild the nav tree.
   const navWithBadges = useMemo(() => {
-    const visible = brokerNav.filter((item) => !item.superAdminOnly || superAdmin);
+    const visible = brokerNav.filter((item) => {
+      if (item.superAdminOnly && !superAdmin) return false;
+      const section = sectionForPath(item.href);
+      return section ? may(section) : true;
+    });
     const counts: Record<string, number> = {
       'Users': newUserCount,
       'KYC': pendingKycCount,
@@ -357,7 +365,7 @@ function BrokerSidebar({
       return count > 0 ? { ...item, badge: count } : item;
     });
   }, [
-    superAdmin, newUserCount, pendingKycCount, pendingWithdrawalCount, awaitingSupportCount,
+    superAdmin, user, newUserCount, pendingKycCount, pendingWithdrawalCount, awaitingSupportCount,
     awaitingOrderCount, unconfiguredBrokerCount, openErrorCount, draftNewsCount,
     maturedTreasuryCount, failedNotificationCount,
   ]);
@@ -442,6 +450,7 @@ function UserFooter({ collapsed }: { collapsed: boolean }) {
   const roleLabel = user?.role?.replace(/_/g, ' ') ?? 'BROKER';
   const initials = user ? `${user.firstName[0]}${user.lastName[0]}` : 'B';
   const [menuOpen, setMenuOpen] = useState(false);
+  const [hovering, setHovering] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -462,9 +471,16 @@ function UserFooter({ collapsed }: { collapsed: boolean }) {
   };
 
   return (
-    <div ref={menuRef} className="relative">
+    <div
+      ref={menuRef}
+      className="relative"
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+    >
       <button
         onClick={() => setMenuOpen((o) => !o)}
+        onFocus={() => setHovering(true)}
+        onBlur={() => setHovering(false)}
         className={`w-full flex items-center rounded-[6px] px-2 py-2 hover:bg-muted cursor-pointer transition-colors ${collapsed ? "justify-center" : "gap-2.5"}`}
       >
         <div className="w-8 h-8 shrink-0 rounded-full bg-muted flex items-center justify-center ring-1 ring-border">
@@ -481,8 +497,16 @@ function UserFooter({ collapsed }: { collapsed: boolean }) {
         )}
       </button>
 
-      {menuOpen && (
-        <div className={`absolute ${collapsed ? 'left-full ml-2 bottom-0' : 'bottom-full mb-2 left-0 right-0'} z-50 bg-card border border-border rounded-[4px] shadow-xl overflow-hidden`}>
+      {/* Sign-out is revealed on hover (or focus, for keyboards) rather than
+          sitting in the sidebar permanently. The menu stays open while the
+          pointer is anywhere over the profile block or the menu itself, so
+          moving from one to the other never closes it mid-way. */}
+      {(menuOpen || hovering) && (
+        <div
+          onMouseEnter={() => setHovering(true)}
+          onMouseLeave={() => setHovering(false)}
+          className={`absolute ${collapsed ? 'left-full ml-2 bottom-0' : 'bottom-full mb-2 left-0 right-0'} z-50 bg-card border border-border rounded-[4px] shadow-xl overflow-hidden`}
+        >
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] text-rose hover:bg-rose/5 transition-colors text-left"

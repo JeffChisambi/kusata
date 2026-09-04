@@ -13,6 +13,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { isAuthenticated } from "@/lib/auth";
 import { registerNavigate } from "@/lib/nav-registry";
+import { enforceAccess } from "@/lib/sections";
 import { installErrorReporter } from "@/lib/error-reporter";
 
 import appCss from "../styles.css?url";
@@ -23,7 +24,7 @@ import { DashboardLayout, DashboardTitleProvider } from "../components/broker-sh
 // Every authenticated section renders inside the persistent shell (sidebar +
 // topbar). Only the public auth pages and a not-found path render bare, so
 // adding a new dashboard route never requires touching this list.
-const BARE_PATHS = new Set(["/login", "/activate"]);
+const BARE_PATHS = new Set(["/login", "/activate", "/change-password"]);
 function isBareRoute(pathname: string): boolean {
   return BARE_PATHS.has(pathname);
 }
@@ -110,6 +111,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     if (authed && onLogin) {
       throw redirect({ to: "/" });
     }
+
+    // Staff may only open the sections they were granted, and anyone still
+    // on a temporary password goes to /change-password before anything else.
+    // The API enforces both independently; this keeps people off screens
+    // that would only refuse them.
+    if (authed) enforceAccess(location.pathname);
   },
   shellComponent: RootShell,
   component: RootComponent,

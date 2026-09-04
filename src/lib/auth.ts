@@ -26,6 +26,12 @@ export interface AdminUser {
   firstName: string;
   lastName: string;
   role: string;
+  /** Broker STAFF: limited to `sections`. Administrators have this false. */
+  isBrokerStaff?: boolean;
+  /** Sections a staff member may use; null/undefined for everyone else. */
+  sections?: string[] | null;
+  /** Still on the temporary password from their invitation. */
+  mustChangePassword?: boolean;
 }
 
 export interface LoginResponse {
@@ -114,6 +120,14 @@ function storeTokens(accessToken: string, refreshToken: string, user: AdminUser)
   localStorage.setItem(KEYS.accessToken, accessToken);
   localStorage.setItem(KEYS.refreshToken, refreshToken);
   localStorage.setItem(KEYS.user, JSON.stringify(user));
+}
+
+/** Merge fields into the stored user - e.g. once a temporary password is replaced. */
+export function updateStoredUser(patch: Partial<AdminUser>): void {
+  if (typeof window === 'undefined') return;
+  const current = getCurrentUser();
+  if (!current) return;
+  localStorage.setItem(KEYS.user, JSON.stringify({ ...current, ...patch }));
 }
 
 function clearTokens() {

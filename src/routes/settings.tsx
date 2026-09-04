@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import {
-  Lock, Bell, Shield, Eye, EyeOff, CheckCircle2, Percent, ShieldAlert, AlertTriangle, Smartphone, LogOut, ChevronRight, Save, Loader2, KeyRound, Copy, Check, Monitor, Upload,
+  Lock, Bell, Shield, Eye, EyeOff, CheckCircle2, Percent, ShieldAlert, AlertTriangle, Smartphone, LogOut, ChevronRight, Save, Loader2, KeyRound, Copy, Check, Monitor, Upload, Users,
 } from "lucide-react";
 import { RefreshIcon } from "@/components/pine-icons";
-import { useCurrentUser } from "@/lib/auth";
+import { useCurrentUser, isSuperAdmin } from "@/lib/auth";
 import { noSearchParams } from "@/lib/utils";
 import {
   getPermission, requestPermission, isEnabled, setEnabled,
@@ -21,6 +21,8 @@ import {
 import { FeesSection } from "@/components/fees-settings";
 import { RiskSection } from "@/components/risk-settings";
 import { MigrationSection } from "@/components/migration-settings";
+import { StaffSection } from "@/components/staff-settings";
+import { canAccess, isStaff } from "@/lib/sections";
 import { ProfileIcon } from "@/components/pine-icons";
 
 export const Route = createFileRoute("/settings")({
@@ -766,6 +768,7 @@ const TABS = [
   { key: "fees",          label: "Fees & Charges",  icon: Percent },
   { key: "risk",          label: "Risk & Limits",   icon: ShieldAlert },
   { key: "migration",     label: "Migration",       icon: Upload },
+  { key: "staff",         label: "Staff",           icon: Users },
   { key: "security",      label: "Security",        icon: Lock },
   { key: "notifications", label: "Notifications",   icon: Bell },
   { key: "sessions",      label: "Sessions",        icon: Smartphone },
@@ -774,8 +777,20 @@ type TabKey = typeof TABS[number]["key"];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+/** Tabs that configure the BROKER rather than the signed-in person. */
+const BROKER_TABS = new Set<TabKey>(["fees", "risk", "migration", "staff"]);
+
 function SettingsPage() {
   const [tab, setTab] = useState<TabKey>("profile");
+  const user = useCurrentUser();
+  // Staff see broker-level tabs only with the Settings section, and never
+  // Staff management itself; platform admins never see broker tabs.
+  const tabs = TABS.filter((t) => {
+    if (!BROKER_TABS.has(t.key)) return true;
+    if (isSuperAdmin(user)) return false;
+    if (t.key === "staff") return !isStaff(user);
+    return canAccess(user, "settings");
+  });
 
   return (
     <>
@@ -783,7 +798,7 @@ function SettingsPage() {
         {/* Sidebar nav */}
         <div className="w-48 shrink-0">
           <nav className="rounded-[3px] bg-card border border-border overflow-hidden">
-            {TABS.map((t) => {
+            {tabs.map((t) => {
               const Icon = t.icon;
               const isActive = t.key === tab;
               return (
@@ -811,6 +826,7 @@ function SettingsPage() {
           {tab === "fees"          && <FeesSection />}
           {tab === "risk"          && <RiskSection />}
           {tab === "migration"     && <MigrationSection />}
+          {tab === "staff"         && <StaffSection />}
           {tab === "security"      && (
             <>
               <PasswordSection />

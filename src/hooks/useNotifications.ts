@@ -78,9 +78,10 @@ export function useNotificationsList(filters: NotificationFilters = {}) {
   });
 }
 
-export function useNotificationStats() {
+export function useNotificationStats(opts: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: queryKeys.notifications.stats(),
+    enabled: opts.enabled ?? true,
     queryFn: () => api.get<{
       byStatus: Array<{ status: string; count: number }>;
       byChannel: Array<{ channel: string; count: number }>;

@@ -15,9 +15,10 @@ const withdrawalKeys = {
   pending: () => [...queryKeys.wallets.all, 'withdrawals', 'pending'] as const,
 };
 
-export function usePendingWithdrawals() {
+export function usePendingWithdrawals(opts: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: withdrawalKeys.pending(),
+    enabled: opts.enabled ?? true,
     queryFn: () =>
       api.get<{ withdrawals: PendingWithdrawal[] }>('/v1/admin/wallets/withdrawals/pending'),
     refetchInterval: 30_000,

@@ -171,7 +171,7 @@ export interface OrderFilters {
   limit?: number;
 }
 
-export function useOrders(filters: OrderFilters = {}) {
+export function useOrders(filters: OrderFilters = {}, opts: { enabled?: boolean } = {}) {
   const params = new URLSearchParams();
   if (filters.status) params.set('status', filters.status);
   if (filters.side) params.set('side', filters.side);
@@ -184,6 +184,7 @@ export function useOrders(filters: OrderFilters = {}) {
 
   return useQuery({
     queryKey: queryKeys.trading.orders(filters as Record<string, unknown>),
+    enabled: opts.enabled ?? true,
     queryFn: async () => {
       const raw = await api.get<{
         orders: BackendOrder[];

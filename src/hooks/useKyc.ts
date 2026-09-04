@@ -225,7 +225,7 @@ export type KycQueueResponse = {
   totalPages: number;
 };
 
-export function useKycQueue(params?: KycQueueParams) {
+export function useKycQueue(params?: KycQueueParams, opts: { enabled?: boolean } = {}) {
   const limit = params?.limit ?? 50;
   const page = params?.page ?? 1;
   const status = params?.status;
@@ -235,6 +235,7 @@ export function useKycQueue(params?: KycQueueParams) {
 
   return useQuery({
     queryKey: queryKeys.kyc.queue(filters),
+    enabled: opts.enabled ?? true,
     queryFn: (): Promise<KycQueueResponse> => {
       const qs = new URLSearchParams({ limit: String(limit), page: String(page) });
       if (status) qs.set('status', status);

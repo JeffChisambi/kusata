@@ -22,6 +22,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as KycRouteImport } from './routes/kyc'
 import { Route as ErrorsRouteImport } from './routes/errors'
 import { Route as ComingSoonRouteImport } from './routes/coming-soon'
+import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as BrokersRouteImport } from './routes/brokers'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as ActivateRouteImport } from './routes/activate'
@@ -98,6 +99,11 @@ const ComingSoonRoute = ComingSoonRouteImport.update({
   path: '/coming-soon',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChangePasswordRoute = ChangePasswordRouteImport.update({
+  id: '/change-password',
+  path: '/change-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BrokersRoute = BrokersRouteImport.update({
   id: '/brokers',
   path: '/brokers',
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/activate': typeof ActivateRoute
   '/audit': typeof AuditRoute
   '/brokers': typeof BrokersRoute
+  '/change-password': typeof ChangePasswordRoute
   '/coming-soon': typeof ComingSoonRoute
   '/errors': typeof ErrorsRoute
   '/kyc': typeof KycRoute
@@ -179,6 +186,7 @@ export interface FileRoutesByTo {
   '/activate': typeof ActivateRoute
   '/audit': typeof AuditRoute
   '/brokers': typeof BrokersRoute
+  '/change-password': typeof ChangePasswordRoute
   '/coming-soon': typeof ComingSoonRoute
   '/errors': typeof ErrorsRoute
   '/kyc': typeof KycRoute
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   '/activate': typeof ActivateRoute
   '/audit': typeof AuditRoute
   '/brokers': typeof BrokersRoute
+  '/change-password': typeof ChangePasswordRoute
   '/coming-soon': typeof ComingSoonRoute
   '/errors': typeof ErrorsRoute
   '/kyc': typeof KycRoute
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/activate'
     | '/audit'
     | '/brokers'
+    | '/change-password'
     | '/coming-soon'
     | '/errors'
     | '/kyc'
@@ -256,6 +266,7 @@ export interface FileRouteTypes {
     | '/activate'
     | '/audit'
     | '/brokers'
+    | '/change-password'
     | '/coming-soon'
     | '/errors'
     | '/kyc'
@@ -280,6 +291,7 @@ export interface FileRouteTypes {
     | '/activate'
     | '/audit'
     | '/brokers'
+    | '/change-password'
     | '/coming-soon'
     | '/errors'
     | '/kyc'
@@ -306,6 +318,7 @@ export interface RootRouteChildren {
   ActivateRoute: typeof ActivateRoute
   AuditRoute: typeof AuditRoute
   BrokersRoute: typeof BrokersRoute
+  ChangePasswordRoute: typeof ChangePasswordRoute
   ComingSoonRoute: typeof ComingSoonRoute
   ErrorsRoute: typeof ErrorsRoute
   KycRoute: typeof KycRoute
@@ -418,6 +431,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComingSoonRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/change-password': {
+      id: '/change-password'
+      path: '/change-password'
+      fullPath: '/change-password'
+      preLoaderRoute: typeof ChangePasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/brokers': {
       id: '/brokers'
       path: '/brokers'
@@ -509,6 +529,7 @@ const rootRouteChildren: RootRouteChildren = {
   ActivateRoute: ActivateRoute,
   AuditRoute: AuditRoute,
   BrokersRoute: BrokersRoute,
+  ChangePasswordRoute: ChangePasswordRoute,
   ComingSoonRoute: ComingSoonRoute,
   ErrorsRoute: ErrorsRoute,
   KycRoute: KycRoute,

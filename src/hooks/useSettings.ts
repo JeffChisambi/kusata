@@ -87,7 +87,7 @@ export function useUpdateProfile() {
 export function useChangePassword() {
   return useMutation({
     mutationFn: (data: { currentPassword: string; newPassword: string }) =>
-      api.post('/v1/admin/auth/change-password', data),
+      api.post('/v1/admin/me/change-password', data),
   });
 }
 
