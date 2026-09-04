@@ -11,8 +11,9 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, logout } from "@/lib/auth";
 import { registerNavigate } from "@/lib/nav-registry";
+import { startIdleWatch } from "@/lib/idle-session";
 import { enforceAccess } from "@/lib/sections";
 import { installErrorReporter } from "@/lib/error-reporter";
 
@@ -197,6 +198,16 @@ function RootComponent() {
   useEffect(() => {
     installErrorReporter();
   }, []);
+
+  // Two hours with nobody at the keyboard ends the session. The server
+  // revokes it either way; this signs the person out promptly instead of
+  // leaving stale figures on screen until a request happens to fail.
+  useEffect(() => {
+    if (!isAuthenticated()) return;
+    return startIdleWatch(() => {
+      void logout().finally(() => navigate({ to: "/login" }));
+    });
+  }, [navigate, pathname]);
 
   // The shell is mounted ONCE here and persists across section switches — only
   // the <Outlet/> content changes — so the sidebar/topbar never remount and the

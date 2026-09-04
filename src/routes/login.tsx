@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, EyeOff, ShieldCheck, KeyRound, Smartphone, Copy, CheckCircle2 } from "lucide-react";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import type { MfaSetupResponse } from "@/lib/auth";
+import { takeSignOutReason } from "@/lib/idle-session";
 
 const loginSearchSchema = z.object({
   /** Set by /activate after a successful account activation. */
@@ -34,6 +35,10 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Set when the session was ended for us rather than by the person clicking
+  // sign out — worth saying, so being back at this screen is not a mystery.
+  const [signedOutReason, setSignedOutReason] = useState<string | null>(null);
+  useEffect(() => { setSignedOutReason(takeSignOutReason()); }, []);
 
   // MFA state
   const [mfaToken, setMfaToken] = useState("");
@@ -193,6 +198,12 @@ function LoginPage() {
                     </button>
                   </div>
                 </div>
+
+                {signedOutReason === "idle" && !error && (
+                  <p className="text-[13px] text-white/80 bg-white/10 border border-white/20 rounded-[2px] px-3.5 py-2.5">
+                    You were signed out after 2 hours without activity. Please sign in again.
+                  </p>
+                )}
 
                 {error && (
                   <p className="text-[13px] text-rose bg-rose/8 border border-rose/20 rounded-[2px] px-3.5 py-2.5">
