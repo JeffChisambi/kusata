@@ -105,13 +105,6 @@ function mapApiToLocal(app: KycApplicationRow): KycApplication {
 
 /* ─────────────────────────── helpers ─────────────────────────── */
 
-function relativeTime(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const h = Math.floor(diff / 3_600_000);
-  if (h < 1) return `${Math.max(1, Math.floor(diff / 60000))}m ago`;
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -567,7 +560,7 @@ function KycTable({
   onRequestDocs: (a: KycApplication) => void;
   showDetailColumns: boolean;
 }) {
-  const colCount = showDetailColumns ? 8 : 4;
+  const colCount = showDetailColumns ? 7 : 4;
   return (
     <div className="overflow-x-auto">
       <table className="w-full table-fixed text-sm">
@@ -577,13 +570,12 @@ function KycTable({
         <colgroup>
           {showDetailColumns ? (
             <>
-              <col className="w-[26%]" />
-              <col className="w-[13%]" />
-              <col className="w-[9%]" />
-              <col className="w-[14%]" />
-              <col className="w-[9%]" />
-              <col className="w-[9%]" />
-              <col className="w-[13%]" />
+              <col className="w-[28%]" />
+              <col className="w-[15%]" />
+              <col className="w-[10%]" />
+              <col className="w-[16%]" />
+              <col className="w-[12%]" />
+              <col className="w-[12%]" />
               <col className="w-[7%]" />
             </>
           ) : (
@@ -605,7 +597,6 @@ function KycTable({
               <>
                 <th className="py-2.5 text-left font-medium">OCR</th>
                 <th className="py-2.5 text-left font-medium">Face</th>
-                <th className="py-2.5 text-left font-medium">Submitted</th>
                 <th className="pr-5 py-2.5 text-left font-medium">Flags</th>
               </>
             )}
@@ -667,7 +658,6 @@ function KycRow({
         <>
           <td className="py-3"><ScoreBar value={app.ocrConfidence} /></td>
           <td className="py-3"><ScoreBar value={app.faceMatchScore} /></td>
-          <td className="py-3 text-[12px] text-muted-foreground whitespace-nowrap">{relativeTime(app.submittedAt)}</td>
           <td className="pr-5 py-3">
             {app.flags.length > 0 ? (
               <span className="inline-flex items-center gap-1 text-[11px] text-amber font-medium">

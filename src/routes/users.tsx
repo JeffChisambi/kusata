@@ -479,9 +479,10 @@ function UsersTable({
               <td className="py-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <Avatar name={r.name} />
+                  {/* Name only. The email is personal data that nothing on
+                      this row acts on; it is on the investor's own page. */}
                   <div className="min-w-0">
                     <div className="font-medium truncate">{r.name}</div>
-                    <div className="text-[11px] text-muted-foreground truncate">{r.email || r.phone || "—"}</div>
                   </div>
                 </div>
               </td>
