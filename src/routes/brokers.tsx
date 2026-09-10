@@ -7,7 +7,10 @@ import { BrokersIcon } from "@/components/pine-icons";
 import { Card } from "@/components/broker-shell";
 import { requireSuperAdmin } from "@/lib/auth";
 import { useBrokersList, useCreateBroker, type BrokerSummary } from "@/hooks/useBrokers";
-import { usePlatformCommission, useUpdatePlatformCommission, useBrokerEarnings, type BrokerEarningsRow } from "@/hooks/usePlatform";
+import {
+  usePlatformCommission, useUpdatePlatformCommission, useBrokerEarnings, type BrokerEarningsRow,
+  useDefaultBroker, useSetDefaultBroker,
+} from "@/hooks/usePlatform";
 
 const fmtMK = (n: number) =>
   n >= 1_000_000 ? `MK ${(n / 1_000_000).toFixed(2)}M` : n >= 1_000 ? `MK ${(n / 1_000).toFixed(1)}K` : `MK ${n.toLocaleString()}`;
@@ -18,6 +21,99 @@ const fmtExact = (n: number) => `MWK ${n.toLocaleString("en-MW", { minimumFracti
  * commission, frozen per trade at execution. Brokers see what they owe on
  * their dashboard; Pine tracks each broker's receivable here.
  */
+/**
+ * Which broker new investors are placed with.
+ *
+ * Investors no longer choose a broker in the app — Pine has one partner, so
+ * registration assigns this one. Existing investors without a broker are
+ * only moved when asked, and an existing relationship is never touched: the
+ * money under it belongs to that broker.
+ */
+function DefaultBrokerCard({ brokers }: { brokers: BrokerSummary[] }) {
+  const { data, isLoading } = useDefaultBroker();
+  const setDefault = useSetDefaultBroker();
+  const [brokerId, setBrokerId] = useState("");
+  const [applyToUnassigned, setApplyToUnassigned] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (data?.broker?.id) setBrokerId(data.broker.id);
+  }, [data?.broker?.id]);
+
+  const active = brokers.filter((b) => b.isActive);
+  const changed = brokerId !== "" && (brokerId !== data?.broker?.id || applyToUnassigned);
+  const unassigned = data?.unassignedInvestors ?? 0;
+
+  const save = async () => {
+    setNotice(null);
+    try {
+      const r = await setDefault.mutateAsync({ brokerId, applyToUnassigned });
+      const name = r.broker?.name ?? "That broker";
+      setNotice(
+        applyToUnassigned
+          ? `${name} is now the default. ${r.assigned} investor${r.assigned === 1 ? "" : "s"} without a broker ${r.assigned === 1 ? "was" : "were"} placed with them.`
+          : `${name} is now the default for new investors.`,
+      );
+      setApplyToUnassigned(false);
+    } catch (e: any) {
+      setNotice(e?.message ?? "The default broker could not be saved.");
+    }
+  };
+
+  return (
+    <Card title="Default broker for new investors" subtitle="Every investor who registers is placed with this broker. They do not choose one in the app.">
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="min-w-[260px]">
+              <span className="text-xs font-medium text-muted-foreground">Broker</span>
+              <select
+                value={brokerId}
+                onChange={(e) => setBrokerId(e.target.value)}
+                className="mt-1.5 w-full h-9 px-3 rounded-[3px] border border-border bg-card text-sm focus:outline-none focus:border-pine/40"
+              >
+                <option value="">Not set — investors register without a broker</option>
+                {active.map((b) => (
+                  <option key={b.id} value={b.id}>{b.name} ({b.code})</option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={save}
+              disabled={!changed || setDefault.isPending}
+              className="h-9 px-4 rounded-[3px] bg-pine text-primary-foreground text-sm font-medium hover:bg-pine/90 disabled:opacity-50"
+            >
+              {setDefault.isPending ? "Saving…" : "Save"}
+            </button>
+          </div>
+
+          {unassigned > 0 && (
+            <label className="flex items-start gap-2.5 text-[13px]">
+              <input
+                type="checkbox"
+                checked={applyToUnassigned}
+                onChange={(e) => setApplyToUnassigned(e.target.checked)}
+                disabled={!brokerId}
+                className="accent-pine mt-0.5"
+              />
+              <span>
+                Also place the <strong>{unassigned.toLocaleString()}</strong> existing investor{unassigned === 1 ? "" : "s"} who
+                {unassigned === 1 ? " has" : " have"} no broker with this one.
+                <span className="block text-[11px] text-muted-foreground">Investors already with a broker are never moved.</span>
+              </span>
+            </label>
+          )}
+
+          {notice && <p className="text-[13px] text-muted-foreground">{notice}</p>}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function PlatformCommissionCard() {
   const { data, isLoading } = usePlatformCommission();
   const update = useUpdatePlatformCommission();
@@ -141,6 +237,7 @@ function BrokersPage() {
 
       {/* Platform commission + receivables */}
       <PlatformCommissionCard />
+      <DefaultBrokerCard brokers={list} />
 
       {/* Table */}
       <Card className="!p-0 overflow-hidden">

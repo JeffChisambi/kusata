@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 const platformKeys = {
   all: ['platform'] as const,
   commission: () => [...platformKeys.all, 'commission'] as const,
+  defaultBroker: () => [...platformKeys.all, 'default-broker'] as const,
   earnings: () => [...platformKeys.all, 'brokers', 'earnings'] as const,
 };
 
@@ -30,6 +31,32 @@ export interface BrokerEarningsReport {
   periodEnd: string;
   brokers: BrokerEarningsRow[];
   totals: { commissionsThisMonth: number; owedThisMonth: number; owedLifetime: number };
+}
+
+export interface DefaultBrokerInfo {
+  broker: { id: string; name: string; code: string; isActive: boolean } | null;
+  /** Investors currently without any broker. */
+  unassignedInvestors: number;
+}
+
+/** Super Admin: the broker every new investor is placed with. */
+export function useDefaultBroker() {
+  return useQuery<DefaultBrokerInfo>({
+    queryKey: platformKeys.defaultBroker(),
+    queryFn: () => api.get<DefaultBrokerInfo>('/v1/admin/platform/default-broker'),
+  });
+}
+
+export function useSetDefaultBroker() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { brokerId: string; applyToUnassigned: boolean }) =>
+      api.put<DefaultBrokerInfo & { assigned: number }>('/v1/admin/platform/default-broker', body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: platformKeys.all });
+      qc.invalidateQueries({ queryKey: ['brokers'] });
+    },
+  });
 }
 
 /** Super Admin: Pine's commission rate on broker commissions. */
