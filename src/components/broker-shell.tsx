@@ -36,33 +36,45 @@ type NavGroup = {
   superAdminOnly?: boolean;
 };
 
+/**
+ * Ordered by how often a broker actually opens each section.
+ *
+ * OPERATIONS holds the four queues that carry badges — work that arrives on
+ * its own and waits for a decision. They come first because they are what a
+ * broker signs in to clear: orders during market hours, then the two queues
+ * that hold a client up (verification, and money going out), then tickets.
+ *
+ * CLIENTS is what you go looking for rather than what waits for you, and
+ * PLATFORM is Pine's own housekeeping. Settings sits last, where a settings
+ * link belongs.
+ */
 export const brokerNav: NavGroup[] = [
   // ── OVERVIEW ──
   { section: "OVERVIEW", icon: OverviewIcon, label: "Overview", href: "/" },
 
+  // ── OPERATIONS — the queues, in the order they hold someone up ──
+  { section: "OPERATIONS", icon: OrdersIcon, label: "Orders", href: "/orders" },
+  { section: "OPERATIONS", icon: KycIcon, label: "KYC", href: "/kyc" },
+  { section: "OPERATIONS", icon: CashIcon, label: "Withdrawals", href: "/withdrawals" },
+  { section: "OPERATIONS", icon: SupportIcon, label: "Support", href: "/support" },
+
   // ── CLIENTS ──
   { section: "CLIENTS", icon: UsersIcon, label: "Users", href: "/users" },
-  { section: "CLIENTS", icon: KycIcon, label: "KYC", href: "/kyc" },
-  { section: "CLIENTS", icon: CashIcon, label: "Withdrawals", href: "/withdrawals" },
-  { section: "CLIENTS", icon: SupportIcon, label: "Support", href: "/support" },
-
-  // ── TRADING ──
-  { section: "TRADING", icon: OrdersIcon, label: "Orders", href: "/orders" },
+  { section: "CLIENTS", icon: NotificationsIcon, label: "Client Notifications", href: "/notifications" },
 
   // ── PLATFORM (super admin only) ──
   { section: "PLATFORM", icon: BrokersIcon, label: "Brokers", href: "/brokers", superAdminOnly: true },
-  { section: "PLATFORM", icon: AuditLogIcon, label: "Audit Log", href: "/audit", superAdminOnly: true },
   { section: "PLATFORM", icon: ErrorIcon, label: "System Errors", href: "/errors", superAdminOnly: true },
-  { section: "PLATFORM", icon: NewsIcon, label: "News", href: "/news", superAdminOnly: true },
-  { section: "PLATFORM", icon: ThemeIcon, label: "Mobile Themes", href: "/mobile-themes", superAdminOnly: true },
   { section: "PLATFORM", icon: SecuritiesIcon, label: "Treasury", href: "/treasury", superAdminOnly: true },
+  { section: "PLATFORM", icon: NewsIcon, label: "News", href: "/news", superAdminOnly: true },
+  { section: "PLATFORM", icon: AuditLogIcon, label: "Audit Log", href: "/audit", superAdminOnly: true },
+  { section: "PLATFORM", icon: ThemeIcon, label: "Mobile Themes", href: "/mobile-themes", superAdminOnly: true },
 
   // ── ACCOUNT ──
-  { section: "ACCOUNT", icon: NotificationsIcon, label: "Client Notifications", href: "/notifications" },
   { section: "ACCOUNT", icon: SettingsIcon, label: "Settings", href: "/settings" },
 ];
 
-export const brokerSectionOrder = ["OVERVIEW", "CLIENTS", "TRADING", "PLATFORM", "ACCOUNT"];
+export const brokerSectionOrder = ["OVERVIEW", "OPERATIONS", "CLIENTS", "PLATFORM", "ACCOUNT"];
 
 // ─── Dashboard time range ─────────────────────────────────────────────────────
 // The topbar range picker feeds every time-scoped view (overview charts, the
