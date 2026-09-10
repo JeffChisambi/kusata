@@ -39,6 +39,19 @@ function statusLabel(status: DisplayStatus) {
   }
 }
 
+function statusTone(status: DisplayStatus) {
+  switch (status) {
+    case "READY":
+    case "PENDING": return "text-amber";
+    case "PARTIAL": return "text-sky";
+    case "EXECUTED":
+    case "SETTLED": return "text-pine";
+    // Cancelled is an outcome, not a failure — it stays neutral.
+    case "CANCELLED": return "text-muted-foreground";
+    default: return "text-rose";
+  }
+}
+
 function StatusPill({ status, label }: { status: DisplayStatus; label?: string }) {
   const Icon =
     status === "READY"
@@ -49,7 +62,9 @@ function StatusPill({ status, label }: { status: DisplayStatus; label?: string }
           ? CheckCircle2
           : XCircle;
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">
+    // No chip: the colour on the word is the signal. A filled pill on every
+    // row turns a scannable column into a wall of badges.
+    <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold ${statusTone(status)}`}>
       <Icon className="h-3.5 w-3.5" />
       {label ?? statusLabel(status)}
     </span>

@@ -127,15 +127,17 @@ function SupportInboxPage() {
                         {t.awaitingAdmin && <span className="w-2 h-2 rounded-full bg-pine shrink-0" title="Awaiting reply" />}
                         <div className="min-w-0">
                           <div className="font-medium text-[13px] truncate max-w-[360px]">{t.subject}</div>
+                          {/* The reference and the customer's phone number are
+                              noise in the list — the category is what an agent
+                              triages on. Both are on the ticket itself. */}
                           <div className="text-[11px] text-muted-foreground">
-                            #{t.reference} · {CATEGORY_LABEL[t.category] ?? t.category}
+                            {CATEGORY_LABEL[t.category] ?? t.category}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="py-3 text-[12px] text-muted-foreground">
                       <div className="truncate max-w-[200px]">{t.user?.name || "—"}</div>
-                      <div className="text-[11px]">{t.user?.phone}</div>
                     </td>
                     <td className="py-3"><StatusPill status={t.status} /></td>
                     <td className="pr-5 py-3 text-right text-[12px] text-muted-foreground whitespace-nowrap">

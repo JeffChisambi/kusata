@@ -36,6 +36,19 @@ function statusLabel(status: DisplayStatus) {
   }
 }
 
+function statusTone(status: DisplayStatus) {
+  switch (status) {
+    case "READY":
+    case "PENDING": return "text-amber";
+    case "PARTIAL": return "text-sky";
+    case "EXECUTED":
+    case "SETTLED": return "text-pine";
+    // Cancelled is an outcome, not a failure — it stays neutral.
+    case "CANCELLED": return "text-muted-foreground";
+    default: return "text-rose";
+  }
+}
+
 function StatusPill({ status }: { status: DisplayStatus }) {
   const Icon =
     status === "READY"
@@ -46,7 +59,7 @@ function StatusPill({ status }: { status: DisplayStatus }) {
           ? CheckCircle2
           : XCircle;
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${statusTone(status)}`}>
       <Icon className="h-3.5 w-3.5" />
       {statusLabel(status)}
     </span>
