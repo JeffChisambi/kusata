@@ -22,6 +22,7 @@ import { useBrokersList } from "@/hooks/useBrokers";
 import { useTreasuryInvestments } from "@/hooks/useTreasuryAdmin";
 import { canAccess, sectionForPath, type DashboardSection } from "@/lib/sections";
 import { useNotificationDelivery } from "@/hooks/useNotificationDelivery";
+import { PRACTICE_MODE, PRACTICE_HIDDEN_ROUTES } from "@/lib/practice";
 import {
   ChevronDown,
 } from "lucide-react";
@@ -48,7 +49,7 @@ type NavGroup = {
  * PLATFORM is Pine's own housekeeping. Settings sits last, where a settings
  * link belongs.
  */
-export const brokerNav: NavGroup[] = [
+const FULL_BROKER_NAV: NavGroup[] = [
   // ── OVERVIEW ──
   { section: "OVERVIEW", icon: OverviewIcon, label: "Overview", href: "/" },
 
@@ -73,6 +74,11 @@ export const brokerNav: NavGroup[] = [
   // ── ACCOUNT ──
   { section: "ACCOUNT", icon: SettingsIcon, label: "Settings", href: "/settings" },
 ];
+
+/** KYC, withdrawals and treasury only exist for real money. */
+export const brokerNav: NavGroup[] = PRACTICE_MODE
+  ? FULL_BROKER_NAV.filter((n) => !PRACTICE_HIDDEN_ROUTES.has(n.href))
+  : FULL_BROKER_NAV;
 
 export const brokerSectionOrder = ["OVERVIEW", "OPERATIONS", "CLIENTS", "PLATFORM", "ACCOUNT"];
 
@@ -269,6 +275,14 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         onToggleCollapse={toggleCollapse}
       />
       <main className="flex-1 min-w-0 flex flex-col h-screen overflow-hidden">
+        {PRACTICE_MODE && (
+          <div
+            role="status"
+            className="shrink-0 px-8 py-2 text-[12px] font-medium bg-amber/10 text-amber border-b border-amber/20"
+          >
+            Practice dashboard — investors here trade play money. Orders fill automatically and no real funds move.
+          </div>
+        )}
         {/* No top bar. Notifications and the theme toggle live in the sidebar;
             each page owns its own heading and search. */}
         <div
