@@ -281,7 +281,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             role="status"
             className="shrink-0 px-8 py-2 text-[12px] font-medium bg-amber/10 text-amber border-b border-amber/20"
           >
-            Practice dashboard — investors here trade play money. Orders fill automatically and no real funds move.
+            Virtual dashboard — investors here trade play money. Orders fill automatically and no real funds move.
           </div>
         )}
         {/* No top bar. Notifications and the theme toggle live in the sidebar;
