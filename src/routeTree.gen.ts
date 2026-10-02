@@ -24,6 +24,7 @@ import { Route as ErrorsRouteImport } from './routes/errors'
 import { Route as ComingSoonRouteImport } from './routes/coming-soon'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as BrokersRouteImport } from './routes/brokers'
+import { Route as BoardRouteImport } from './routes/board'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as ActivateRouteImport } from './routes/activate'
 import { Route as IndexRouteImport } from './routes/index'
@@ -109,6 +110,11 @@ const BrokersRoute = BrokersRouteImport.update({
   path: '/brokers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BoardRoute = BoardRouteImport.update({
+  id: '/board',
+  path: '/board',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuditRoute = AuditRouteImport.update({
   id: '/audit',
   path: '/audit',
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activate': typeof ActivateRoute
   '/audit': typeof AuditRoute
+  '/board': typeof BoardRoute
   '/brokers': typeof BrokersRoute
   '/change-password': typeof ChangePasswordRoute
   '/coming-soon': typeof ComingSoonRoute
@@ -185,6 +192,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activate': typeof ActivateRoute
   '/audit': typeof AuditRoute
+  '/board': typeof BoardRoute
   '/brokers': typeof BrokersRoute
   '/change-password': typeof ChangePasswordRoute
   '/coming-soon': typeof ComingSoonRoute
@@ -211,6 +219,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/activate': typeof ActivateRoute
   '/audit': typeof AuditRoute
+  '/board': typeof BoardRoute
   '/brokers': typeof BrokersRoute
   '/change-password': typeof ChangePasswordRoute
   '/coming-soon': typeof ComingSoonRoute
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activate'
     | '/audit'
+    | '/board'
     | '/brokers'
     | '/change-password'
     | '/coming-soon'
@@ -265,6 +275,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activate'
     | '/audit'
+    | '/board'
     | '/brokers'
     | '/change-password'
     | '/coming-soon'
@@ -290,6 +301,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activate'
     | '/audit'
+    | '/board'
     | '/brokers'
     | '/change-password'
     | '/coming-soon'
@@ -317,6 +329,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivateRoute: typeof ActivateRoute
   AuditRoute: typeof AuditRoute
+  BoardRoute: typeof BoardRoute
   BrokersRoute: typeof BrokersRoute
   ChangePasswordRoute: typeof ChangePasswordRoute
   ComingSoonRoute: typeof ComingSoonRoute
@@ -445,6 +458,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BrokersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/board': {
+      id: '/board'
+      path: '/board'
+      fullPath: '/board'
+      preLoaderRoute: typeof BoardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/audit': {
       id: '/audit'
       path: '/audit'
@@ -528,6 +548,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivateRoute: ActivateRoute,
   AuditRoute: AuditRoute,
+  BoardRoute: BoardRoute,
   BrokersRoute: BrokersRoute,
   ChangePasswordRoute: ChangePasswordRoute,
   ComingSoonRoute: ComingSoonRoute,

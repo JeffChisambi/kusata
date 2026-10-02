@@ -5,7 +5,7 @@ import {
 import { createPortal } from "react-dom";
 import {
   OverviewIcon, UsersIcon, KycIcon, SupportIcon, OrdersIcon, ErrorIcon,
-  NewsIcon, SecuritiesIcon, NotificationsIcon, SettingsIcon, CashIcon, BrokersIcon,
+  NewsIcon, BoardIcon, SecuritiesIcon, NotificationsIcon, SettingsIcon, CashIcon, BrokersIcon,
   AuditLogIcon, ExpandIcon, ThemeIcon, SignOutIcon, SunIcon, MoonIcon,
 } from "./pine-icons";
 import { Link, useNavigate, useLocation, useElementScrollRestoration } from "@tanstack/react-router";
@@ -68,6 +68,7 @@ const FULL_BROKER_NAV: NavGroup[] = [
   { section: "PLATFORM", icon: ErrorIcon, label: "System Errors", href: "/errors", superAdminOnly: true },
   { section: "PLATFORM", icon: SecuritiesIcon, label: "Treasury", href: "/treasury", superAdminOnly: true },
   { section: "PLATFORM", icon: NewsIcon, label: "News", href: "/news", superAdminOnly: true },
+  { section: "PLATFORM", icon: BoardIcon, label: "Board", href: "/board", superAdminOnly: true },
   { section: "PLATFORM", icon: AuditLogIcon, label: "Audit Log", href: "/audit", superAdminOnly: true },
   { section: "PLATFORM", icon: ThemeIcon, label: "Mobile Themes", href: "/mobile-themes", superAdminOnly: true },
 
